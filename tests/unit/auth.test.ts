@@ -20,6 +20,8 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { db } from '@/lib/db/client'
+import { sendPasswordResetEmail } from '@/lib/email'
+import { redirect } from 'next/navigation'
 import { registerAction } from '@/app/(auth)/auth/register/actions'
 import { forgotPasswordAction } from '@/app/(auth)/auth/forgot-password/actions'
 import { resetPasswordAction } from '@/app/(auth)/auth/reset-password/actions'
@@ -46,6 +48,16 @@ function buildSelectChain(result: unknown[]) {
 function buildInsertChain() {
   const chain = { values: vi.fn().mockResolvedValue(undefined) }
   mockDb.insert.mockReturnValue(chain)
+  return chain
+}
+
+function buildUpdateChain() {
+  const chain = {
+    set: vi.fn(),
+    where: vi.fn().mockResolvedValue(undefined),
+  }
+  chain.set.mockReturnValue(chain)
+  mockDb.update.mockReturnValue(chain)
   return chain
 }
 
@@ -120,6 +132,27 @@ describe('registerAction', () => {
 describe('forgotPasswordAction', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  it('cria token e envia email quando usuário existe', async () => {
+    // #given
+    buildSelectChain([{ id: 'user-1' }])
+    buildUpdateChain()
+    buildInsertChain()
+
+    const formData = new FormData()
+    formData.set('email', 'user@test.com')
+
+    // #when
+    const result = await forgotPasswordAction({}, formData)
+
+    // #then
+    expect(result.success).toBe(true)
+    expect(mockDb.insert).toHaveBeenCalled()
+    expect(vi.mocked(sendPasswordResetEmail)).toHaveBeenCalledWith(
+      'user@test.com',
+      expect.stringContaining('/auth/reset-password?token='),
+    )
+  })
+
   it('retorna success:true mesmo quando email não existe (não revela existência)', async () => {
     // #given
     buildSelectChain([])
@@ -152,6 +185,29 @@ describe('resetPasswordAction', () => {
 
     // #then
     expect(result.error).toContain('inválido ou expirado')
+  })
+
+  it('atualiza senha e redireciona quando token é válido', async () => {
+    // #given
+    buildSelectChain([{
+      id: 'token-1',
+      userId: 'user-1',
+      token: 'valid-token',
+      expiresAt: new Date(Date.now() + 3600000),
+      usedAt: null,
+    }])
+    buildUpdateChain()
+
+    const formData = new FormData()
+    formData.set('token', 'valid-token')
+    formData.set('password', 'novasenha123')
+
+    // #when
+    await resetPasswordAction({}, formData).catch(() => {})
+
+    // #then
+    expect(mockDb.update).toHaveBeenCalled()
+    expect(vi.mocked(redirect)).toHaveBeenCalledWith('/auth/login?reset=success')
   })
 
   it('retorna erro para senha com menos de 8 caracteres', async () => {

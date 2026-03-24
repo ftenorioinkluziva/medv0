@@ -1,0 +1,53 @@
+schema: 1
+story: '1.2'
+story_title: 'Authentication + Reset de Senha'
+gate: PASS
+status_reason: >
+  Todos os blockers e concerns do review anterior foram resolvidos. Middleware ativo em
+  src/middleware.ts, redirect pós-login respeita onboardingCompleted, tokens anteriores
+  invalidados antes de gerar novo, cobertura de testes completa (14 testes passando).
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-24T12:00:00.000Z'
+
+top_issues: []
+
+waiver:
+  active: false
+
+quality_score: 90
+expires: '2026-04-07T12:00:00.000Z'
+
+evidence:
+  tests_reviewed: 14
+  risks_identified: 1
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: >
+      Middleware ativo protege /app/*. Enumeração de email prevenida. Bcrypt rounds 12.
+      Tokens anteriores invalidados ao gerar novo. Sem hardcoded secrets.
+  performance:
+    status: PASS
+    notes: 'Email de reset assíncrono. Queries com .limit(1). Sem N+1.'
+  reliability:
+    status: CONCERNS
+    notes: >
+      sendPasswordResetEmail com .catch(console.error) — falhas de email silenciosas
+      em produção. Aceitável para MVP, monitorar com observabilidade futura.
+  maintainability:
+    status: PASS
+    notes: 'Código limpo, Server Actions separadas por feature, validação Zod centralizada.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Rate limiting em /auth/forgot-password antes de produção'
+      refs: ['src/app/(auth)/auth/forgot-password/actions.ts']
+    - action: 'Substituir .catch(console.error) por logger estruturado (observabilidade)'
+      refs: ['src/app/(auth)/auth/forgot-password/actions.ts']
+    - action: 'Invalidar sessões JWT ativas após reset de senha (segurança avançada)'
+      refs: ['src/app/(auth)/auth/reset-password/actions.ts']
