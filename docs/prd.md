@@ -4,6 +4,7 @@
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2026-03-23 | 1.0 | Criação inicial | Morgan / SAMI Team |
+| 2026-03-24 | 1.1 | Adicionado mapa de cycles e status de progresso | Fernando / Claude Code |
 
 ---
 
@@ -366,18 +367,71 @@ Setup Docker, deploy VPS Hetzner, CI/CD GitHub Actions. Corre em paralelo com E1
 
 ---
 
-## 8. Next Steps
+## 8. Development Progress
 
-### Para o Architect
-O PRD está completo. Iniciar com `@architect` para definir a arquitetura técnica detalhada: estrutura de pastas Next.js 16, schema Drizzle completo, estratégia de migrations, configuração do pgvector, e padrões de Server Actions vs Route Handlers.
+### Status em 2026-03-24
 
-### Para o SM
-Iniciar com `@sm *draft BLA-29` para criar as stories detalhadas do E1 com tasks granulares prontas para execução pelo `@dev`.
+| Story | Linear | Status | Cycle | Branch |
+|-------|--------|--------|-------|--------|
+| 1.1 — Project Setup | BLA-36 | ✅ Done | 1 | merged (#1) |
+| 1.2 — Authentication + Reset | BLA-37 | ✅ Done | 1 | PR aberto (#2) |
+| 1.3 — Medical Profile Básico | BLA-38 | 📋 Backlog | 1 | — |
+| 1.4 — Medical Profile Avançado | BLA-39 | 📋 Backlog | 1 | — |
+| 1.5 — Onboarding Flow | BLA-40 | 📋 Backlog | 1 | — |
+
+---
+
+## 9. Cycle Map
+
+### Cycle 1 — E1: Foundation & Auth
+**Período:** 30/03/2026 → 06/04/2026
+**Objetivo:** Completar toda a base de autenticação, Medical Profile e onboarding
+
+| Issue | Story | Status |
+|-------|-------|--------|
+| BLA-36 | 1.1 — Project Setup | ✅ Done |
+| BLA-37 | 1.2 — Authentication + Reset | ✅ Done |
+| BLA-38 | 1.3 — Medical Profile Básico | 📋 Todo |
+| BLA-39 | 1.4 — Medical Profile Avançado | 📋 Todo |
+| BLA-40 | 1.5 — Onboarding Flow | 📋 Todo |
+
+### Cycle 2 — E2 + E3: Document Ingestion + Knowledge Base
+**Período:** 06/04/2026 → 13/04/2026
+**Objetivo:** Upload de exames, extração Gemini, snapshot + RAG populado
+
+| Issue | Story | Status |
+|-------|-------|--------|
+| BLA-41 | 2.1 — Upload Interface | 📋 Backlog |
+| BLA-42 | 2.2 — Extração Gemini Vision | 📋 Backlog |
+| BLA-43 | 2.3 — Persistência Snapshot | 📋 Backlog |
+| BLA-44 | 3.1 — Schema & Busca Vetorial | 📋 Backlog |
+| BLA-45 | 3.2 — Endpoint auto-upload | 📋 Backlog |
+
+### Cycle 3 — E4 + E5: AI Engine + Mobile Experience
+**Período:** A definir
+**Objetivo:** Motor multi-agente, relatório e experiência mobile completa
+
+### Cycle 4 — E0 + E6: DevOps + Admin Panel
+**Período:** A definir
+**Objetivo:** Deploy Hetzner, CI/CD, painel admin
+
+---
+
+## 10. Next Steps
+
+### Próxima action imediata
+1. Merge PR #2 (BLA-37 — Authentication)
+2. `@dev *start BLA-38` — Medical Profile Básico
 
 ### Para o Dev
-Ponto de entrada: **Story 1.1 (BLA-36)** — Project Setup. Usar `@dev *start BLA-36`.
+```bash
+@dev *start BLA-38   # Medical Profile Básico
+@dev *start BLA-39   # Medical Profile Avançado (após 1.3)
+@dev *start BLA-40   # Onboarding Flow (após 1.3 e 1.2)
+```
 
 ---
 
 *Documento gerado por Morgan (AIOX PM Agent) em 2026-03-23*
+*Atualizado em 2026-03-24 — Cycles mapeados, progresso registrado*
 *Linear Project: [medV0](https://linear.app/blackboxinovacao/project/medv0-afad56960ac8/overview)*

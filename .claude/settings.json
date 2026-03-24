@@ -5,7 +5,9 @@
       "mcp__plugin_linear_linear__list_teams",
       "mcp__plugin_linear_linear__save_issue",
       "mcp__plugin_linear_linear__get_issue",
-      "mcp__plugin_linear_linear__list_issues"
+      "mcp__plugin_linear_linear__list_issues",
+      "mcp__plugin_linear_linear__list_cycles",
+      "mcp__plugin_linear_linear__get_team"
     ],
     "additionalDirectories": [
       "c:\\projetos\\medv0"
