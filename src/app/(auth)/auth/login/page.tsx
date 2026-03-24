@@ -34,7 +34,7 @@ function LoginForm() {
     const result = await loginAction(prev, formData)
     if (!result.error) {
       const session = await getSession()
-      const dest = session?.user?.onboardingCompleted ? '/app/dashboard' : '/app/onboarding'
+      const dest = session?.user?.onboardingCompleted === true ? '/app/dashboard' : '/app/onboarding'
       router.push(dest)
     }
     return result

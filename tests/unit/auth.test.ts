@@ -8,6 +8,7 @@ vi.mock('@/lib/db/client', () => ({
     select: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
+    transaction: vi.fn(),
   },
 }))
 
@@ -31,6 +32,7 @@ const mockDb = db as unknown as {
   select: ReturnType<typeof vi.fn>
   insert: ReturnType<typeof vi.fn>
   update: ReturnType<typeof vi.fn>
+  transaction: ReturnType<typeof vi.fn>
 }
 
 function buildSelectChain(result: unknown[]) {
@@ -130,7 +132,10 @@ describe('registerAction', () => {
 })
 
 describe('forgotPasswordAction', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockDb.transaction.mockImplementation(async (fn: (tx: typeof mockDb) => Promise<void>) => fn(mockDb))
+  })
 
   it('cria token e envia email quando usuário existe', async () => {
     // #given
@@ -206,7 +211,7 @@ describe('resetPasswordAction', () => {
     await resetPasswordAction({}, formData).catch(() => {})
 
     // #then
-    expect(mockDb.update).toHaveBeenCalled()
+    expect(mockDb.update).toHaveBeenCalledTimes(2)
     expect(vi.mocked(redirect)).toHaveBeenCalledWith('/auth/login?reset=success')
   })
 

@@ -374,7 +374,7 @@ Setup Docker, deploy VPS Hetzner, CI/CD GitHub Actions. Corre em paralelo com E1
 | Story | Linear | Status | Cycle | Branch |
 |-------|--------|--------|-------|--------|
 | 1.1 — Project Setup | BLA-36 | ✅ Done | 1 | merged (#1) |
-| 1.2 — Authentication + Reset | BLA-37 | ✅ Done | 1 | PR aberto (#2) |
+| 1.2 — Authentication + Reset | BLA-37 | ✅ Done | 1 | PR aberto (#3) |
 | 1.3 — Medical Profile Básico | BLA-38 | 📋 Backlog | 1 | — |
 | 1.4 — Medical Profile Avançado | BLA-39 | 📋 Backlog | 1 | — |
 | 1.5 — Onboarding Flow | BLA-40 | 📋 Backlog | 1 | — |
@@ -420,7 +420,7 @@ Setup Docker, deploy VPS Hetzner, CI/CD GitHub Actions. Corre em paralelo com E1
 ## 10. Next Steps
 
 ### Próxima action imediata
-1. Merge PR #2 (BLA-37 — Authentication)
+1. Merge PR #3 (BLA-37 — Authentication)
 2. `@dev *start BLA-38` — Medical Profile Básico
 
 ### Para o Dev
