@@ -33,5 +33,6 @@ Thumbs.db
 
 # AIOX Local (AIOX)
 .aiox-core/local/
+.claude/settings.json
 .claude/settings.local.json
 .aiox/install-log.txt
