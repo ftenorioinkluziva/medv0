@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 export default async function OnboardingPage() {
   const session = await auth()
   if (!session?.user) redirect('/auth/login')
+  if (session.user.onboardingCompleted) redirect('/app/dashboard')
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6">
