@@ -1,7 +1,7 @@
 'use server'
 
 import { randomUUID } from 'crypto'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { users, passwordResetTokens } from '@/lib/db/schema'
 import { forgotPasswordSchema } from '@/lib/auth/validation'
@@ -38,10 +38,17 @@ export async function forgotPasswordAction(
   const token = randomUUID()
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // +1h
 
-  await db.insert(passwordResetTokens).values({
-    userId: user.id,
-    token,
-    expiresAt,
+  await db.transaction(async (tx) => {
+    await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(and(eq(passwordResetTokens.userId, user.id), isNull(passwordResetTokens.usedAt)))
+
+    await tx.insert(passwordResetTokens).values({
+      userId: user.id,
+      token,
+      expiresAt,
+    })
   })
 
   const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'

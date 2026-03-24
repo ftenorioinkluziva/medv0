@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useActionState } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, getSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,7 +33,9 @@ function LoginForm() {
   const [state, action, pending] = useActionState(async (prev: LoginState, formData: FormData) => {
     const result = await loginAction(prev, formData)
     if (!result.error) {
-      router.push('/app/dashboard')
+      const session = await getSession()
+      const dest = session?.user?.onboardingCompleted === true ? '/app/dashboard' : '/app/onboarding'
+      router.push(dest)
     }
     return result
   }, {})
