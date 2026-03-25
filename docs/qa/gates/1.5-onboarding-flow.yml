@@ -1,0 +1,67 @@
+schema: qa-gate/v1
+story_id: BLA-40
+story_title: "Story 1.5 — Onboarding Flow"
+reviewed_by: Quinn (QA Agent)
+review_date: "2026-03-25"
+branch: ftenorioemail/bla-40-story-15-onboarding-flow
+
+gate: PASS
+quality_score: 92
+
+coderabbit_scan: skipped # not installed in WSL
+
+acceptance_criteria:
+  ac1_disclaimer_mandatory_acceptance:
+    status: PASS
+    notes: "DisclaimerStep com checkbox `accepted`, Button disabled={!accepted}. Card amber com texto explícito de NÃO substitui consulta médica."
+  ac2_basic_profile_form:
+    status: PASS
+    notes: "ProfileStep: 8 campos obrigatórios (age, gender, height, weight, systolicPressure, diastolicPressure, restingHeartRate, healthObjectives). Todos com required. Chama completeOnboarding() → upsertMedicalProfile()."
+  ac3_upload_skippable:
+    status: PASS
+    notes: "UploadStep: 'Pular por agora' → /app/dashboard. 'Enviar Exame' → /app/documents/upload."
+  ac4_onboarding_once:
+    status: PASS
+    notes: "completeOnboarding() seta onboardingCompleted=true no DB. update({ onboardingCompleted: true }) atualiza JWT. page.tsx redireciona se já completado."
+  ac5_redirect_dashboard_after:
+    status: PASS
+    notes: "Fluxo: disclaimer → profile (save) → upload (skip) → dashboard. Satisfeito."
+  ac6_skip_onboarding_second_login:
+    status: PASS
+    notes: "JWT callback: token.onboardingCompleted propagado no login. Session callback: session.user.onboardingCompleted. page.tsx: if (onboardingCompleted) redirect('/app/dashboard')."
+
+quality_checks:
+  lint: PASS
+  typecheck: PASS
+  unit_tests: "PASS — 9/9 testes (onboarding.test.ts)"
+  e2e_tests: "N/A"
+  build: "N/A (não executado)"
+
+top_issues:
+  - id: QA-1.5-001
+    severity: LOW
+    description: "router.refresh() chamado após onNext() em ProfileStep — redundante após update() do NextAuth já atualizar a sessão."
+    file: "src/app/app/onboarding/steps/profile-step.tsx:52"
+    recommendation: "Remover router.refresh() ou manter conscientemente como segurança."
+
+  - id: QA-1.5-002
+    severity: LOW
+    description: "Testes de redirect logic (onboardingCompleted redirect logic) são simulações manuais de objeto token — não testam o comportamento real do redirect() do Next.js em page.tsx."
+    file: "tests/unit/onboarding.test.ts:143-201"
+    recommendation: "Aceitar como limitação de testes unitários. Cobrir com E2E futuramente."
+
+  - id: QA-1.5-003
+    severity: LOW
+    description: "Progress bar em OnboardingFlow sem aria-label ou role='progressbar' — acessibilidade básica ausente."
+    file: "src/app/app/onboarding/onboarding-flow.tsx:18-27"
+    recommendation: "Adicionar role='progressbar' com aria-valuenow/aria-valuemax."
+
+nfr_validation:
+  security: PASS
+  accessibility: CONCERNS # progress bar sem aria
+  performance: PASS
+  reliability: PASS
+
+recommendations:
+  - "Issues LOW (QA-1.5-001 a 003) não bloqueiam merge. Podem ser resolvidos em story de polish/a11y."
+  - "Cobrir AC6 e redirect logic com testes E2E na Story 1.5 ou story dedicada a E2E."
