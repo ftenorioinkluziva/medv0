@@ -116,14 +116,14 @@ INSERT INTO "medical_profiles" (
 ) SELECT
 	"id",
 	"user_id",
-	0 AS "age", -- placeholder for legacy rows without age (forces user update)
+	0 AS "age", -- sentinel for legacy rows without age; onboarding update will replace
 	COALESCE("gender", 'outro') AS "gender",
 	COALESCE("height", 170) AS "height",
 	COALESCE("weight", 70)::numeric(5, 2) AS "weight",
 	120 AS "systolic_pressure",
 	80 AS "diastolic_pressure",
 	70 AS "resting_heart_rate",
-	'Não especificado' AS "health_objectives",
+	'unspecified' AS "health_objectives",
 	NULL::text[] AS "medical_conditions",
 	NULL::text[] AS "medications",
 	NULL::text[] AS "allergies",
