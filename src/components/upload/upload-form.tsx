@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { Camera, FileText, Upload, X } from 'lucide-react'
@@ -44,7 +44,14 @@ export function UploadForm() {
   const [preview, setPreview] = useState<FilePreview | null>(null)
   const [step, setStep] = useState<UploadStep>('idle')
 
+  useEffect(() => {
+    return () => {
+      if (preview?.previewUrl) URL.revokeObjectURL(preview.previewUrl)
+    }
+  }, [preview?.previewUrl])
+
   function handleFileSelected(file: File) {
+    if (preview?.previewUrl) URL.revokeObjectURL(preview.previewUrl)
     if (!ACCEPTED_TYPES.includes(file.type)) {
       toast.error('Tipo não suportado. Use PDF, JPG ou PNG.')
       return
