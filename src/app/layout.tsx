@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { cn } from '@/lib/utils'
+import { Toaster } from '@/components/ui/sonner'
 
 export const metadata: Metadata = {
   title: 'SAMI',
@@ -26,6 +27,7 @@ export default function RootLayout({
     <html lang="pt-BR" className={cn('dark', 'font-sans', GeistSans.variable)} suppressHydrationWarning>
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         {children}
+        <Toaster />
       </body>
     </html>
   )

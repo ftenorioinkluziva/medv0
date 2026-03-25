@@ -1,0 +1,143 @@
+schema: 1
+story: '0.1'
+story_title: 'Dockerfile multi-stage para Next.js 16'
+linear_issue: 'BLA-56'
+pr: 'https://github.com/ftenorioinkluziva/medv0/pull/4'
+gate: CONCERNS
+status_reason: >
+  Estrutura multi-stage correta, standalone output configurado, não-root garantido.
+  Gate CONCERNS por dois pontos: DATABASE_URL como build ARG com placeholder pode
+  causar falha silenciosa em builds sem --build-arg explícito; AC6 (build local funcional)
+  não verificável — sem CI checks reportados na branch.
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-25T00:10:00Z'
+
+notes: >
+  Revisão feita diretamente via PR diff (PR #4). Story file docs/stories/0.1.story.md
+  não existe — análise baseada na issue BLA-56 como spec. Status no Linear: In Progress
+  (não estava em Ready for Review).
+
+quality_score: 78
+expires: '2026-04-08T00:10:00Z'
+
+top_issues:
+  - id: 'QA-0.1-001'
+    severity: medium
+    title: 'DATABASE_URL como build ARG com placeholder pode causar falha silenciosa'
+    description: >
+      O builder injeta DATABASE_URL via ARG com default placeholder
+      (postgresql://localhost:5432/placeholder). Se NextAuth config ou qualquer
+      import de módulo tenta conectar ao DB em build time e o caller não passar
+      --build-arg DATABASE_URL=..., o build pode falhar ou gerar artefato
+      mal-configurado. Documentar que --build-arg é obrigatório em CI ou
+      garantir que nenhum módulo conecta ao DB em build time.
+    file: 'Dockerfile'
+    line: '14-15'
+    suggested_fix: >
+      Opção 1: documentar no README que DATABASE_URL deve ser passado via
+      --build-arg em CI (ex: docker build --build-arg DATABASE_URL=$DB_URL .).
+      Opção 2: remover ARG DATABASE_URL se o build não necessita de conexão real
+      (verificar se NextAuth/Drizzle conectam em build time).
+    suggested_owner: dev
+
+  - id: 'QA-0.1-002'
+    severity: medium
+    title: 'AC6 não verificado — sem CI checks na branch'
+    description: >
+      Nenhum CI check reportado na branch copilot/create-multi-stage-dockerfile.
+      O PR body menciona que Copilot teve falha de build (firewall fonts.googleapis.com)
+      e corrigiu removendo o Google Font. Não há evidência de build Docker bem-sucedido
+      nem de container subindo e respondendo na porta 3000.
+    suggested_fix: >
+      Executar localmente: docker build -t sami:local . && docker run -p 3000:3000
+      --env-file .env.local sami:local e validar resposta em http://localhost:3000.
+      Documentar resultado (docker images para tamanho, screenshot ou curl da resposta).
+    suggested_owner: dev
+
+  - id: 'QA-0.1-003'
+    severity: low
+    title: 'pnpm@9 sem versão exata pinada'
+    description: >
+      corepack prepare pnpm@9 --activate instala o latest pnpm 9.x no momento do build,
+      quebrando reprodutibilidade caso uma versão minor introduza breaking change.
+    file: 'Dockerfile'
+    suggested_fix: >
+      Usar versão exata: corepack prepare pnpm@9.15.4 --activate (ou a versão atual).
+      Alternativa: adicionar "packageManager": "pnpm@9.x.x" em package.json e usar
+      corepack enable sem prepare explícito.
+    suggested_owner: dev
+
+  - id: 'QA-0.1-004'
+    severity: low
+    title: 'Sem HEALTHCHECK no Dockerfile'
+    description: >
+      Boa prática para containers de produção. Sem HEALTHCHECK, orquestradores
+      (Docker Compose, Kubernetes) não conseguem detectar app unhealthy automaticamente.
+    file: 'Dockerfile'
+    suggested_fix: |
+      Adicionar antes do CMD:
+      HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
+        CMD wget -qO- http://localhost:3000/ || exit 1
+    suggested_owner: dev
+
+  - id: 'QA-0.1-005'
+    severity: low
+    title: 'Story file docs/stories/0.1.story.md ausente'
+    description: >
+      Não existe arquivo de story para esta issue. Processo AIOX requer story file
+      com File List e Change Log para rastreabilidade.
+    suggested_fix: 'Criar docs/stories/0.1.story.md com File List dos arquivos do PR'
+    suggested_owner: dev
+
+waiver:
+  active: false
+
+evidence:
+  tests_reviewed: 1  # tests/unit/next-config.test.ts (1 teste)
+  risks_identified: 5
+  ci_checks: none_reported
+  docker_build_verified: false
+  review_source: pr_diff  # revisão via diff, não branch local
+  trace:
+    ac_covered: [1, 2, 3, 4]
+    ac_gaps: [5, 6]  # AC5 (tamanho) e AC6 (build local) não verificáveis sem Docker
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: >
+      Usuário não-root (node UID 1000). Sem secrets hardcodados.
+      .dockerignore exclui .env*, *.pem, *.key. DATABASE_URL via ARG não vaza para
+      imagem final (runner stage não herda ARGs do builder).
+  performance:
+    status: PASS
+    notes: >
+      Layer caching otimizado (lockfile copiado antes do código).
+      pnpm store prune em ambos os stages. Alpine base image.
+      Apenas artefato standalone copiado para runner.
+  reliability:
+    status: CONCERNS
+    notes: >
+      AC6 não verificado. Build Docker não testado em CI. Remoção do Google Font
+      no layout.tsx resolve o problema de firewall do CI mas não há evidência de
+      build completo bem-sucedido.
+  maintainability:
+    status: PASS
+    notes: >
+      Dockerfile comentado implicitamente pela estrutura clara. Stages nomeados.
+      .dockerignore abrangente. Remoção do Google Font (redundante com geist package)
+      melhora manutenibilidade.
+
+recommendations:
+  immediate:
+    - action: 'Documentar --build-arg DATABASE_URL como obrigatório em CI/README'
+      refs: ['Dockerfile', 'README.md']
+    - action: 'Executar e documentar docker build + docker run local para validar AC6'
+      refs: ['Dockerfile']
+  future:
+    - action: 'Pinar versão exata do pnpm no corepack prepare'
+      refs: ['Dockerfile']
+    - action: 'Adicionar HEALTHCHECK instruction'
+      refs: ['Dockerfile']
+    - action: 'Criar docs/stories/0.1.story.md'
+      refs: ['docs/stories/']
