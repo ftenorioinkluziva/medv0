@@ -12,16 +12,15 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
 ARG NODE_ENV=production
-ARG DATABASE_URL=postgresql://user:pass@localhost:5432/db
+ARG DATABASE_URL=postgresql://localhost:5432/placeholder
 
 COPY package.json pnpm-lock.yaml ./
 COPY --from=deps /app/node_modules ./node_modules
-RUN pnpm install --frozen-lockfile --prod=false && pnpm store prune
+RUN pnpm install --frozen-lockfile --prod=false --prefer-offline && pnpm store prune
 
 COPY . .
 ENV NODE_ENV=$NODE_ENV
-ENV DATABASE_URL=$DATABASE_URL
-RUN pnpm build
+RUN DATABASE_URL=$DATABASE_URL pnpm build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
