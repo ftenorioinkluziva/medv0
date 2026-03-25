@@ -6,7 +6,8 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { upsertMedicalProfile } from '@/lib/actions/medical-profile'
-import type { MedicalProfile } from '@/lib/db/schema'
+import { AdvancedForm } from './advanced-form'
+import type { MedicalProfile, ExerciseActivity } from '@/lib/db/schema'
 
 interface ProfileFormProps {
   initialData: MedicalProfile | null
@@ -15,6 +16,9 @@ interface ProfileFormProps {
 export function ProfileForm({ initialData }: ProfileFormProps) {
   const [isPending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [activities, setActivities] = useState<ExerciseActivity[]>(
+    (initialData?.exerciseActivities as ExerciseActivity[] | null) ?? [],
+  )
 
   function showToast(type: 'success' | 'error', message: string) {
     setToast({ type, message })
@@ -26,8 +30,14 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
     const form = e.currentTarget
     const fd = new FormData(form)
 
+    const sleepQualityRaw = Number(fd.get('sleepQuality'))
+    const stressLevelRaw = Number(fd.get('stressLevel'))
+    const exerciseFrequencyRaw = Number(fd.get('exerciseFrequency'))
+    const exerciseDurationRaw = Number(fd.get('exerciseDuration'))
+
     startTransition(async () => {
       const result = await upsertMedicalProfile({
+        // Básicos obrigatórios
         age: Number(fd.get('age')),
         gender: fd.get('gender') as 'masculino' | 'feminino' | 'outro',
         height: Number(fd.get('height')),
@@ -36,8 +46,38 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
         diastolicPressure: Number(fd.get('diastolicPressure')),
         restingHeartRate: Number(fd.get('restingHeartRate')),
         healthObjectives: String(fd.get('healthObjectives')),
-        familyHistory: String(fd.get('familyHistory') ?? ''),
-        notes: String(fd.get('notes') ?? ''),
+        familyHistory: (fd.get('familyHistory') as string) || undefined,
+        notes: (fd.get('notes') as string) || undefined,
+
+        // Avançados: Sono
+        sleepHours: (fd.get('sleepHours') as string) || undefined,
+        sleepQuality: sleepQualityRaw || undefined,
+        sleepIssues: (fd.get('sleepIssues') as string) || undefined,
+        timeInBed: (fd.get('timeInBed') as string) || undefined,
+        sleepRegularity: (fd.get('sleepRegularity') as string) || undefined,
+
+        // Avançados: Hábitos
+        dailyWaterIntake: (fd.get('dailyWaterIntake') as string) || undefined,
+        stressLevel: stressLevelRaw || undefined,
+        stressManagement: (fd.get('stressManagement') as string) || undefined,
+        smokingStatus: (fd.get('smokingStatus') as 'nunca_fumou' | 'ex-fumante' | 'fumante') || undefined,
+        smokingDetails: (fd.get('smokingDetails') as string) || undefined,
+        alcoholConsumption: (fd.get('alcoholConsumption') as 'nunca' | 'social' | 'regular' | 'frequente') || undefined,
+        currentDiet: (fd.get('currentDiet') as string) || undefined,
+
+        // Avançados: Atividade física
+        exerciseActivities: activities.length > 0 ? activities : undefined,
+        exerciseFrequency: exerciseFrequencyRaw || undefined,
+        exerciseDuration: exerciseDurationRaw || undefined,
+        exerciseIntensity: (fd.get('exerciseIntensity') as string) || undefined,
+        physicalLimitations: (fd.get('physicalLimitations') as string) || undefined,
+
+        // Avançados: Cronobiologia
+        firstSunlightExposureTime: (fd.get('firstSunlightExposureTime') as string) || undefined,
+        lastMealTime: (fd.get('lastMealTime') as string) || undefined,
+        artificialLightExposureStart: (fd.get('artificialLightExposureStart') as string) || undefined,
+        artificialLightExposureEnd: (fd.get('artificialLightExposureEnd') as string) || undefined,
+        artificialLightExposureTime: (fd.get('artificialLightExposureTime') as string) || undefined,
       })
 
       if (result.success) {
@@ -53,6 +93,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
       {toast && (
         <div
           role="status"
+          aria-live="polite"
           className={`rounded-md px-4 py-3 text-sm font-medium ${
             toast.type === 'success'
               ? 'bg-green-50 text-green-800'
@@ -141,6 +182,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
               type="number"
               required
               min={1}
+              max={300}
               defaultValue={initialData?.systolicPressure ?? ''}
               placeholder="120"
             />
@@ -155,6 +197,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
               type="number"
               required
               min={1}
+              max={200}
               defaultValue={initialData?.diastolicPressure ?? ''}
               placeholder="80"
             />
@@ -217,6 +260,17 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
           />
         </div>
       </Card>
+
+      {/* Seção dados avançados */}
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold text-foreground">Dados Avançados</h2>
+        <p className="text-xs text-muted-foreground">Todos opcionais — enriquecem as análises.</p>
+      </div>
+
+      <AdvancedForm
+        initialData={initialData}
+        onActivitiesChange={setActivities}
+      />
 
       <Button type="submit" disabled={isPending} className="w-full">
         {isPending ? 'Salvando...' : 'Salvar Perfil'}
