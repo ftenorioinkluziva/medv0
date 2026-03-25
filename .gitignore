@@ -31,6 +31,10 @@ Thumbs.db
 .idea/
 *.swp
 
+# Playwright
+playwright-report/
+test-results/
+
 # AIOX Local (AIOX)
 .aiox-core/local/
 .claude/settings.json
