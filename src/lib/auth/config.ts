@@ -10,11 +10,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: '/auth/login',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
         token.role = (user as { role: string }).role
         token.onboardingCompleted = (user as { onboardingCompleted: boolean }).onboardingCompleted
+      }
+      if (trigger === 'update' && session?.onboardingCompleted !== undefined) {
+        token.onboardingCompleted = session.onboardingCompleted
       }
       return token
     },
