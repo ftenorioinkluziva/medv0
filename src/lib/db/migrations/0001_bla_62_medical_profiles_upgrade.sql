@@ -116,7 +116,7 @@ INSERT INTO "medical_profiles" (
 ) SELECT
 	"id",
 	"user_id",
-	30 AS "age", -- neutral fallback for legacy rows without age
+	0 AS "age", -- placeholder for legacy rows without age (forces user update)
 	COALESCE("gender", 'outro') AS "gender",
 	COALESCE("height", 170) AS "height",
 	COALESCE("weight", 70)::numeric(5, 2) AS "weight",
