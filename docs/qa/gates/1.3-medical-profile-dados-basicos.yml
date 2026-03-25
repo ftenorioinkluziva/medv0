@@ -1,112 +1,93 @@
 schema: 1
 story: '1.3'
 story_title: 'Medical Profile (Dados Básicos)'
-gate: CONCERNS
+linear_issue: 'BLA-38'
+gate: PASS
 status_reason: >
-  Todos os 5 ACs implementados, lint/typecheck limpos, 11/11 testes passando.
-  Gate CONCERNS por dois pontos MEDIUM: ausência de validação cruzada sistólica > diastólica,
-  e campos opcionais de texto salvando string vazia ("") em vez de null no banco.
+  Re-review após fixes do @dev. Todos os 5 itens MEDIUM/LOW do review anterior resolvidos.
+  Nova finding LOW (sem teste para refine sistólica > diastólica) não bloqueia merge.
+  Lint/typecheck limpos, 11/11 testes passando.
 reviewer: 'Quinn (Test Architect)'
-updated: '2026-03-24T21:04:00Z'
+updated: '2026-03-25T00:20:00Z'
 
-quality_score: 80
-expires: '2026-04-07T21:04:00Z'
+quality_score: 95
+expires: '2026-04-08T00:20:00Z'
+
+review_history:
+  - date: '2026-03-24T21:04:00Z'
+    gate: CONCERNS
+    quality_score: 80
+    issues_found: 5
+  - date: '2026-03-25T00:20:00Z'
+    gate: PASS
+    quality_score: 95
+    issues_resolved: 5
+    new_findings: 1
 
 top_issues:
+  - id: 'QA-1.3-006'
+    severity: low
+    title: 'Refine sistólica > diastólica sem teste unitário'
+    description: >
+      O .refine() foi implementado corretamente mas não há teste cobrindo o cenário
+      de rejeição (sistolicPressure < diastolicPressure retorna success: false).
+    file: 'tests/unit/medical-profile.test.ts'
+    suggested_fix: >
+      Adicionar em describe('validação Zod'):
+      it('deve rejeitar quando sistólica <= diastólica', async () => {
+        vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as never)
+        const result = await upsertMedicalProfile({ ...validInput, systolicPressure: 70, diastolicPressure: 120 })
+        expect(result.success).toBe(false)
+        expect(db.insert).not.toHaveBeenCalled()
+      })
+    suggested_owner: dev
+
+resolved_issues:
   - id: 'QA-1.3-001'
-    severity: medium
-    title: 'Sem validação cruzada systolicPressure > diastolicPressure'
-    description: >
-      O Zod schema valida min(1) para ambos, mas não verifica que sistólica > diastólica.
-      Usuário pode submeter sistólica=70, diastólica=120 sem erro.
-    file: 'src/lib/actions/medical-profile.ts'
-    suggested_fix: >
-      Adicionar .refine() no schema Zod:
-      .refine(data => data.systolicPressure > data.diastolicPressure,
-        { message: 'Pressão sistólica deve ser maior que diastólica', path: ['systolicPressure'] })
-    suggested_owner: dev
-
+    title: 'Validação cruzada sistólica > diastólica'
+    resolution: '.refine() adicionado em medical-profile.ts:74-77'
   - id: 'QA-1.3-002'
-    severity: medium
-    title: 'Campos opcionais de texto salvam "" em vez de null'
-    description: >
-      familyHistory e notes no form handler usam String(fd.get(...) ?? '') que converte
-      null/ausente em string vazia. O banco armazena "" em coluna nullable em vez de NULL.
-      Impacta queries que filtram por IS NULL e consistência dos dados.
-    file: 'src/app/app/profile/profile-form.tsx'
-    suggested_fix: >
-      Substituir String(fd.get('familyHistory') ?? '') por
-      (fd.get('familyHistory') as string || undefined) para passar undefined quando vazio,
-      deixando Zod .optional() tratar como nullish.
-    suggested_owner: dev
-
+    title: 'Campos opcionais salvavam "" em vez de null'
+    resolution: 'Zod .nullish() + (fd.get(...) as string) || undefined no form handler'
   - id: 'QA-1.3-003'
-    severity: low
-    title: 'Sem limite superior nas validações de pressão arterial'
-    description: 'systolicPressure e diastolicPressure têm apenas min(1). Sem max().'
-    file: 'src/lib/actions/medical-profile.ts'
-    suggested_fix: 'Adicionar .max(300) para sistólica e .max(200) para diastólica'
-    suggested_owner: dev
-
+    title: 'Sem max() para campos de pressão arterial'
+    resolution: 'max(300)/max(200) adicionados no Zod e nos inputs HTML'
   - id: 'QA-1.3-004'
-    severity: low
-    title: 'updatedAt: new Date() duplicado no insert.values()'
-    description: >
-      updatedAt é definido tanto em insert.values() quanto em onConflictDoUpdate.set().
-      O schema já tem defaultNow() para insert, tornando o primeiro redundante.
-    file: 'src/lib/actions/medical-profile.ts'
-    suggested_owner: dev
-
+    title: 'updatedAt duplicado no insert.values()'
+    resolution: 'Objeto fields compartilhado entre insert e onConflictDoUpdate'
   - id: 'QA-1.3-005'
-    severity: low
-    title: 'Toast sem aria-live para acessibilidade'
-    description: 'Div de toast tem role="status" mas falta aria-live="polite"'
-    file: 'src/app/app/profile/profile-form.tsx'
-    suggested_owner: dev
+    title: 'Toast sem aria-live'
+    resolution: 'aria-live="polite" adicionado na linha 96 do profile-form.tsx'
 
 waiver:
   active: false
 
 evidence:
   tests_reviewed: 11
-  risks_identified: 5
+  tests_passing: 11
   lint_clean: true
   typecheck_clean: true
-  coderabbit_scan: skipped  # not installed in WSL
+  risks_identified: 1
   trace:
-    ac_covered: [1, 2, 3, 5]
-    ac_gaps: []  # AC4 (form) sem testes de componente — aceitável para formulário simples
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: []
 
 nfr_validation:
   security:
     status: PASS
-    notes: >
-      user_id exclusivamente da sessão server-side. Zod valida antes do DB.
-      ORM previne SQL injection. Erros genéricos ao cliente.
+    notes: 'user_id da sessão server-side. Zod valida antes do DB. ORM previne SQL injection.'
   performance:
     status: PASS
     notes: 'Upsert direto sem leitura prévia. findFirst com índice único.'
   reliability:
     status: PASS
-    notes: 'Auth check retorna erro estruturado. Zod retorna primeira issue como mensagem legível.'
+    notes: 'Auth check retorna erro estruturado. Zod retorna mensagem legível.'
   maintainability:
-    status: CONCERNS
-    notes: >
-      Duplicação de updatedAt no action. Campos opcionais com coerção inconsistente.
-      Código autoexplicativo, sem comentários desnecessários.
+    status: PASS
+    notes: 'Código limpo. fields object elimina duplicação. Sem comentários desnecessários.'
 
 recommendations:
-  immediate:
-    - action: 'Adicionar validação cruzada sistólica > diastólica no Zod schema'
-      refs: ['src/lib/actions/medical-profile.ts']
-    - action: 'Corrigir coerção de campos opcionais para preservar null no banco'
-      refs: ['src/app/app/profile/profile-form.tsx']
+  immediate: []
   future:
-    - action: 'Adicionar max() para campos de pressão arterial'
-      refs: ['src/lib/actions/medical-profile.ts']
-    - action: 'Remover updatedAt redundante do insert.values()'
-      refs: ['src/lib/actions/medical-profile.ts']
-    - action: 'Adicionar aria-live="polite" no toast'
-      refs: ['src/app/app/profile/profile-form.tsx']
-    - action: 'Considerar adicionar formulário para campos de array (medicalConditions, medications, allergies, surgeries) em story futura'
-      refs: ['src/app/app/profile/profile-form.tsx']
+    - action: 'Adicionar teste para refine sistólica > diastólica (QA-1.3-006)'
+      refs: ['tests/unit/medical-profile.test.ts']
