@@ -32,8 +32,6 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
 
     const sleepQualityRaw = Number(fd.get('sleepQuality'))
     const stressLevelRaw = Number(fd.get('stressLevel'))
-    const exerciseFrequencyRaw = Number(fd.get('exerciseFrequency'))
-    const exerciseDurationRaw = Number(fd.get('exerciseDuration'))
 
     startTransition(async () => {
       const result = await upsertMedicalProfile({
@@ -67,9 +65,6 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
 
         // Avançados: Atividade física
         exerciseActivities: activities.length > 0 ? activities : undefined,
-        exerciseFrequency: exerciseFrequencyRaw || undefined,
-        exerciseDuration: exerciseDurationRaw || undefined,
-        exerciseIntensity: (fd.get('exerciseIntensity') as string) || undefined,
         physicalLimitations: (fd.get('physicalLimitations') as string) || undefined,
 
         // Avançados: Cronobiologia

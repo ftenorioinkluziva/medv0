@@ -12,7 +12,12 @@ interface AdvancedFormProps {
   onActivitiesChange: (activities: ExerciseActivity[]) => void
 }
 
-const emptyActivity = (): ExerciseActivity => ({
+interface ActivityWithId extends ExerciseActivity {
+  _id: string
+}
+
+const emptyActivity = (): ActivityWithId => ({
+  _id: crypto.randomUUID(),
   type: '',
   frequency: 3,
   duration: 30,
@@ -20,28 +25,29 @@ const emptyActivity = (): ExerciseActivity => ({
 })
 
 export function AdvancedForm({ initialData, onActivitiesChange }: AdvancedFormProps) {
-  const [activities, setActivities] = useState<ExerciseActivity[]>(
-    (initialData?.exerciseActivities as ExerciseActivity[] | null) ?? [],
-  )
+  const [activities, setActivities] = useState<ActivityWithId[]>(() => {
+    const existing = (initialData?.exerciseActivities as ExerciseActivity[] | null) ?? []
+    return existing.map((a) => ({ ...a, _id: crypto.randomUUID() }))
+  })
 
   function addActivity() {
     const updated = [...activities, emptyActivity()]
     setActivities(updated)
-    onActivitiesChange(updated)
+    onActivitiesChange(updated.map(({ _id: _, ...rest }) => rest))
   }
 
-  function removeActivity(index: number) {
-    const updated = activities.filter((_, i) => i !== index)
+  function removeActivity(id: string) {
+    const updated = activities.filter((a) => a._id !== id)
     setActivities(updated)
-    onActivitiesChange(updated)
+    onActivitiesChange(updated.map(({ _id: _, ...rest }) => rest))
   }
 
-  function updateActivity(index: number, field: keyof ExerciseActivity, value: string | number) {
-    const updated = activities.map((a, i) =>
-      i === index ? { ...a, [field]: value } : a,
+  function updateActivity(id: string, field: keyof ExerciseActivity, value: string | number) {
+    const updated = activities.map((a) =>
+      a._id === id ? { ...a, [field]: value } : a,
     )
     setActivities(updated)
-    onActivitiesChange(updated)
+    onActivitiesChange(updated.map(({ _id: _, ...rest }) => rest))
   }
 
   return (
@@ -165,6 +171,18 @@ export function AdvancedForm({ initialData, onActivitiesChange }: AdvancedFormPr
           </div>
 
           <div className="space-y-1">
+            <Label htmlFor="smokingDetails">Detalhes (tabagismo)</Label>
+            <Input
+              id="smokingDetails"
+              name="smokingDetails"
+              defaultValue={initialData?.smokingDetails ?? ''}
+              placeholder="Ex: 5 cigarros/dia, parou há 2 anos"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
             <Label htmlFor="alcoholConsumption">Álcool</Label>
             <select
               id="alcoholConsumption"
@@ -216,12 +234,12 @@ export function AdvancedForm({ initialData, onActivitiesChange }: AdvancedFormPr
         )}
 
         {activities.map((activity, index) => (
-          <div key={index} className="rounded-md border border-border p-3 space-y-3">
+          <div key={activity._id} className="rounded-md border border-border p-3 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Atividade {index + 1}</span>
               <button
                 type="button"
-                onClick={() => removeActivity(index)}
+                onClick={() => removeActivity(activity._id)}
                 className="text-xs text-destructive hover:underline"
               >
                 Remover
@@ -232,7 +250,7 @@ export function AdvancedForm({ initialData, onActivitiesChange }: AdvancedFormPr
               <Label>Tipo</Label>
               <Input
                 value={activity.type}
-                onChange={(e) => updateActivity(index, 'type', e.target.value)}
+                onChange={(e) => updateActivity(activity._id, 'type', e.target.value)}
                 placeholder="Ex: corrida, musculação, yoga"
               />
             </div>
@@ -245,7 +263,7 @@ export function AdvancedForm({ initialData, onActivitiesChange }: AdvancedFormPr
                   min={1}
                   max={7}
                   value={activity.frequency}
-                  onChange={(e) => updateActivity(index, 'frequency', Number(e.target.value))}
+                  onChange={(e) => updateActivity(activity._id, 'frequency', Number(e.target.value))}
                 />
               </div>
 
@@ -255,7 +273,7 @@ export function AdvancedForm({ initialData, onActivitiesChange }: AdvancedFormPr
                   type="number"
                   min={1}
                   value={activity.duration}
-                  onChange={(e) => updateActivity(index, 'duration', Number(e.target.value))}
+                  onChange={(e) => updateActivity(activity._id, 'duration', Number(e.target.value))}
                 />
               </div>
 
@@ -263,7 +281,7 @@ export function AdvancedForm({ initialData, onActivitiesChange }: AdvancedFormPr
                 <Label>Intensidade</Label>
                 <select
                   value={activity.intensity}
-                  onChange={(e) => updateActivity(index, 'intensity', e.target.value)}
+                  onChange={(e) => updateActivity(activity._id, 'intensity', e.target.value)}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-2 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="leve">Leve</option>
