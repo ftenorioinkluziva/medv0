@@ -116,7 +116,7 @@ describe('extractMedicalDocument', () => {
 
       // #then
       const callArgs = vi.mocked(generateText).mock.calls[0][0]
-      const content = callArgs.messages![0].content as Array<{ type: string; mimeType?: string }>
+      const content = callArgs.messages![0].content as Array<{ type: string; mediaType?: string }>
       const imageContent = content.find((c) => c.type === 'image')
       expect(imageContent?.mediaType).toBe('image/png')
     })
