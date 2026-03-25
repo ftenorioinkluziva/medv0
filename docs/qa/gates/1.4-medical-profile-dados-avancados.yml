@@ -1,0 +1,101 @@
+schema: 1
+story: '1.4'
+story_title: 'Medical Profile (Dados Avançados)'
+linear_issue: 'BLA-39'
+gate: CONCERNS
+status_reason: >
+  10/10 testes passando, lint/typecheck limpos, schema +25 colunas correto, AC2/AC4 PASS.
+  Gate CONCERNS por gap em AC3: smokingDetails presente no AC1, Zod e submit handler
+  mas sem input na UI do AdvancedForm — usuário nunca consegue preencher o campo.
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-25T00:27:00Z'
+
+quality_score: 90
+expires: '2026-04-08T00:27:00Z'
+
+top_issues:
+  - id: 'QA-1.4-001'
+    severity: medium
+    title: 'smokingDetails sem input na UI (AC3 gap)'
+    description: >
+      O campo smokingDetails está em AC1 (schema), Zod schema (.nullish()), e no submit
+      handler (profile-form.tsx L64: smokingDetails: (fd.get('smokingDetails') as string) || undefined),
+      mas nenhum <input name="smokingDetails"> existe no AdvancedForm. O campo sempre
+      submete undefined — usuário não consegue preencher detalhes de tabagismo via UI.
+    file: 'src/app/app/profile/advanced-form.tsx'
+    suggested_fix: >
+      Adicionar após o select de smokingStatus na seção Hábitos:
+        <div className="space-y-1">
+          <Label htmlFor="smokingDetails">Detalhes de tabagismo</Label>
+          <Input id="smokingDetails" name="smokingDetails"
+            defaultValue={initialData?.smokingDetails ?? ''}
+            placeholder="Ex: 10 cigarros/dia, parou há 5 anos" />
+        </div>
+    suggested_owner: dev
+
+  - id: 'QA-1.4-002'
+    severity: low
+    title: 'key={index} na lista de atividades físicas'
+    description: >
+      advanced-form.tsx L219 usa key={index} no map de atividades. Se o usuário
+      remove uma atividade do meio da lista, React pode não atualizar corretamente
+      os inputs controlados das atividades seguintes, causando drift de estado.
+    file: 'src/app/app/profile/advanced-form.tsx'
+    suggested_fix: >
+      Adicionar campo id à interface ExerciseActivity e ao emptyActivity():
+        const emptyActivity = (): ExerciseActivity & { id: string } => ({
+          id: crypto.randomUUID(), type: '', frequency: 3, duration: 30, intensity: 'moderada'
+        })
+      E usar key={activity.id} no map.
+    suggested_owner: dev
+
+  - id: 'QA-1.4-003'
+    severity: low
+    title: 'exerciseFrequency/Duration/Intensity no submit handler sem UI correspondente'
+    description: >
+      profile-form.tsx L70-72 envia exerciseFrequency, exerciseDuration, exerciseIntensity
+      via fd.get() mas não existem inputs com esses names no formulário. Sempre undefined.
+      Campos marcados como "legado" na story — considerar remover do handler ou documentar.
+    file: 'src/app/app/profile/profile-form.tsx'
+    suggested_fix: >
+      Opção 1: Remover as linhas L70-72 do submit handler (campos nunca populados).
+      Opção 2: Documentar como legado mantido por compatibilidade de schema.
+    suggested_owner: dev
+
+waiver:
+  active: false
+
+evidence:
+  tests_reviewed: 10
+  tests_passing: 10
+  lint_clean: true
+  typecheck_clean: true
+  risks_identified: 3
+  coderabbit_scan: skipped
+  trace:
+    ac_covered: [1, 2, 4]
+    ac_gaps: [3]  # AC3: smokingDetails sem UI
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Todos os campos opcionais validados pelo Zod. user_id da sessão server-side. Sem SQL injection.'
+  performance:
+    status: PASS
+    notes: 'Upsert único com fields object. Sem queries adicionais.'
+  reliability:
+    status: PASS
+    notes: 'Submissão sem campos avançados retorna success:true. Campos legado silenciosamente ignorados.'
+  maintainability:
+    status: PASS
+    notes: 'AdvancedForm bem separado. onActivitiesChange callback limpo. Campos avançados agrupados no schema.'
+
+recommendations:
+  immediate:
+    - action: 'Adicionar input smokingDetails na seção Hábitos do AdvancedForm'
+      refs: ['src/app/app/profile/advanced-form.tsx']
+  future:
+    - action: 'Substituir key={index} por key={activity.id} na lista de atividades'
+      refs: ['src/app/app/profile/advanced-form.tsx']
+    - action: 'Remover ou documentar campos legado (exerciseFrequency/Duration/Intensity) no submit handler'
+      refs: ['src/app/app/profile/profile-form.tsx']
