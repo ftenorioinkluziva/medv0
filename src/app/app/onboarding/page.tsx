@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth/config'
 import { redirect } from 'next/navigation'
+import { OnboardingFlow } from './onboarding-flow'
 
 export default async function OnboardingPage() {
   const session = await auth()
@@ -8,8 +9,9 @@ export default async function OnboardingPage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6">
-      <h1 className="text-2xl font-bold text-foreground">Onboarding</h1>
-      <p className="mt-2 text-muted-foreground">Em construção — Story 1.5</p>
+      <div className="w-full max-w-md">
+        <OnboardingFlow />
+      </div>
     </main>
   )
 }
