@@ -84,11 +84,10 @@ export async function extractMedicalDocument(
     let userContent: string | Array<{ type: 'image'; image: string; mediaType: string } | { type: 'text'; text: string }>
 
     if (isImage) {
-      const imageBuffer = typeof content === 'string' ? Buffer.from(content) : content
       userContent = [
         {
           type: 'image' as const,
-          image: imageBuffer.toString('base64'),
+          image: typeof content === 'string' ? content : content.toString('base64'),
           mediaType: mimeType,
         },
         {
@@ -97,7 +96,7 @@ export async function extractMedicalDocument(
         },
       ]
     } else if (isPdf) {
-      const pdfBuffer = typeof content === 'string' ? Buffer.from(content) : content
+      const pdfBuffer = typeof content === 'string' ? Buffer.from(content, 'base64') : content
       const rawText = await extractTextFromPdf(pdfBuffer)
       userContent = `Analise este documento médico chamado "${fileName}":\n\n${truncateWithWarning(rawText)}`
     } else {

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
+import { extractMedicalDocument } from '@/lib/documents/extractor'
+import { persistSnapshot } from '@/lib/documents/persistence'
 
 export const maxDuration = 60
 
@@ -41,9 +43,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // Processar em memória — nunca persistir o arquivo original
   const buffer = Buffer.from(await file.arrayBuffer())
 
-  // TODO: Story 2.2 — passar buffer para extração via Gemini Vision
-  // TODO: Story 2.3 — persistir snapshot estruturado
-  void buffer
+  const structuredData = await extractMedicalDocument(buffer, file.name, file.type)
 
-  return NextResponse.json({ success: true, fileName: file.name })
+  const { documentId } = await persistSnapshot({
+    userId: session.user.id,
+    fileName: file.name,
+    structuredData,
+  })
+
+  return NextResponse.json({ success: true, documentId, fileName: file.name })
 }
