@@ -61,6 +61,8 @@ ALTER TABLE "medical_profiles" ADD CONSTRAINT "medical_profiles_user_id_users_id
   FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
 
 -- Best-effort migration of existing rows; fill mandatory fields with safe defaults when absent
+-- Legacy rows lack several mandatory fields; we backfill with neutral placeholders
+-- so the NOT NULL constraints remain valid until users update their profiles.
 INSERT INTO "medical_profiles" (
 	"id",
 	"user_id",
@@ -114,7 +116,7 @@ INSERT INTO "medical_profiles" (
 ) SELECT
 	"id",
 	"user_id",
-	30 AS "age",
+	30 AS "age", -- neutral fallback for legacy rows without age
 	COALESCE("gender", 'outro') AS "gender",
 	COALESCE("height", 170) AS "height",
 	COALESCE("weight", 70)::numeric(5, 2) AS "weight",
