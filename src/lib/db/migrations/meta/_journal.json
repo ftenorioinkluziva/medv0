@@ -13,7 +13,14 @@
       "idx": 1,
       "version": "7",
       "when": 1774400000000,
-      "tag": "0001_documents_snapshots",
+      "tag": "0001_bla_62_medical_profiles_upgrade",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774400001000,
+      "tag": "0002_documents_snapshots",
       "breakpoints": true
     }
   ]
