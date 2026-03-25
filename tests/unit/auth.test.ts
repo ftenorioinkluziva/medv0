@@ -172,6 +172,37 @@ describe('forgotPasswordAction', () => {
     expect(result.success).toBe(true)
     expect(result.error).toBeUndefined()
   })
+
+  it('retorna erro para email inválido', async () => {
+    // #given
+    const formData = new FormData()
+    formData.set('email', 'nao-e-email')
+
+    // #when
+    const result = await forgotPasswordAction({}, formData)
+
+    // #then
+    expect(result.error).toContain('Email inválido')
+    expect(mockDb.select).not.toHaveBeenCalled()
+  })
+
+  it('invalida tokens anteriores antes de criar novo token', async () => {
+    // #given
+    buildSelectChain([{ id: 'user-1' }])
+    buildUpdateChain()
+    buildInsertChain()
+
+    const formData = new FormData()
+    formData.set('email', 'user@test.com')
+
+    // #when
+    await forgotPasswordAction({}, formData)
+
+    // #then — update (invalidar anteriores) deve ocorrer antes do insert (novo token)
+    const updateOrder = mockDb.update.mock.invocationCallOrder[0]
+    const insertOrder = mockDb.insert.mock.invocationCallOrder[0]
+    expect(updateOrder).toBeLessThan(insertOrder)
+  })
 })
 
 describe('resetPasswordAction', () => {
@@ -226,6 +257,48 @@ describe('resetPasswordAction', () => {
 
     // #then
     expect(result.error).toContain('mínimo 8 caracteres')
+  })
+
+  it('retorna erro para token já utilizado (usedAt preenchido)', async () => {
+    // #given — select retorna vazio porque a query filtra isNull(usedAt)
+    buildSelectChain([])
+
+    const formData = new FormData()
+    formData.set('token', 'token-ja-usado')
+    formData.set('password', 'novasenha123')
+
+    // #when
+    const result = await resetPasswordAction({}, formData)
+
+    // #then
+    expect(result.error).toContain('inválido ou expirado')
+    expect(mockDb.update).not.toHaveBeenCalled()
+  })
+
+  it('salva senha como hash bcrypt, não em texto plano', async () => {
+    // #given
+    buildSelectChain([{
+      id: 'token-1',
+      userId: 'user-1',
+      token: 'valid-token',
+      expiresAt: new Date(Date.now() + 3600000),
+      usedAt: null,
+    }])
+    buildUpdateChain()
+
+    const formData = new FormData()
+    formData.set('token', 'valid-token')
+    formData.set('password', 'novasenha123')
+
+    // #when
+    await resetPasswordAction({}, formData).catch(() => {})
+
+    // #then — o set recebeu um hash, nunca a senha em texto plano
+    const setCall = mockDb.update.mock.results[0].value.set.mock.calls[0][0]
+    expect(setCall.passwordHash).toBeDefined()
+    expect(setCall.passwordHash).not.toBe('novasenha123')
+    const isValidHash = await bcryptjs.compare('novasenha123', setCall.passwordHash)
+    expect(isValidHash).toBe(true)
   })
 })
 
