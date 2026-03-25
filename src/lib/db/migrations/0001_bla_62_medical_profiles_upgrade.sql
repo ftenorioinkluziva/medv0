@@ -114,14 +114,14 @@ INSERT INTO "medical_profiles" (
 ) SELECT
 	"id",
 	"user_id",
-	0 AS "age",
+	30 AS "age",
 	COALESCE("gender", 'outro') AS "gender",
-	COALESCE("height", 0) AS "height",
-	COALESCE("weight", 0)::numeric(5, 2) AS "weight",
-	0 AS "systolic_pressure",
-	0 AS "diastolic_pressure",
-	0 AS "resting_heart_rate",
-	'Atualizar' AS "health_objectives",
+	COALESCE("height", 170) AS "height",
+	COALESCE("weight", 70)::numeric(5, 2) AS "weight",
+	120 AS "systolic_pressure",
+	80 AS "diastolic_pressure",
+	70 AS "resting_heart_rate",
+	'Não especificado' AS "health_objectives",
 	NULL::text[] AS "medical_conditions",
 	NULL::text[] AS "medications",
 	NULL::text[] AS "allergies",
@@ -166,4 +166,3 @@ FROM "medical_profiles_old";
 DROP TABLE "medical_profiles_old";
 
 COMMIT;
-
