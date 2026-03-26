@@ -17,7 +17,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:ci": "playwright test --reporter=github"
+    "test:e2e:ci": "playwright test --reporter=github",
+    "test:e2e:seed": "tsx tests/e2e/seed-e2e-users.ts",
+    "test:e2e:onboarding": "tsx tests/e2e/seed-e2e-users.ts && playwright test tests/e2e/onboarding.spec.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.53",
@@ -62,6 +64,7 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^22.15.0",
     "@types/pdf-parse": "^1.1.5",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.4.1",
@@ -69,6 +72,7 @@
     "drizzle-kit": "^0.31.1",
     "eslint": "^9.26.0",
     "eslint-config-next": "^16.1.6",
+    "pg": "^8.20.0",
     "tailwindcss": "^4.1.5",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",

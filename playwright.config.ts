@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 30_000,
+  timeout: 60_000,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'html',
 
@@ -13,16 +13,29 @@ export default defineConfig({
   },
 
   projects: [
+    // 1. Auth setup — login once, save storage states (runs before all tests)
+    {
+      name: 'auth-setup',
+      testMatch: '**/setup/auth.setup.ts',
+      use: { ...devices['iPhone 14 Pro'] },
+      timeout: 180_000, // Allow for Next.js cold start compilation
+    },
+
+    // 2. All tests — storage state injected per-test via loginAs()
     {
       name: 'Mobile Chrome',
+      testMatch: '**/*.spec.ts',
+      dependencies: ['auth-setup'],
       use: { ...devices['iPhone 14 Pro'] },
     },
   ],
 
-  webServer: process.env.CI ? {
-    command: 'pnpm build && pnpm start',
-    port: 3000,
-    reuseExistingServer: false,
-    timeout: 120_000,
-  } : undefined,
+  webServer: {
+    command: process.env.CI ? 'pnpm build && pnpm start' : 'pnpm dev',
+    // Wait for an actual HTTP response, not just port open
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    // 3 minutes for Next.js cold start + first compile
+    timeout: 180_000,
+  },
 })
