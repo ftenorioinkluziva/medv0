@@ -1,0 +1,77 @@
+schema: 1
+story: '1.1'
+story_title: 'Project Setup'
+linear_issue: 'BLA-36'
+gate: PASS
+status_reason: >
+  Todos os 7 ACs implementados corretamente. Drizzle + Neon configurados, pgvector ativo,
+  schema base com 3 tabelas, PWA manifest completo, estrutura de pastas conforme spec,
+  smoke test passando. Dois LOW não bloqueiam.
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-26T00:00:00Z'
+
+quality_score: 92
+
+top_issues:
+  - id: 'QA-1.1-001'
+    severity: low
+    title: 'GeistMono.variable ausente do className do <html>'
+    description: >
+      GeistMono.variable é aplicado apenas no <body>, não no <html>.
+      A utility font-mono pode não funcionar em contextos que dependem da variável
+      CSS no elemento raiz. Impacto mínimo — padrão atual é font-sans.
+    file: 'src/app/layout.tsx:27-28'
+    suggested_fix: >
+      Adicionar GeistMono.variable ao cn() no <html> para consistência:
+      className={cn('dark', 'font-sans', GeistSans.variable, GeistMono.variable)}
+    suggested_owner: dev
+
+  - id: 'QA-1.1-002'
+    severity: low
+    title: 'suppressHydrationWarning no <html> suprime avisos legítimos'
+    description: >
+      suppressHydrationWarning no elemento html silencia hydration warnings para o
+      elemento raiz e seus atributos. É uma prática comum para dark mode com className
+      server-side, mas pode mascarar outros problemas de hydration no layout raiz.
+    file: 'src/app/layout.tsx:27'
+    suggested_fix: >
+      Manter como está — é a abordagem recomendada para dark mode com Tailwind.
+      Apenas documentar que é intencional.
+    suggested_owner: dev
+
+waiver:
+  active: false
+
+evidence:
+  tests_reviewed: 1
+  tests_passing: 1
+  lint_clean: true
+  typecheck_clean: true
+  risks_identified: 2
+  coderabbit_scan: skipped
+  playwright_screenshot: 'docs/qa/sami-390px.png'
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'DATABASE_URL via env var (não hardcoded). Sem secrets expostos no client.'
+  performance:
+    status: PASS
+    notes: 'Neon serverless driver (HTTP) adequado para Vercel/serverless. Sem overhead desnecessário.'
+  reliability:
+    status: PASS
+    notes: 'Schema com tipos corretos, FKs com cascade delete, constraints unique nos campos certos.'
+  maintainability:
+    status: PASS
+    notes: 'Schema modular por arquivo. Barrel export limpo. Scripts padronizados no package.json.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Adicionar GeistMono.variable ao <html> para consistência (QA-1.1-001)'
+      refs: ['src/app/layout.tsx']
+    - action: 'Documentar suppressHydrationWarning como intencional (QA-1.1-002)'
+      refs: ['src/app/layout.tsx']
