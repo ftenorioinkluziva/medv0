@@ -160,12 +160,24 @@ describe('upsertMedicalProfile', () => {
       expect(result.success).toBe(false)
     })
 
-    it('deve rejeitar quando sistólica <= diastólica', async () => {
+    it('deve rejeitar quando sistólica < diastólica', async () => {
       // #given
       vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as never)
 
       // #when
       const result = await upsertMedicalProfile({ ...validInput, systolicPressure: 70, diastolicPressure: 120 })
+
+      // #then
+      expect(result.success).toBe(false)
+      expect(db.insert).not.toHaveBeenCalled()
+    })
+
+    it('deve rejeitar quando sistólica === diastólica', async () => {
+      // #given
+      vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as never)
+
+      // #when
+      const result = await upsertMedicalProfile({ ...validInput, systolicPressure: 120, diastolicPressure: 120 })
 
       // #then
       expect(result.success).toBe(false)

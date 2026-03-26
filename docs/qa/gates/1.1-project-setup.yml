@@ -70,8 +70,12 @@ nfr_validation:
 
 recommendations:
   immediate: []
-  future:
-    - action: 'Adicionar GeistMono.variable ao <html> para consistência (QA-1.1-001)'
-      refs: ['src/app/layout.tsx']
-    - action: 'Documentar suppressHydrationWarning como intencional (QA-1.1-002)'
-      refs: ['src/app/layout.tsx']
+  future: []
+
+resolved_issues:
+  - id: 'QA-1.1-001'
+    title: 'GeistMono.variable ausente do className do <html>'
+    resolution: 'Adicionado ao cn() no <html> em layout.tsx'
+  - id: 'QA-1.1-002'
+    title: 'suppressHydrationWarning no <html> não documentado'
+    resolution: 'Comentário inline adicionado explicando uso intencional para dark mode'
