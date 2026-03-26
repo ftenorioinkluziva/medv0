@@ -1,7 +1,6 @@
 import { generateText, Output } from 'ai'
 import { google } from '@ai-sdk/google'
 import { z } from 'zod'
-import * as pdfParseModule from 'pdf-parse'
 
 const MAX_CONTENT_CHARS = 200_000
 
@@ -58,10 +57,10 @@ Extraia os dados do documento com máxima precisão numérica.
 - Se um campo não existir no documento, omita-o ou use null`
 
 async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  const parse =
-    typeof pdfParseModule === 'function'
-      ? pdfParseModule
-      : (pdfParseModule as unknown as { default: (b: Buffer) => Promise<{ text: string }> }).default
+  // Import from the internal lib path to avoid pdf-parse loading its test fixture on startup
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mod = await import('pdf-parse/lib/pdf-parse.js' as any)
+  const parse = (typeof mod === 'function' ? mod : mod.default) as (b: Buffer) => Promise<{ text: string }>
   const data = await parse(buffer)
   return data.text
 }
@@ -113,7 +112,8 @@ export async function extractMedicalDocument(
     })
 
     return output
-  } catch {
+  } catch (err) {
+    console.error('[extractor] extractMedicalDocument failed:', err)
     return FALLBACK
   }
 }
