@@ -24,7 +24,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="pt-BR" className={cn('dark', 'font-sans', GeistSans.variable)} suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      className={cn('dark', 'font-sans', GeistSans.variable, GeistMono.variable)}
+      // suppressHydrationWarning: intencional — previne mismatch com className 'dark' aplicado server-side (dark mode Tailwind)
+      suppressHydrationWarning
+    >
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         {children}
         <Toaster />

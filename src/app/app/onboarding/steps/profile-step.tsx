@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,7 +12,6 @@ interface ProfileStepProps {
 }
 
 export function ProfileStep({ onNext }: ProfileStepProps) {
-  const router = useRouter()
   const { update } = useSession()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +47,6 @@ export function ProfileStep({ onNext }: ProfileStepProps) {
 
       await update({ onboardingCompleted: true })
       onNext()
-      router.refresh()
     })
   }
 
