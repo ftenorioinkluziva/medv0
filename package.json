@@ -19,7 +19,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --reporter=github",
     "test:e2e:seed": "tsx tests/e2e/seed-e2e-users.ts",
-    "test:e2e:onboarding": "tsx tests/e2e/seed-e2e-users.ts && playwright test tests/e2e/onboarding.spec.ts"
+    "test:e2e:onboarding": "tsx tests/e2e/seed-e2e-users.ts && playwright test --project=auth-setup && playwright test tests/e2e/onboarding.spec.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.53",

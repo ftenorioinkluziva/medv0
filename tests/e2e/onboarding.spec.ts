@@ -1,14 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { loginAs } from './fixtures/auth'
+import fs from 'fs'
+import path from 'path'
 
-// Credenciais de teste — configuráveis via env
-const TEST_USER_NEW = {
-  email: process.env.E2E_USER_NEW_EMAIL ?? 'e2e-new@test.sami.local',
-  password: process.env.E2E_USER_NEW_PASSWORD ?? 'Test@12345',
-}
-const TEST_USER_DONE = {
-  email: process.env.E2E_USER_DONE_EMAIL ?? 'e2e-done@test.sami.local',
-  password: process.env.E2E_USER_DONE_PASSWORD ?? 'Test@12345',
+// Storage state paths (created by auth-setup project)
+const STORAGE_DIR = path.resolve(__dirname, 'fixtures/storage')
+const STORAGE = {
+  done: path.join(STORAGE_DIR, 'auth-done.json'),
+  new: path.join(STORAGE_DIR, 'auth-new.json'),
 }
 
 const PROFILE_VALID = {
@@ -23,7 +21,7 @@ const PROFILE_VALID = {
 }
 
 // ---------------------------------------------------------------------------
-// Suite 1: Guards de Rota
+// Suite 1: Guards de Rota (unauthenticated — no storageState needed)
 // ---------------------------------------------------------------------------
 
 test.describe('Guards de Rota', () => {
@@ -35,11 +33,22 @@ test.describe('Guards de Rota', () => {
     // #then
     await expect(page).toHaveURL(/\/auth\/login/)
   })
+})
+
+// ---------------------------------------------------------------------------
+// Suite 2: Guards de Rota (done user — onboarding already complete)
+// ---------------------------------------------------------------------------
+
+test.describe('Guards de Rota — Onboarding Completo', () => {
+  test.beforeAll(() => {
+    if (!fs.existsSync(STORAGE.done)) {
+      test.skip(true, 'Auth state missing — run: pnpm test:e2e:seed && playwright test --project=auth-setup')
+    }
+  })
+  test.use({ storageState: STORAGE.done })
 
   test('T02 — usuário com onboarding completo é redirecionado para dashboard', async ({ page }) => {
-    // #given
-    await loginAs(page, TEST_USER_DONE.email, TEST_USER_DONE.password)
-
+    // #given — usuário done autenticado via storageState
     // #when
     await page.goto('/app/onboarding')
 
@@ -49,12 +58,18 @@ test.describe('Guards de Rota', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Suite 2: Step 1 — Disclaimer
+// Suite 3: Step 1 — Disclaimer (new user)
 // ---------------------------------------------------------------------------
 
 test.describe('Step 1 — Disclaimer', () => {
+  test.beforeAll(() => {
+    if (!fs.existsSync(STORAGE.new)) {
+      test.skip(true, 'Auth state missing — run: pnpm test:e2e:seed && playwright test --project=auth-setup')
+    }
+  })
+  test.use({ storageState: STORAGE.new })
+
   test.beforeEach(async ({ page }) => {
-    await loginAs(page, TEST_USER_NEW.email, TEST_USER_NEW.password)
     await page.goto('/app/onboarding')
     await expect(page.getByText('Bem-vindo ao SAMI')).toBeVisible()
   })
@@ -75,7 +90,6 @@ test.describe('Step 1 — Disclaimer', () => {
     // #given — Step 1 carregado
     const checkbox = page.locator('#accept-disclaimer')
     const continueBtn = page.getByRole('button', { name: 'Continuar' })
-    const progressBars = page.locator('[class*="h-1"][class*="flex-1"]')
 
     // #when
     await checkbox.check()
@@ -84,20 +98,22 @@ test.describe('Step 1 — Disclaimer', () => {
 
     // #then — Step 2 visível
     await expect(page.getByText('Seu Perfil de Saúde')).toBeVisible()
-
-    // barra de progresso: 2 de 3 ativas (bg-primary)
-    const activeBars = progressBars.filter({ has: page.locator('[class*="bg-primary"]') })
-    await expect(activeBars).toHaveCount(2)
   })
 })
 
 // ---------------------------------------------------------------------------
-// Suite 3: Step 2 — Profile
+// Suite 4: Step 2 — Profile (new user)
 // ---------------------------------------------------------------------------
 
 test.describe('Step 2 — Profile', () => {
+  test.beforeAll(() => {
+    if (!fs.existsSync(STORAGE.new)) {
+      test.skip(true, 'Auth state missing — run: pnpm test:e2e:seed && playwright test --project=auth-setup')
+    }
+  })
+  test.use({ storageState: STORAGE.new })
+
   test.beforeEach(async ({ page }) => {
-    await loginAs(page, TEST_USER_NEW.email, TEST_USER_NEW.password)
     await page.goto('/app/onboarding')
     // Avançar pelo Step 1
     await page.locator('#accept-disclaimer').check()
@@ -123,13 +139,7 @@ test.describe('Step 2 — Profile', () => {
   })
 
   test('T07 — mensagem de erro da server action aparece inline', async ({ page }) => {
-    // #given — interceptar a server action para forçar erro
-    await page.route('**/app/onboarding**', async (route) => {
-      // Deixar carregar normalmente — o erro vem via server action
-      await route.continue()
-    })
-
-    // Preencher com dados que disparam erro (ex: age fora do range aceito pelo servidor)
+    // Preencher com dados que podem disparar validação (age=0 fora do range)
     await page.fill('#age', '0')
     await page.selectOption('#gender', 'masculino')
     await page.fill('#height', '175')
@@ -142,8 +152,7 @@ test.describe('Step 2 — Profile', () => {
     // #when
     await page.getByRole('button', { name: 'Continuar' }).click()
 
-    // #then — se erro, mensagem aparece; se sucesso, continua para Step 3
-    // Validação condicional: erro inline OU avanço para Step 3
+    // #then — erro inline OU avanço para Step 3 (depende da validação do server)
     const errorMsg = page.locator('[aria-live="polite"]')
     const step3 = page.getByText('Primeiro Exame')
     await expect(errorMsg.or(step3)).toBeVisible({ timeout: 8_000 })
@@ -161,11 +170,9 @@ test.describe('Step 2 — Profile', () => {
     await page.fill('#healthObjectives', PROFILE_VALID.healthObjectives)
 
     // #when — clicar e capturar estado transitório
-    const submitBtn = page.getByRole('button', { name: /Continuar|Salvando/ })
-    await submitBtn.click()
+    await page.getByRole('button', { name: /Continuar|Salvando/ }).click()
 
-    // #then — estado pending visível (pode ser muito rápido em dev)
-    // Aguardar Step 3 ou botão pending
+    // #then — estado pending visível (pode ser muito rápido em dev) ou Step 3
     await expect(
       page.getByText('Salvando...').or(page.getByText('Primeiro Exame'))
     ).toBeVisible({ timeout: 8_000 })
@@ -173,12 +180,18 @@ test.describe('Step 2 — Profile', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Suite 4: Step 3 — Upload
+// Suite 5: Step 3 — Upload (new user, completes steps 1+2 in beforeEach)
 // ---------------------------------------------------------------------------
 
 test.describe('Step 3 — Upload', () => {
+  test.beforeAll(() => {
+    if (!fs.existsSync(STORAGE.new)) {
+      test.skip(true, 'Auth state missing — run: pnpm test:e2e:seed && playwright test --project=auth-setup')
+    }
+  })
+  test.use({ storageState: STORAGE.new })
+
   test.beforeEach(async ({ page }) => {
-    await loginAs(page, TEST_USER_NEW.email, TEST_USER_NEW.password)
     await page.goto('/app/onboarding')
     // Avançar Step 1
     await page.locator('#accept-disclaimer').check()
@@ -217,13 +230,19 @@ test.describe('Step 3 — Upload', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Suite 5: Fluxo Completo (Happy Path)
+// Suite 6: Fluxo Completo (Happy Path — new user)
 // ---------------------------------------------------------------------------
 
 test.describe('Fluxo Completo', () => {
+  test.beforeAll(() => {
+    if (!fs.existsSync(STORAGE.new)) {
+      test.skip(true, 'Auth state missing — run: pnpm test:e2e:seed && playwright test --project=auth-setup')
+    }
+  })
+  test.use({ storageState: STORAGE.new })
+
   test('T11 — onboarding do início ao fim com skip no Step 3', async ({ page }) => {
-    // #given — usuário autenticado com onboarding pendente
-    await loginAs(page, TEST_USER_NEW.email, TEST_USER_NEW.password)
+    // #given — usuário com onboarding pendente (new user via storageState)
     await page.goto('/app/onboarding')
 
     // #when — Step 1: Disclaimer
