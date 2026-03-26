@@ -13,15 +13,15 @@ vi.mock('@ai-sdk/google', () => ({
   google: vi.fn(() => 'mocked-google-model'),
 }))
 
-vi.mock('pdf-parse', () => {
-  const fn = vi.fn()
-  return { ...fn, default: fn }
-})
+const mockPdfParse = vi.fn()
+
+vi.mock('pdf-parse/lib/pdf-parse.js', () => ({
+  default: mockPdfParse,
+}))
 
 const { extractMedicalDocument } = await import('@/lib/documents/extractor')
 const { generateText } = await import('ai')
-const pdfParseMod = await import('pdf-parse')
-const pdfParse = (pdfParseMod as unknown as { default: ReturnType<typeof vi.fn> }).default
+const pdfParse = mockPdfParse
 
 const VALID_OUTPUT: SanitizedMedicalDocument = {
   documentType: 'Hemograma Completo',

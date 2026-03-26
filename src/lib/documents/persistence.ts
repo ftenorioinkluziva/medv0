@@ -1,4 +1,3 @@
-import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { documents, snapshots } from '@/lib/db/schema'
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
@@ -16,29 +15,28 @@ export interface PersistSnapshotResult {
 export async function persistSnapshot(input: PersistSnapshotInput): Promise<PersistSnapshotResult> {
   const { userId, fileName, structuredData } = input
 
-  const [doc] = await db
-    .insert(documents)
-    .values({
-      userId,
-      documentType: structuredData.documentType,
-      originalFileName: fileName,
-      examDate: structuredData.examDate ?? null,
-      extractedAt: new Date(),
-      overallSummary: structuredData.overallSummary ?? null,
-      processingStatus: 'completed',
-    })
-    .returning({ id: documents.id })
+  const documentId = await db.transaction(async (tx) => {
+    const [doc] = await tx
+      .insert(documents)
+      .values({
+        userId,
+        documentType: structuredData.documentType,
+        originalFileName: fileName,
+        examDate: structuredData.examDate ?? null,
+        extractedAt: new Date(),
+        overallSummary: structuredData.overallSummary ?? null,
+        processingStatus: 'completed',
+      })
+      .returning({ id: documents.id })
 
-  try {
-    await db.insert(snapshots).values({
+    await tx.insert(snapshots).values({
       documentId: doc.id,
       userId,
       structuredData,
     })
-  } catch (err) {
-    await db.delete(documents).where(eq(documents.id, doc.id))
-    throw err
-  }
 
-  return { documentId: doc.id }
+    return doc.id
+  })
+
+  return { documentId }
 }

@@ -1,1 +1,1 @@
-// Test setup — jest-dom matchers available for component tests
+import '@testing-library/jest-dom'

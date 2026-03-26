@@ -36,6 +36,9 @@ playwright-report/
 test-results/
 tests/e2e/fixtures/storage/
 
+# Vitest
+coverage/
+
 # AIOX Local (AIOX)
 .aiox-core/local/
 .claude/settings.json

@@ -10,6 +10,12 @@ export default defineConfig({
     include: ['tests/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['tests/e2e/**'],
     setupFiles: ['./tests/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.d.ts', 'src/app/**', 'src/lib/db/migrations/**'],
+      reporter: ['text', 'lcov'],
+    },
   },
   resolve: {
     alias: {
