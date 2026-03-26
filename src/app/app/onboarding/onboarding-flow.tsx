@@ -15,7 +15,14 @@ export function OnboardingFlow() {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-1.5">
+      <div
+        className="flex gap-1.5"
+        role="progressbar"
+        aria-valuenow={stepIndex + 1}
+        aria-valuemin={1}
+        aria-valuemax={STEPS.length}
+        aria-label="Progresso do onboarding"
+      >
         {STEPS.map((step, i) => (
           <div
             key={step}
