@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { upsertMedicalProfile } from '@/lib/actions/medical-profile'
 import { AdvancedForm } from './advanced-form'
+import { TagInput } from './tag-input'
 import type { MedicalProfile, ExerciseActivity } from '@/lib/db/schema'
 
 interface ProfileFormProps {
@@ -19,6 +20,11 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
   const [activities, setActivities] = useState<ExerciseActivity[]>(
     (initialData?.exerciseActivities as ExerciseActivity[] | null) ?? [],
   )
+  const [medicalConditions, setMedicalConditions] = useState<string[]>(initialData?.medicalConditions ?? [])
+  const [medications, setMedications] = useState<string[]>(initialData?.medications ?? [])
+  const [allergies, setAllergies] = useState<string[]>(initialData?.allergies ?? [])
+  const [surgeries, setSurgeries] = useState<string[]>(initialData?.surgeries ?? [])
+  const [supplementation, setSupplementation] = useState<string[]>(initialData?.supplementation ?? [])
 
   function showToast(type: 'success' | 'error', message: string) {
     setToast({ type, message })
@@ -44,8 +50,19 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
         diastolicPressure: Number(fd.get('diastolicPressure')),
         restingHeartRate: Number(fd.get('restingHeartRate')),
         healthObjectives: String(fd.get('healthObjectives')),
+        medicalConditions: medicalConditions.length > 0 ? medicalConditions : undefined,
+        medications: medications.length > 0 ? medications : undefined,
+        allergies: allergies.length > 0 ? allergies : undefined,
+        surgeries: surgeries.length > 0 ? surgeries : undefined,
         familyHistory: (fd.get('familyHistory') as string) || undefined,
         notes: (fd.get('notes') as string) || undefined,
+
+        // Biomarkers
+        handgripStrength: (fd.get('handgripStrength') as string) || undefined,
+        sitToStandTime: (fd.get('sitToStandTime') as string) || undefined,
+        vo2Max: (fd.get('vo2Max') as string) || undefined,
+        bodyFatPercentage: (fd.get('bodyFatPercentage') as string) || undefined,
+        co2ToleranceTest: (fd.get('co2ToleranceTest') as string) || undefined,
 
         // Avançados: Sono
         sleepHours: (fd.get('sleepHours') as string) || undefined,
@@ -61,6 +78,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
         smokingStatus: (fd.get('smokingStatus') as 'nunca_fumou' | 'ex-fumante' | 'fumante') || undefined,
         smokingDetails: (fd.get('smokingDetails') as string) || undefined,
         alcoholConsumption: (fd.get('alcoholConsumption') as 'nunca' | 'social' | 'regular' | 'frequente') || undefined,
+        supplementation: supplementation.length > 0 ? supplementation : undefined,
         currentDiet: (fd.get('currentDiet') as string) || undefined,
 
         // Avançados: Atividade física
@@ -227,7 +245,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
             rows={3}
             defaultValue={initialData?.healthObjectives ?? ''}
             placeholder="Ex: Perder peso, controlar pressão arterial, melhorar condicionamento físico"
-            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+            className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
           />
         </div>
 
@@ -239,7 +257,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
             rows={2}
             defaultValue={initialData?.familyHistory ?? ''}
             placeholder="Ex: Diabetes tipo 2 no pai, hipertensão na mãe"
-            className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+            className="flex min-h-15 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
           />
         </div>
 
@@ -251,8 +269,114 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
             rows={2}
             defaultValue={initialData?.notes ?? ''}
             placeholder="Outras informações relevantes"
-            className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+            className="flex min-h-15 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
           />
+        </div>
+      </Card>
+
+      <Card className="p-4 space-y-4">
+        <h2 className="font-semibold text-foreground">Histórico Médico</h2>
+        <p className="text-xs text-muted-foreground">Opcional — todos os campos aceitam múltiplos itens.</p>
+
+        <TagInput
+          id="medicalConditions"
+          label="Condições médicas"
+          placeholder="Ex: hipertensão, diabetes"
+          initialValues={initialData?.medicalConditions}
+          onChange={setMedicalConditions}
+        />
+        <TagInput
+          id="medications"
+          label="Medicamentos em uso"
+          placeholder="Ex: metformina 500mg, losartana"
+          initialValues={initialData?.medications}
+          onChange={setMedications}
+        />
+        <TagInput
+          id="allergies"
+          label="Alergias"
+          placeholder="Ex: penicilina, látex"
+          initialValues={initialData?.allergies}
+          onChange={setAllergies}
+        />
+        <TagInput
+          id="surgeries"
+          label="Cirurgias"
+          placeholder="Ex: apendicectomia 2015"
+          initialValues={initialData?.surgeries}
+          onChange={setSurgeries}
+        />
+      </Card>
+
+      <Card className="p-4 space-y-4">
+        <h2 className="font-semibold text-foreground">Biomarkers Funcionais</h2>
+        <p className="text-xs text-muted-foreground">Opcional — dados laboratoriais e de desempenho físico.</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="handgripStrength">Força de preensão (kgf)</Label>
+            <Input
+              id="handgripStrength"
+              name="handgripStrength"
+              type="number"
+              step="0.1"
+              min={0}
+              defaultValue={initialData?.handgripStrength ?? ''}
+              placeholder="Ex: 42.5"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="sitToStandTime">Sentar-levantar (s)</Label>
+            <Input
+              id="sitToStandTime"
+              name="sitToStandTime"
+              type="number"
+              step="0.1"
+              min={0}
+              defaultValue={initialData?.sitToStandTime ?? ''}
+              placeholder="Ex: 12.3"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="vo2Max">VO2 máx</Label>
+            <Input
+              id="vo2Max"
+              name="vo2Max"
+              type="number"
+              step="0.1"
+              min={0}
+              defaultValue={initialData?.vo2Max ?? ''}
+              placeholder="Ex: 45.0"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="bodyFatPercentage">Gordura corporal (%)</Label>
+            <Input
+              id="bodyFatPercentage"
+              name="bodyFatPercentage"
+              type="number"
+              step="0.1"
+              min={0}
+              max={100}
+              defaultValue={initialData?.bodyFatPercentage ?? ''}
+              placeholder="Ex: 18.5"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="co2ToleranceTest">Tolerância CO2 (s)</Label>
+            <Input
+              id="co2ToleranceTest"
+              name="co2ToleranceTest"
+              type="number"
+              step="0.1"
+              min={0}
+              defaultValue={initialData?.co2ToleranceTest ?? ''}
+              placeholder="Ex: 40"
+            />
+          </div>
         </div>
       </Card>
 
@@ -265,6 +389,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
       <AdvancedForm
         initialData={initialData}
         onActivitiesChange={setActivities}
+        onSupplementationChange={setSupplementation}
       />
 
       <Button type="submit" disabled={isPending} className="w-full">

@@ -5,11 +5,13 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { TagInput } from './tag-input'
 import type { MedicalProfile, ExerciseActivity } from '@/lib/db/schema'
 
 interface AdvancedFormProps {
   initialData: MedicalProfile | null
   onActivitiesChange: (activities: ExerciseActivity[]) => void
+  onSupplementationChange: (values: string[]) => void
 }
 
 interface ActivityWithId extends ExerciseActivity {
@@ -24,7 +26,7 @@ const emptyActivity = (): ActivityWithId => ({
   intensity: 'moderada',
 })
 
-export function AdvancedForm({ initialData, onActivitiesChange }: AdvancedFormProps) {
+export function AdvancedForm({ initialData, onActivitiesChange, onSupplementationChange }: AdvancedFormProps) {
   const [activities, setActivities] = useState<ActivityWithId[]>(() => {
     const existing = (initialData?.exerciseActivities as ExerciseActivity[] | null) ?? []
     return existing.map((a) => ({ ...a, _id: crypto.randomUUID() }))
@@ -218,6 +220,14 @@ export function AdvancedForm({ initialData, onActivitiesChange }: AdvancedFormPr
             placeholder="Ex: meditação, exercício, terapia"
           />
         </div>
+
+        <TagInput
+          id="supplementation"
+          label="Suplementação"
+          placeholder="Ex: vitamina D 2000UI, creatina"
+          initialValues={initialData?.supplementation}
+          onChange={onSupplementationChange}
+        />
       </Card>
 
       {/* Atividade Física */}
