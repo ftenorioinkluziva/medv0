@@ -22,6 +22,20 @@
       "when": 1774400001000,
       "tag": "0002_documents_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774551134359,
+      "tag": "0003_flat_sabra",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774551179397,
+      "tag": "0004_elite_loki",
+      "breakpoints": true
     }
   ]
 }

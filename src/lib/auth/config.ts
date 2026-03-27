@@ -13,6 +13,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
+        token.name = user.name ?? user.email
         token.role = (user as { role: string }).role
         token.onboardingCompleted = (user as { onboardingCompleted: boolean }).onboardingCompleted
       }
@@ -24,6 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string
+        session.user.name = token.name as string
         session.user.role = token.role as string
         session.user.onboardingCompleted = token.onboardingCompleted as boolean
       }
@@ -51,6 +53,7 @@ declare module 'next-auth' {
     user: {
       id: string
       email: string
+      name: string
       role: string
       onboardingCompleted: boolean
     }

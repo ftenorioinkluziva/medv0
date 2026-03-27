@@ -1,0 +1,43 @@
+schema: 1
+story: '3.1'
+story_title: 'Schema & Busca Vetorial'
+gate: PASS
+status_reason: 'Todos os ACs atendidos. Schema correto, migração aplicada, busca vetorial funcional, 7 testes cobrindo os cenários principais. Duas observações LOW documentadas como debt.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-26T23:10:00-03:00'
+
+top_issues: []
+waiver:
+  active: false
+
+quality_score: 92
+expires: '2026-04-09T23:10:00-03:00'
+
+evidence:
+  tests_reviewed: 7
+  risks_identified: 2
+  trace:
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Sem SQL injection risk — Drizzle ORM com queries parametrizadas. Sem exposição de dados sensíveis.'
+  performance:
+    status: PASS
+    notes: 'HNSW index com m=16, ef_construction=64 aplicado na migration. cosineDistance com limit(topK).'
+  reliability:
+    status: PASS
+    notes: 'incrementUsageCount é atômico via sql``. cascade delete garante integridade referencial.'
+  maintainability:
+    status: PASS
+    notes: 'Código limpo, tipos exportados, mocks corretos. buildSelectChain helper reutilizável.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Adicionar parâmetros m=16 e ef_construction=64 explicitamente no Drizzle schema (index config), não apenas na migration SQL. Evita divergência ao regenerar.'
+      refs: ['src/lib/db/schema/knowledge.ts']
+    - action: 'updatedAt em knowledgeBase não tem .onUpdateNow() — considerar trigger DB ou atualização manual em UPDATE paths futuros.'
+      refs: ['src/lib/db/schema/knowledge.ts']

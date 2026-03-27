@@ -1,5 +1,7 @@
+import { seedAdmin } from '@/lib/db/seed/admin'
+
 async function seed() {
-  console.log('Seed completed (no initial data required for Story 1.1)')
+  await seedAdmin()
 }
 
 seed()
