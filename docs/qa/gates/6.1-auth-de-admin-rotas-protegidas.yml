@@ -1,0 +1,63 @@
+schema: 1
+story: '6.1'
+story_title: 'Auth de Admin & Rotas Protegidas'
+gate: FAIL
+status_reason: 'src/proxy.ts é dead code — Next.js não executa arquivos fora de middleware.ts (raiz ou src/). AC2 não atendido: admin em /app/* e em / NÃO são redirecionados para /admin. Os testes validam código que nunca roda em produção.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-26T23:10:00-03:00'
+
+top_issues:
+  - severity: high
+    category: code
+    description: 'src/proxy.ts é dead code. Next.js só reconhece middleware em middleware.ts (raiz) ou src/middleware.ts. O arquivo src/proxy.ts nunca é executado pelo runtime do Next.js.'
+    recommendation: 'Mover a lógica de proxy.ts para dentro de middleware.ts (substituir ou importar). Deletar ou renomear proxy.ts para evitar falsa sensação de segurança.'
+    suggested_owner: dev
+  - severity: high
+    category: requirements
+    description: 'AC2 não atendido: admin autenticado acessando /app/* não é redirecionado para /admin. Admin acessando / não é redirecionado para /admin. A lógica correta existe em proxy.ts mas nunca é executada.'
+    recommendation: 'Após fix do proxy.ts → middleware.ts, validar AC2 com testes de integração no middleware real.'
+    suggested_owner: dev
+  - severity: high
+    category: tests
+    description: 'tests/proxy.test.ts testa src/proxy.ts (dead code). 10/10 passam mas validam comportamento que nunca ocorre em produção. middleware.ts (que SÍ executa) não tem cobertura de testes.'
+    recommendation: 'Reescrever proxy.test.ts para testar o middleware.ts real após o merge da lógica. Adicionar casos: doctor em /admin, admin em /app, admin em /.'
+    suggested_owner: dev
+
+waiver:
+  active: false
+
+quality_score: 45
+expires: '2026-04-09T23:10:00-03:00'
+
+evidence:
+  tests_reviewed: 10
+  risks_identified: 3
+  trace:
+    ac_covered: [1, 3, 4, 5]
+    ac_gaps: [2]
+
+nfr_validation:
+  security:
+    status: CONCERNS
+    notes: 'Admin layout tem double-guard correto (layout.tsx bloqueia role !== admin). MAS middleware não faz role check — um usuário patient/doctor autenticado chega até o layout antes de ser bloqueado. Sem bypass real, mas a linha de defesa primária está ausente.'
+  performance:
+    status: PASS
+    notes: 'Layout guard via Server Component é aceitável. bcrypt cost=12 no seed está correto.'
+  reliability:
+    status: PASS
+    notes: 'Seed idempotente com ON CONFLICT DO NOTHING. AdminNav com ADMIN_PASSWORD guard.'
+  maintainability:
+    status: CONCERNS
+    notes: 'proxy.ts e middleware.ts têm lógicas conflitantes e overlapping matchers. Dois arquivos com responsabilidades ambíguas aumentam risco de drift futuro.'
+
+recommendations:
+  immediate:
+    - action: 'Integrar lógica de src/proxy.ts no middleware.ts da raiz. Opção limpa: middleware.ts importa e re-exporta de src/proxy.ts (mantém testes apontando pro arquivo certo).'
+      refs: ['middleware.ts', 'src/proxy.ts']
+    - action: 'Adicionar teste para role doctor acessando /admin (deve redirecionar para /).'
+      refs: ['tests/proxy.test.ts']
+    - action: 'Verificar e corrigir mobile layout: header em AdminNav dentro de flex row — no mobile aparece ao lado do conteúdo em vez de acima.'
+      refs: ['src/app/admin/_components/admin-nav.tsx', 'src/app/admin/layout.tsx']
+  future:
+    - action: 'Considerar usar o tipo de role do schema (admin | patient | doctor) em vez de string genérica no cast de proxy.ts.'
+      refs: ['src/proxy.ts']

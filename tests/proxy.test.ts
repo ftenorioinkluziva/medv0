@@ -34,6 +34,13 @@ describe('proxy — /admin routes', () => {
     expect(res.headers.get('location')).toMatch(/\/$/)
   })
 
+  it('redirects doctor to / when accessing /admin', async () => {
+    const req = makeRequest('/admin', { user: { role: 'doctor' } })
+    const res = await proxy(req)
+    expect(res.status).toBe(307)
+    expect(res.headers.get('location')).toMatch(/\/$/)
+  })
+
   it('allows admin to access /admin', async () => {
     const req = makeRequest('/admin', { user: { role: 'admin' } })
     const res = await proxy(req)

@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 
+type Role = 'admin' | 'patient' | 'doctor'
+
+interface ProxySession {
+  user: { role: Role; onboardingCompleted: boolean }
+}
+
 export default auth(function proxy(req: NextRequest) {
-  const session = (req as NextRequest & { auth: { user: { role: string } } | null }).auth
+  const session = (req as NextRequest & { auth: ProxySession | null }).auth
   const { pathname } = req.nextUrl
+
+  if (pathname.startsWith('/auth')) {
+    if (session) {
+      const dest = session.user.onboardingCompleted ? '/app/dashboard' : '/app/onboarding'
+      return NextResponse.redirect(new URL(dest, req.url))
+    }
+    return NextResponse.next()
+  }
 
   if (pathname.startsWith('/admin')) {
     if (!session) {
@@ -39,5 +53,5 @@ export default auth(function proxy(req: NextRequest) {
 })
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/auth).*)'],
+  matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.json|icons).*)'],
 }
