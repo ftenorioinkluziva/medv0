@@ -1,0 +1,1 @@
+ALTER TABLE "health_agents" ADD CONSTRAINT "health_agents_name_unique" UNIQUE("name");

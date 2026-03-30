@@ -1,7 +1,9 @@
 import { seedAdmin } from '@/lib/db/seed/admin'
+import { seedHealthAgents } from '@/lib/db/seed/health-agents'
 
 async function seed() {
   await seedAdmin()
+  await seedHealthAgents()
 }
 
 seed()
