@@ -268,10 +268,6 @@ export async function runCompleteAnalysis(
       })
       .where(eq(completeAnalyses.id, completeAnalysisId))
 
-    await db
-      .update(analyses)
-      .set({ completeAnalysisId })
-      .where(eq(analyses.completeAnalysisId, completeAnalysisId))
   } catch (error) {
     await db
       .update(completeAnalyses)

@@ -290,6 +290,24 @@ describe('POST /api/analyses/run — AC7', () => {
     expect(res.status).toBe(401)
   })
 
+  it('retorna 404 quando documento não pertence ao usuário autenticado', async () => {
+    // #given
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as never)
+    vi.mocked(db.select).mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]), // documento não encontrado para este userId
+    } as never)
+
+    // #when
+    const res = await POST(makeRunRequest({ documentId: crypto.randomUUID() }))
+
+    // #then
+    expect(res.status).toBe(404)
+    const json = await res.json()
+    expect(json.error).toContain('Documento não encontrado')
+  })
+
   it('retorna 400 quando documentId não é UUID válido', async () => {
     // #given
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as never)
@@ -305,9 +323,13 @@ describe('POST /api/analyses/run — AC7', () => {
     // #given
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as never)
 
-    vi.mocked(db.insert).mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) } as never)
-
     const docId = crypto.randomUUID()
+    vi.mocked(db.select).mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([{ id: docId }]),
+    } as never)
+    vi.mocked(db.insert).mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) } as never)
 
     // #when
     const res = await POST(makeRunRequest({ documentId: docId }))

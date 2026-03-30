@@ -1,9 +1,10 @@
 import { after } from 'next/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { completeAnalyses } from '@/lib/db/schema'
+import { completeAnalyses, documents } from '@/lib/db/schema'
 import { runCompleteAnalysis } from '@/lib/ai/orchestrator/complete-analysis'
 
 export const maxDuration = 60
@@ -35,6 +36,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const { documentId } = parsed.data
   const userId = session.user.id
+
+  const [doc] = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .where(and(eq(documents.id, documentId), eq(documents.userId, userId)))
+    .limit(1)
+
+  if (!doc) {
+    return NextResponse.json({ error: 'Documento não encontrado.' }, { status: 404 })
+  }
+
   const completeAnalysisId = crypto.randomUUID()
 
   await db.insert(completeAnalyses).values({
