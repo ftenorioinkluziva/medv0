@@ -36,6 +36,20 @@
       "when": 1774551179397,
       "tag": "0004_elite_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774874984389,
+      "tag": "0005_polite_chronomancer",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774875491445,
+      "tag": "0006_nifty_union_jack",
+      "breakpoints": true
     }
   ]
 }
