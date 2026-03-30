@@ -1,0 +1,50 @@
+schema: 1
+story: '4.1'
+story_title: 'Health Agents (Configuração)'
+gate: PASS
+status_reason: 'Todos os ACs implementados e verificados. Schema correto, seed idempotente, query helpers funcionais. Sem issues bloqueantes.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-30T14:52:00Z'
+
+top_issues:
+  - severity: medium
+    category: code
+    description: 'updatedAt não é auto-atualizado em UPDATEs — padrão herdado de Story 3.1'
+    recommendation: 'Futuros UPDATE paths devem incluir .set({ updatedAt: new Date() }) explicitamente'
+    suggested_owner: dev
+
+waiver:
+  active: false
+
+quality_score: 90
+
+expires: '2026-04-13T14:52:00Z'
+
+evidence:
+  tests_reviewed: 9
+  risks_identified: 1
+  trace:
+    ac_covered: [1, 2, 3, 4]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Sem fluxo de input de usuário. System prompts armazenados como texto — comportamento esperado.'
+  performance:
+    status: PASS
+    notes: 'Tabela pequena, queries com filtros adequados, seed com 5 inserts individuais (aceitável).'
+  reliability:
+    status: PASS
+    notes: 'onConflictDoNothing garante idempotência do seed. Tipos inferidos do schema previnem inconsistências.'
+  maintainability:
+    status: PASS
+    notes: 'Schema limpo, tipos exportados, query helpers minimalistas e bem testados.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Garantir .set({ updatedAt: new Date() }) em todos os UPDATE paths que tocarem health_agents'
+      refs: ['src/lib/db/schema/health-agents.ts']
+    - action: 'Adicionar teste para getActiveAgentsByRole(none) edge case'
+      refs: ['tests/unit/health-agents.test.ts']
