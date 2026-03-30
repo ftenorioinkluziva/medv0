@@ -1,0 +1,48 @@
+schema: 1
+story: '3.2'
+story_title: 'Endpoint auto-upload da knowledge base'
+gate: PASS
+status_reason: 'Todos os ACs implementados e testados. Bug de upsert (source null/empty mismatch) corrigido durante revisão. Error handling adicionado à route.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-30T09:24:00Z'
+
+top_issues:
+  - severity: medium
+    category: security
+    description: 'Comparação direta de API key via !== vulnerável a timing attack'
+    recommendation: 'Substituir por crypto.timingSafeEqual() em iteração futura'
+    suggested_owner: dev
+
+waiver:
+  active: false
+
+quality_score: 90
+
+expires: '2026-04-13T09:24:00Z'
+
+evidence:
+  tests_reviewed: 9
+  risks_identified: 1
+  trace:
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'API key auth funcional. Timing attack (LOW risk) documentado como tech debt. Sem vazamento de segredos. SQL injection protegido via Drizzle ORM.'
+  performance:
+    status: PASS
+    notes: 'embedMany em batch único, maxDuration=60 configurado, transação atômica.'
+  reliability:
+    status: PASS
+    notes: 'Try/catch adicionado durante QA. Transação garante atomicidade do upsert.'
+  maintainability:
+    status: PASS
+    notes: 'Código limpo, tipado, funções coesas. chunkText é lógica pura testável isoladamente.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Substituir comparação de API key por crypto.timingSafeEqual() para eliminar timing attack'
+      refs: ['src/app/api/admin/knowledge/auto-upload/route.ts']

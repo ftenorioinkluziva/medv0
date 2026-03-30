@@ -1,6 +1,6 @@
 import { embedMany } from 'ai'
 import { google } from '@ai-sdk/google'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { knowledgeBase, knowledgeEmbeddings } from '@/lib/db/schema'
 import { chunkText } from './chunker'
@@ -40,7 +40,9 @@ export async function upsertKnowledgeArticle(
     .where(
       and(
         eq(knowledgeBase.title, input.title),
-        eq(knowledgeBase.source, input.source ?? ''),
+        input.source != null
+          ? eq(knowledgeBase.source, input.source)
+          : isNull(knowledgeBase.source),
       ),
     )
     .limit(1)

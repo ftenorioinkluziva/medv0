@@ -49,18 +49,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const result = await upsertKnowledgeArticle({
-    title: data.title,
-    content: data.content,
-    summary: data.summary,
-    source: data.source,
-    author: data.author,
-    publishedDate: data.published_date,
-    category: data.category,
-    subcategory: data.subcategory,
-    tags: data.tags,
-    language: data.language,
-  })
+  let result
+  try {
+    result = await upsertKnowledgeArticle({
+      title: data.title,
+      content: data.content,
+      summary: data.summary,
+      source: data.source,
+      author: data.author,
+      publishedDate: data.published_date,
+      category: data.category,
+      subcategory: data.subcategory,
+      tags: data.tags,
+      language: data.language,
+    })
+  } catch (error) {
+    console.error('[auto-upload] upsertKnowledgeArticle failed:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 
   return NextResponse.json({
     success: true,

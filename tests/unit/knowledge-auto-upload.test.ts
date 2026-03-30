@@ -96,6 +96,22 @@ describe('POST /api/admin/knowledge/auto-upload', () => {
     })
   })
 
+  describe('erro interno', () => {
+    it('retorna 500 quando upsertKnowledgeArticle lança erro', async () => {
+      // #given
+      vi.mocked(upsertKnowledgeArticle).mockRejectedValue(new Error('DB connection failed'))
+      const req = makeRequest(validPayload, VALID_API_KEY)
+
+      // #when
+      const res = await POST(req)
+
+      // #then
+      expect(res.status).toBe(500)
+      const json = await res.json()
+      expect(json).toEqual({ error: 'Internal server error' })
+    })
+  })
+
   describe('AC5 — upsert de artigos', () => {
     it('retorna action=created para artigo novo', async () => {
       // #given
