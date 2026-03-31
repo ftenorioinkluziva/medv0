@@ -1,0 +1,58 @@
+schema: 1
+story: '4.3'
+story_title: 'Relatório Estruturado'
+gate: CONCERNS
+status_reason: 'Implementação sólida com todos os 146 testes passando. validateReportSections estava desconectada do fluxo de produção (dead code) — corrigida durante a revisão. Indentação inconsistente em MessageResponse — corrigida. Nenhum bloqueador para merge.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-31T07:47:00Z'
+
+top_issues:
+  - id: QA-4.3-01
+    severity: medium
+    category: code
+    description: 'validateReportSections definida e testada mas nunca chamada em complete-analysis.ts — dead code. Tech spec exige chamada após síntese para log de seções faltantes.'
+    recommendation: 'Importar e chamar validateReportSections(reportMarkdown) após geração da síntese.'
+    suggested_owner: dev
+    resolution: 'FIXED durante revisão — import adicionado e chamada wired após synthesis.'
+  - id: QA-4.3-02
+    severity: low
+    category: code
+    description: 'Indentação inconsistente em message.tsx: <ReactMarkdown> não estava recuado dentro do <div> contenedor.'
+    recommendation: 'Corrigir indentação para refletir a hierarquia JSX corretamente.'
+    suggested_owner: dev
+    resolution: 'FIXED durante revisão — indentação corrigida em todas as linhas.'
+
+waiver:
+  active: false
+
+quality_score: 90
+expires: '2026-04-14T07:47:00Z'
+
+evidence:
+  tests_reviewed: 146
+  risks_identified: 2
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Auth check (401) + ownership check (403) implementados corretamente em route.ts e page.tsx. userId comparado antes de retornar dados. Nenhuma exposição de dados de outros usuários.'
+  performance:
+    status: PASS
+    notes: 'Skeleton loading via Suspense. Consulta DB com .limit(1). validateReportSections é O(n) no tamanho do texto — aceitável para relatórios médicos (~5000 chars).'
+  reliability:
+    status: PASS
+    notes: 'Disclaimer injetado em todos os code paths (síntese bem-sucedida + fallback de síntese falhada). validateReportSections falha silenciosa conforme spec. Error states cobertos: 404, 403, processing, failed.'
+  maintainability:
+    status: PASS
+    notes: 'MessageResponse custom com react-markdown — aceitável dado que DoD cita react-markdown como alternativa. REQUIRED_SECTIONS exportada como const para reuso. Código auto-documentado.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Considerar teste de integração real para validateReportSections wired no fluxo — os testes unitários atuais verificam a função isolada, não a chamada no orchestrator.'
+      refs: ['src/lib/ai/orchestrator/complete-analysis.ts', 'tests/unit/report-sections.test.ts']
+    - action: 'AC3/AC4 tests dependem de strings hardcoded no template de fixture — considerar snapshot test do prompt SYNTHESIS_PROMPT para detectar regressões nas regras de indicadores.'
+      refs: ['tests/unit/report-sections.test.ts']

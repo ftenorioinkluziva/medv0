@@ -10,6 +10,7 @@ import {
 } from '@/lib/db/schema'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 import { analyzeWithAgent, type AgentAnalysisResult } from '@/lib/ai/agents/analyze'
+import { validateReportSections } from '@/lib/ai/utils/validate-report-sections'
 
 const ANALYSIS_PROMPT = `Realize uma análise funcional e integrativa dos dados fornecidos.
 
@@ -256,6 +257,7 @@ export async function runCompleteAnalysis(
             abortSignal: synthController.signal,
           })
           reportMarkdown = text + '\n\n---\n\n> ' + DISCLAIMER_TEXT
+          validateReportSections(reportMarkdown)
         } catch {
           reportMarkdown = synthesisInput + '\n\n---\n\n> ' + DISCLAIMER_TEXT
         } finally {
