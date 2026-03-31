@@ -1,0 +1,55 @@
+schema: 1
+setup:
+  completed: true
+  date: "2026-03-31"
+  project_type: node
+  package_manager: pnpm
+  node_version: "20"
+
+repository:
+  url: https://github.com/ftenorioinkluziva/medv0.git
+  owner: ftenorioinkluziva
+  name: medv0
+  visibility: public
+
+workflows_installed:
+  - name: ci.yml
+    description: Lint, TypeCheck, Test, Build on push/PR
+    status: pre-existing
+  - name: pr-automation.yml
+    description: Quality summary + coverage comment on PRs
+    status: installed
+  - name: release.yml
+    description: Validate + GitHub Release on version tags (v*)
+    status: installed
+
+coderabbit:
+  configured: true
+  profile: chill
+  config_file: .coderabbit.yaml
+  action: kept_existing
+
+branch_protection:
+  enabled: true
+  branch: main
+  required_status_checks:
+    strict: true
+    contexts: [Lint, TypeCheck, Test, Build]
+  required_reviewers: 1
+  dismiss_stale_reviews: true
+  allow_force_pushes: false
+  allow_deletions: false
+  required_conversation_resolution: true
+
+secrets_configured:
+  - DATABASE_URL
+  - GOOGLE_GENERATIVE_AI_API_KEY
+
+secrets_ci_placeholders:
+  - NEXTAUTH_SECRET
+  - NEXTAUTH_URL
+
+next_steps:
+  - Instalar CodeRabbit GitHub App: https://github.com/apps/coderabbitai
+  - Criar próximas stories em branches de feature (não direto em main)
+  - Branch protection agora bloqueia push direto para main sem PR aprovado

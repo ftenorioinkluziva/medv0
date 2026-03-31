@@ -1,0 +1,146 @@
+name: PR Automation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run ESLint
+        run: pnpm run lint
+
+  typecheck:
+    name: TypeCheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run TypeScript check
+        run: pnpm run typecheck
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      coverage-summary: ${{ steps.coverage.outputs.summary }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run tests with coverage
+        run: pnpm run test:coverage
+      - name: Extract coverage summary
+        id: coverage
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            LINES=$(jq '.total.lines.pct' coverage/coverage-summary.json)
+            STATEMENTS=$(jq '.total.statements.pct' coverage/coverage-summary.json)
+            BRANCHES=$(jq '.total.branches.pct' coverage/coverage-summary.json)
+            FUNCTIONS=$(jq '.total.functions.pct' coverage/coverage-summary.json)
+            echo "summary=Lines: ${LINES}% | Statements: ${STATEMENTS}% | Branches: ${BRANCHES}% | Functions: ${FUNCTIONS}%" >> $GITHUB_OUTPUT
+          else
+            echo "summary=Coverage report not available" >> $GITHUB_OUTPUT
+          fi
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  coverage-comment:
+    name: Coverage Comment
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: always() && needs.test.result != 'cancelled'
+    steps:
+      - name: Post coverage comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const coverageSummary = '${{ needs.test.outputs.coverage-summary }}' || 'Coverage data not available';
+            const body = `## 📊 Coverage Report\n\n${coverageSummary}\n\n> Full coverage report available in the uploaded artifact.`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(c => c.user.type === 'Bot' && c.body.includes('📊 Coverage Report'));
+            if (botComment) {
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: botComment.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            }
+
+  quality-summary:
+    name: Quality Summary
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test]
+    if: always()
+    steps:
+      - name: Generate quality summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const r = (v) => ({ success:'✅', failure:'❌', cancelled:'⏹️', skipped:'⏭️' }[v] || '⏳');
+            const lint = '${{ needs.lint.result }}';
+            const tc   = '${{ needs.typecheck.result }}';
+            const test = '${{ needs.test.result }}';
+            const allOk = lint === 'success' && tc === 'success' && test === 'success';
+            const body = `## 📋 Quality Gate Summary\n\n**Overall:** ${allOk ? '✅ All checks passed' : '❌ Some checks failed'}\n\n| Check | Status |\n|-------|--------|\n| Lint | ${r(lint)} ${lint} |\n| TypeCheck | ${r(tc)} ${tc} |\n| Tests | ${r(test)} ${test} |\n\n🐰 CodeRabbit will post automated review comments separately.\n\n---\n*AIOX PR Automation*`;
+            const { data: comments } = await github.rest.issues.listComments({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number });
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes('📋 Quality Gate Summary'));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            }
+      - name: Set final status
+        if: always()
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.typecheck.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ]; then
+            echo "❌ Quality gate failed — merge blocked"
+            exit 1
+          fi
+          echo "✅ All quality gates passed"
