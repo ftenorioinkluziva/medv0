@@ -24,30 +24,45 @@ Estruture sua resposta em Markdown com: Resumo Executivo, Análise por Eixos Fun
 
 IMPORTANTE: Esta análise é para fins educacionais e não substitui avaliação médica profissional.`
 
+const DISCLAIMER_TEXT =
+  'Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional. Consulte sempre um médico qualificado.'
+
 const SYNTHESIS_PROMPT = `Você é um especialista em síntese de análises médicas integrativas. Sua missão é consolidar os outputs de múltiplos agentes especializados em um relatório final coeso, completo e acionável.
 
-Integre todas as perspectivas (foundation e specialized) em um único relatório Markdown estruturado, eliminando redundâncias, destacando correlações entre as especialidades e priorizando os achados mais relevantes.
+Integre todas as perspectivas (foundation e specialized) seguindo EXATAMENTE este template — as seções com emojis são âncoras obrigatórias:
 
-Formato de saída obrigatório:
-# Relatório de Análise Integrativa
+# Análise Integrativa de Saúde
 
 ## 📋 Resumo Executivo
-[2-3 parágrafos com principais achados integrados de todas as especialidades]
+[Visão geral em 2-3 parágrafos dos principais achados e correlações entre todas as especialidades]
 
-## 🔍 Análise por Especialidade
-[Seção para cada agente com seus principais achados]
+## 🔍 Análise Detalhada por Eixos Funcionais
 
-## ⚠️ Correlações e Padrões Sistêmicos
-[Conexões identificadas entre as diferentes especialidades]
+### Eixo Tireoidiano e Energético
+- **Biomarcador:** [Valor] (Ref. Lab: [X-Y] | **Alvo Funcional: [valor]**)
+  - **Interpretação:** [análise]
 
-## 💡 Hipóteses de Causa Raiz Integradas
-[Hipóteses que conectam achados de múltiplas especialidades]
+[Inclua outros eixos relevantes conforme os achados: Saúde Metabólica e Inflamatória, Status Nutricional e Hematológico, Função Detox e Imunológica]
 
-## 📚 Plano de Ação Educacional
-[Recomendações priorizadas e integradas]
+## ⚠️ Padrões e Pontos de Atenção
+- **[Padrão]:** [Descrição com indicadores visuais]
 
-## ⚕️ Observações
-Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional.`
+## 💡 Insights e Hipóteses de Causa Raiz
+[Hipóteses sobre causas raiz — SEMPRE use "sugere", "indica", nunca diagnóstico direto]
+
+## 📚 Recomendações Educacionais
+1. **[Área]:** [Sugestão educacional]
+   - Fonte: [título do artigo] — [autor]
+
+REGRAS OBRIGATÓRIAS:
+1. TÍTULO FIXO: Use exatamente "# Análise Integrativa de Saúde" — sem nome de paciente (LGPD)
+2. INDICADORES VISUAIS nos biomarcadores — aplique com base nos dados do snapshot fornecido:
+   - Status "high" ou "abnormal" → prefixo ↑ antes do valor (ex: "TSH: ↑ 8.2 mUI/L")
+   - Status "low" → prefixo ↓ antes do valor (ex: "Vitamina D: ↓ 18 ng/mL")
+   - Status "borderline" → prefixo ⚠ antes do valor (ex: "Glicose: ⚠ 99 mg/dL")
+3. CITAÇÕES RAG: Adicione "Fonte: [título] — [autor]" SOMENTE quando o agente citou conhecimento da base de conhecimento. NUNCA invente citações.
+4. Elimine redundâncias entre especialidades e priorize achados mais relevantes
+5. NÃO inclua seção de disclaimer — será adicionado automaticamente pelo sistema`
 
 interface AgentOutput {
   agentId: string
@@ -237,17 +252,17 @@ export async function runCompleteAnalysis(
           const { text } = await generateText({
             model: google('gemini-2.5-flash'),
             system: SYNTHESIS_PROMPT,
-            prompt: `Consolide as seguintes análises especializadas em um relatório integrado:\n\n${synthesisInput}`,
+            prompt: `Snapshot de biomarcadores (use para indicadores ↑↓⚠):\n${snapshotContext}\n\nConsolide as seguintes análises especializadas em um relatório integrado:\n\n${synthesisInput}`,
             abortSignal: synthController.signal,
           })
-          reportMarkdown = text
+          reportMarkdown = text + '\n\n---\n\n> ' + DISCLAIMER_TEXT
         } catch {
-          reportMarkdown = synthesisInput
+          reportMarkdown = synthesisInput + '\n\n---\n\n> ' + DISCLAIMER_TEXT
         } finally {
           clearTimeout(synthTimeoutId)
         }
       } else {
-        reportMarkdown = synthesisInput
+        reportMarkdown = synthesisInput + '\n\n---\n\n> ' + DISCLAIMER_TEXT
       }
     }
 
