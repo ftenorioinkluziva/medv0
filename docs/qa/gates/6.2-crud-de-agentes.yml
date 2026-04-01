@@ -1,0 +1,22 @@
+schema: 1
+story: '6.2'
+gate: CONCERNS
+status_reason: 'All ACs met, lint/typecheck/tests clean. Two medium findings tracked: updateAgentAction lacks isActive deactivation guard, and updateAgentAction has zero unit test coverage.'
+reviewer: 'Quinn'
+updated: '2026-03-31T23:44:00Z'
+top_issues:
+  - id: 'MNT-001'
+    severity: medium
+    finding: 'updateAgentAction does not guard against setting isActive=false for the last active foundation agent via the edit form. The guard only covers role changes (foundation → other), not status changes. Admin can bypass the toggleAgentAction protection by editing the agent and unchecking "Ativo".'
+    suggested_action: 'Add guard in updateAgentAction: if agent.analysisRole === foundation && agent.isActive === true && parsed.data.isActive === false, check countActiveFoundationAgents() <= 1 and return error.'
+
+  - id: 'TEST-001'
+    severity: medium
+    finding: 'updateAgentAction has zero unit test coverage. The function handles 3 branches (agent not found, role-change guard, happy path) but none are exercised in tests/unit/agents-crud.test.ts.'
+    suggested_action: 'Add 3 tests: (1) returns error when agent not found, (2) blocks role change when last active foundation, (3) persists update when valid. Bonus: add test for isActive=false guard once MNT-001 is fixed.'
+
+  - id: 'SEC-001'
+    severity: low
+    finding: 'Server Actions in _actions/agents.ts do not verify the caller is authenticated/admin. Route-level protection via proxy.ts provides the primary guard, but Server Actions lack a second auth layer (defence-in-depth gap).'
+    suggested_action: 'Consider adding auth() check at top of each action: const session = await auth(); if (!session?.user?.role || session.user.role !== admin) return { error: Acesso negado }. Scope: future story or tech debt backlog.'
+waiver: { active: false }
