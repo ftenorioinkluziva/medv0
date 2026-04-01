@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import { documents, snapshots, completeAnalyses } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, sql } from 'drizzle-orm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardContent } from './dashboard-content'
 import { extractAlteredMarkers } from '@/lib/dashboard/markers'
@@ -46,7 +46,7 @@ async function DashboardData({ userId }: { userId: string }) {
     })
     .from(documents)
     .where(eq(documents.userId, userId))
-    .orderBy(desc(documents.examDate), desc(documents.createdAt))
+    .orderBy(sql`${documents.examDate} DESC NULLS LAST`, desc(documents.createdAt))
     .limit(1)
 
   if (!lastDoc) {
