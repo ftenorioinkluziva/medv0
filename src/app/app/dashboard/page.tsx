@@ -1,96 +1,114 @@
-import { auth } from '@/lib/auth/config'
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { medicalProfiles, documents } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
-import Link from 'next/link'
+import { documents, snapshots, completeAnalyses } from '@/lib/db/schema'
+import { eq, desc, sql } from 'drizzle-orm'
+import { Skeleton } from '@/components/ui/skeleton'
+import { DashboardContent } from './dashboard-content'
+import { extractAlteredMarkers } from '@/lib/dashboard/markers'
+import type { AlteredMarker } from '@/lib/dashboard/markers'
+
+export type DashboardData = {
+  lastDocument: {
+    id: string
+    examDate: string | null
+    documentType: string
+  } | null
+  alteredMarkers: AlteredMarker[]
+  lastAnalysis: {
+    id: string
+    status: string
+    createdAt: Date
+  } | null
+}
 
 export default async function DashboardPage() {
   const session = await auth()
-  if (!session?.user) redirect('/auth/login')
+  if (!session?.user?.id) redirect('/auth/login')
   if (!session.user.onboardingCompleted) redirect('/app/onboarding')
 
-  const [profile, recentDocs] = await Promise.all([
-    db.query.medicalProfiles.findFirst({
-      where: eq(medicalProfiles.userId, session.user.id),
-    }),
-    db.query.documents.findMany({
-      where: eq(documents.userId, session.user.id),
-      orderBy: desc(documents.createdAt),
-      limit: 5,
-    }),
+  return (
+    <main className="min-h-screen bg-background">
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardData userId={session.user.id} />
+      </Suspense>
+    </main>
+  )
+}
+
+async function DashboardData({ userId }: { userId: string }) {
+  const [lastDoc] = await db
+    .select({
+      id: documents.id,
+      examDate: documents.examDate,
+      documentType: documents.documentType,
+    })
+    .from(documents)
+    .where(eq(documents.userId, userId))
+    .orderBy(sql`${documents.examDate} DESC NULLS LAST`, desc(documents.createdAt))
+    .limit(1)
+
+  if (!lastDoc) {
+    return (
+      <DashboardContent
+        data={{ lastDocument: null, alteredMarkers: [], lastAnalysis: null }}
+      />
+    )
+  }
+
+  const [snapshotRow, analysisRow] = await Promise.all([
+    db
+      .select({ structuredData: snapshots.structuredData })
+      .from(snapshots)
+      .where(eq(snapshots.documentId, lastDoc.id))
+      .limit(1),
+    db
+      .select({ id: completeAnalyses.id, status: completeAnalyses.status, createdAt: completeAnalyses.createdAt })
+      .from(completeAnalyses)
+      .where(eq(completeAnalyses.documentId, lastDoc.id))
+      .limit(1),
   ])
 
+  const alteredMarkers = extractAlteredMarkers(snapshotRow[0]?.structuredData ?? null)
+  const lastAnalysis = analysisRow[0] ?? null
+
   return (
-    <main className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Bem-vindo, {session.user.email}</p>
-        </div>
+    <DashboardContent
+      data={{
+        lastDocument: lastDoc,
+        alteredMarkers,
+        lastAnalysis,
+      }}
+    />
+  )
+}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border bg-card p-5">
-            <h2 className="font-semibold text-card-foreground">Perfil de Saúde</h2>
-            {profile ? (
-              <dl className="mt-3 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Idade</dt>
-                  <dd>{profile.age} anos</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Altura</dt>
-                  <dd>{profile.height} cm</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Peso</dt>
-                  <dd>{profile.weight} kg</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Pressão arterial</dt>
-                  <dd>{profile.systolicPressure}/{profile.diastolicPressure} mmHg</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">FC repouso</dt>
-                  <dd>{profile.restingHeartRate} bpm</dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Perfil não preenchido.</p>
-            )}
-            <Link
-              href="/app/profile"
-              className="mt-4 inline-block text-sm text-primary underline-offset-4 hover:underline"
-            >
-              {profile ? 'Editar perfil' : 'Preencher perfil'}
-            </Link>
-          </div>
-
-          <div className="rounded-lg border bg-card p-5">
-            <h2 className="font-semibold text-card-foreground">Exames Recentes</h2>
-            {recentDocs.length > 0 ? (
-              <ul className="mt-3 space-y-2">
-                {recentDocs.map((doc) => (
-                  <li key={doc.id} className="flex items-start justify-between gap-2 text-sm">
-                    <span className="truncate">{doc.originalFileName}</span>
-                    <span className="shrink-0 text-muted-foreground">
-                      {doc.examDate ?? new Date(doc.createdAt).toLocaleDateString('pt-BR')}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Nenhum exame enviado.</p>
-            )}
-            <Link
-              href="/app/documents/upload"
-              className="mt-4 inline-block text-sm text-primary underline-offset-4 hover:underline"
-            >
-              Enviar exame
-            </Link>
-          </div>
-        </div>
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-4 p-4" aria-label="Carregando dashboard...">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-6 w-28" />
+        <Skeleton className="h-9 w-28" />
       </div>
-    </main>
+      <div className="rounded-xl ring-1 ring-foreground/10 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-5 w-20 rounded-md" />
+        </div>
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-9 w-full rounded-lg" />
+      </div>
+      <Skeleton className="h-4 w-36" />
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="rounded-xl ring-1 ring-foreground/10 p-3">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }

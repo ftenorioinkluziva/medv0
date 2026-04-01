@@ -1,0 +1,68 @@
+schema: 1
+story: '5.1'
+story_title: 'Dashboard & Home'
+gate: PASS
+status_reason: 'All ACs met. All 5 original CONCERNS resolved in follow-up commit. 3 additional CodeRabbit issues (CR-1..CR-4) resolved. Gate elevated to PASS.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-31T23:00:00Z'
+
+top_issues: []
+
+resolved_issues:
+  - id: M1
+    resolution: 'extractAlteredMarkers extracted to lib/dashboard/markers.ts — imported in page.tsx and test'
+  - id: M2
+    resolution: 'T-DB-06 catch removed — replaced with explicit expect(...).toBe(true) assertion'
+  - id: L1
+    resolution: 'text-blue-400 replaced with semantic text-info token; --info CSS var added to globals.css'
+  - id: L2
+    resolution: 'BottomNav moved to src/app/app/components/bottom-nav.tsx'
+  - id: L3
+    resolution: 'Gap documented inline in T-DB-05 with improvement path'
+  - id: CR-1
+    resolution: 'analysis-card.tsx now branches on completed/processing/failed with correct badge and hides CTA on failed'
+  - id: CR-2
+    resolution: 'empty-state-card.tsx uses encodeURIComponent(documentId) in href construction'
+  - id: CR-3
+    resolution: 'T-DB-06 suite now requires storageState auth — unauthenticated requests redirect before Suspense renders'
+  - id: CR-4
+    resolution: 'Test renamed to "does not mix markers from two independent structured data payloads" — removes misleading userId isolation claim'
+
+waiver:
+  active: false
+
+quality_score: 95
+
+expires: '2026-04-14T23:00:00Z'
+
+evidence:
+  tests_reviewed:
+    unit: 8
+    e2e: 6
+  risks_identified: 0
+  lint: PASS
+  typecheck: PASS
+  all_unit_tests: PASS
+  trace:
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Auth guard via await auth() before any data access. All DB queries scoped to session.user.id. encodeURIComponent used on URL params. No dangerouslySetInnerHTML. Drizzle ORM prevents SQL injection.'
+  performance:
+    status: PASS
+    notes: 'Parallel queries via Promise.all. LIMIT 1 on all queries. Suspense boundary enables streaming skeleton. Client boundary pushed to DashboardContent.'
+  reliability:
+    status: PASS
+    notes: 'Optional chaining on structuredData.modules handles undefined gracefully. Empty/null returns handled at every data path. failed analysis state handled explicitly.'
+  maintainability:
+    status: PASS
+    notes: 'extractAlteredMarkers in shared utility. BottomNav in correct scope. No hardcoded color tokens.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Add dedicated E2E fixture for new-user empty state (T-DB-05 gap — documented inline)'
+      refs: ['tests/e2e/dashboard.spec.ts']
