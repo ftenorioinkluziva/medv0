@@ -1,4 +1,4 @@
-import { eq, asc, and } from 'drizzle-orm'
+import { eq, asc, and, count } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { healthAgents, type HealthAgent } from '@/lib/db/schema'
 
@@ -18,4 +18,28 @@ export async function getAllActiveAgents(): Promise<HealthAgent[]> {
     .from(healthAgents)
     .where(eq(healthAgents.isActive, true))
     .orderBy(asc(healthAgents.sortOrder))
+}
+
+export async function getAllAgentsForAdmin(): Promise<HealthAgent[]> {
+  return db
+    .select()
+    .from(healthAgents)
+    .orderBy(asc(healthAgents.analysisRole), asc(healthAgents.sortOrder))
+}
+
+export async function getAgentById(id: string): Promise<HealthAgent | undefined> {
+  const results = await db
+    .select()
+    .from(healthAgents)
+    .where(eq(healthAgents.id, id))
+    .limit(1)
+  return results[0]
+}
+
+export async function countActiveFoundationAgents(): Promise<number> {
+  const result = await db
+    .select({ count: count() })
+    .from(healthAgents)
+    .where(and(eq(healthAgents.isActive, true), eq(healthAgents.analysisRole, 'foundation')))
+  return result[0]?.count ?? 0
 }
