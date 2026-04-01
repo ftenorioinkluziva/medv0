@@ -27,21 +27,31 @@ export function AnalysisCard({
     locale: ptBR,
   })
 
-  const isProcessing = analysisStatus === 'processing'
+  const statusVariant =
+    analysisStatus === 'processing'
+      ? 'warning'
+      : analysisStatus === 'failed'
+        ? 'destructive'
+        : 'success'
+
+  const statusLabel =
+    analysisStatus === 'processing'
+      ? 'Em andamento...'
+      : analysisStatus === 'failed'
+        ? 'Falhou'
+        : 'Concluída'
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm">Última Análise</CardTitle>
-          {isProcessing ? (
-            <Badge variant="warning" className="flex items-center gap-1">
+          <Badge variant={statusVariant} className={analysisStatus === 'processing' ? 'flex items-center gap-1' : undefined}>
+            {analysisStatus === 'processing' && (
               <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-              Em andamento...
-            </Badge>
-          ) : (
-            <Badge variant="success">Concluída</Badge>
-          )}
+            )}
+            {statusLabel}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -62,10 +72,10 @@ export function AnalysisCard({
           </div>
         </dl>
 
-        {!isProcessing && (
+        {analysisStatus === 'completed' && (
           <Link
             href={`/app/analyses/${analysisId}`}
-            className={cn(buttonVariants({ size: 'sm' }), 'w-full min-h-[44px]')}
+            className={cn(buttonVariants({ size: 'sm' }), 'w-full min-h-11')}
           >
             Ver relatório
           </Link>

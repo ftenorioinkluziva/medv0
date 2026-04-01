@@ -97,20 +97,21 @@ describe('extractAlteredMarkers', () => {
     expect(result.map((r) => r.status)).toEqual(['high', 'low', 'abnormal', 'borderline'])
   })
 
-  it('does not leak data across different userId contexts (isolation by data shape)', () => {
-    // #given — two separate structured data payloads simulating two users
-    const user1Doc = makeDoc([{ name: 'Glicose', value: '200', status: 'high' }])
-    const user2Doc = makeDoc([{ name: 'Colesterol', value: '220', status: 'abnormal' }])
+  it('does not mix markers from two independent structured data payloads', () => {
+    // #given — two independent payloads (data shape isolation; DB-level userId
+    // filtering is tested at the data-loading boundary in page.tsx, not here)
+    const payload1 = makeDoc([{ name: 'Glicose', value: '200', status: 'high' }])
+    const payload2 = makeDoc([{ name: 'Colesterol', value: '220', status: 'abnormal' }])
 
     // #when
-    const user1Result = extractAlteredMarkers(user1Doc)
-    const user2Result = extractAlteredMarkers(user2Doc)
+    const result1 = extractAlteredMarkers(payload1)
+    const result2 = extractAlteredMarkers(payload2)
 
-    // #then — each user's markers remain isolated
-    expect(user1Result.map((r) => r.name)).toContain('Glicose')
-    expect(user1Result.map((r) => r.name)).not.toContain('Colesterol')
-    expect(user2Result.map((r) => r.name)).toContain('Colesterol')
-    expect(user2Result.map((r) => r.name)).not.toContain('Glicose')
+    // #then
+    expect(result1.map((r) => r.name)).toContain('Glicose')
+    expect(result1.map((r) => r.name)).not.toContain('Colesterol')
+    expect(result2.map((r) => r.name)).toContain('Colesterol')
+    expect(result2.map((r) => r.name)).not.toContain('Glicose')
   })
 
   it('handles undefined status as not altered', () => {

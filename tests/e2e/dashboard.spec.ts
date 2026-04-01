@@ -126,7 +126,18 @@ test.describe('Dashboard — Empty state for new user', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Dashboard — Skeleton loader', () => {
-  test.use({ viewport: { width: 390, height: 844 } })
+  test.beforeAll(() => {
+    if (!fs.existsSync(STORAGE.done)) {
+      test.skip(
+        true,
+        'Auth state missing — run: pnpm test:e2e:seed && playwright test --project=auth-setup',
+      )
+    }
+  })
+  test.use({
+    storageState: STORAGE.done,
+    viewport: { width: 390, height: 844 },
+  })
 
   test('T-DB-06 — skeleton aria-label visible while page loads (SSR check)', async ({ page }) => {
     // #given — intercept RSC payload to hold data fetch and expose the suspense skeleton

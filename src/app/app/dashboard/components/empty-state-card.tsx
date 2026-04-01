@@ -58,7 +58,7 @@ export function EmptyStateCard({ variant, documentId }: EmptyStateCardProps) {
           </p>
         </div>
         <Link
-          href={documentId ? `/app/analyses/run?documentId=${documentId}` : '/app/upload'}
+          href={documentId ? `/app/analyses/run?documentId=${encodeURIComponent(documentId)}` : '/app/upload'}
           className={cn(buttonVariants(), 'min-h-[44px] w-full')}
         >
           Analisar
