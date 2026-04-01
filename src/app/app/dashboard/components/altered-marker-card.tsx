@@ -14,7 +14,7 @@ function getIndicator(status: MarkerStatus): { symbol: string; className: string
     return { symbol: '↑', className: 'text-destructive' }
   }
   if (status === 'low') {
-    return { symbol: '↓', className: 'text-blue-400' }
+    return { symbol: '↓', className: 'text-info' }
   }
   return { symbol: '⚠', className: 'text-yellow-500' }
 }

@@ -1,6 +1,6 @@
 import { SessionProvider } from 'next-auth/react'
 import { auth } from '@/lib/auth/config'
-import { BottomNav } from './dashboard/components/bottom-nav'
+import { BottomNav } from './components/bottom-nav'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()

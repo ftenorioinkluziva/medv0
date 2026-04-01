@@ -88,6 +88,11 @@ test.describe('Dashboard — Mobile Viewport (390px)', () => {
 // ---------------------------------------------------------------------------
 // Suite 3: Empty state (new user — no auth state needed if using new account)
 // ---------------------------------------------------------------------------
+// NOTE (L3 from QA gate): T-DB-05 uses the shared auth storage state (a user that may have
+// exams). It does not verify the actual empty-state flow for a new user with zero documents.
+// To cover that path, add a dedicated E2E fixture: tests/e2e/fixtures/new-user-storage.json
+// seeded via pnpm test:e2e:seed --user=new, then assert EmptyStateCard is rendered.
+// Tracked: docs/stories/5.1.story.md — future improvement, not blocking AC coverage.
 
 test.describe('Dashboard — Empty state for new user', () => {
   test.beforeAll(() => {
@@ -124,8 +129,8 @@ test.describe('Dashboard — Skeleton loader', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
   test('T-DB-06 — skeleton aria-label visible while page loads (SSR check)', async ({ page }) => {
-    // #given — intercept to slow down data fetch and check for skeleton
-    let resolveDelay: () => void
+    // #given — intercept RSC payload to hold data fetch and expose the suspense skeleton
+    let resolveDelay!: () => void
     const delayPromise = new Promise<void>((resolve) => { resolveDelay = resolve })
 
     await page.route('**/_next/data/**dashboard**', async (route) => {
@@ -133,20 +138,24 @@ test.describe('Dashboard — Skeleton loader', () => {
       await route.continue()
     })
 
-    // #when
+    // #when — navigate without awaiting so we can observe interim state
     const navPromise = page.goto('/app/dashboard')
 
-    // #then — skeleton should be present in DOM (SSR renders it as fallback)
-    // Check that the page has a loading indicator during suspense
-    await page.waitForSelector('[aria-label="Carregando dashboard..."]', {
-      timeout: 3000,
-      state: 'attached',
-    }).catch(() => {
-      // Skeleton may already be replaced if SSR is fast — that's acceptable
-    })
+    // #then — skeleton must be attached before data resolves
+    const skeletonVisible = await page
+      .waitForSelector('[aria-label="Carregando dashboard..."]', {
+        timeout: 3000,
+        state: 'attached',
+      })
+      .then(() => true)
+      .catch(() => false)
 
-    resolveDelay!()
+    resolveDelay()
     await navPromise
     await page.waitForLoadState('networkidle')
+
+    // If SSR is so fast the skeleton never hits the DOM, the test documents it explicitly
+    // rather than silently passing — a skeletonVisible=false result should be investigated
+    expect(skeletonVisible, 'DashboardSkeleton should be visible during suspense — if SSR resolves before first paint, add data-testid and assert on network-idle instead').toBe(true)
   })
 })

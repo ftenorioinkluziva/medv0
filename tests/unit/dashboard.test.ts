@@ -1,18 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
-
-// Pure helper — extracted for testability
-const NORMAL_STATUSES = new Set(['normal', 'n/a'])
-const MAX_ALTERED_MARKERS = 8
-
-function extractAlteredMarkers(structuredData: SanitizedMedicalDocument | null) {
-  if (!structuredData?.modules) return []
-  return structuredData.modules
-    .flatMap((m) => m.parameters ?? [])
-    .filter((p) => p.status != null && !NORMAL_STATUSES.has(p.status))
-    .slice(0, MAX_ALTERED_MARKERS)
-    .map((p) => ({ name: p.name, value: p.value, unit: p.unit, status: p.status }))
-}
+import { extractAlteredMarkers } from '@/lib/dashboard/markers'
 
 function makeDoc(params: Array<{ name: string; value: string; status: string }>): SanitizedMedicalDocument {
   return {
