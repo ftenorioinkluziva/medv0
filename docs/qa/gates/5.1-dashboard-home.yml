@@ -1,0 +1,88 @@
+schema: 1
+story: '5.1'
+story_title: 'Dashboard & Home'
+gate: CONCERNS
+status_reason: 'Implementation is solid and all ACs are met. Two medium-severity concerns: test logic is copy-pasted from production (not testing the real function) and T-DB-06 E2E skeleton test is vacuous due to swallowed assertion.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-31T19:00:00Z'
+
+top_issues:
+  - id: M1
+    severity: medium
+    category: tests
+    description: 'extractAlteredMarkers is duplicated in tests/unit/dashboard.test.ts — it is a copy of the function in page.tsx, not an import. If production logic changes, tests will not catch the regression.'
+    recommendation: 'Extract extractAlteredMarkers to a shared utility (e.g., lib/dashboard/markers.ts) and import it in both page.tsx and the test file.'
+    suggested_owner: dev
+
+  - id: M2
+    severity: medium
+    category: tests
+    description: 'T-DB-06 (skeleton E2E test) always passes — the assertion is inside a .catch(() => {}) that swallows failures. The test has no value as a quality gate.'
+    recommendation: 'Remove the catch block or assert positively with a documented skip condition. If the SSR skeleton is not reliably detectable, add a data-testid to DashboardSkeleton and assert its presence before navigation completes.'
+    suggested_owner: dev
+
+  - id: L1
+    severity: low
+    category: code
+    description: 'text-blue-400 in altered-marker-card.tsx is a hardcoded Tailwind color, not a semantic design token.'
+    recommendation: 'Use a semantic token consistent with the design system (e.g., text-info or a custom CSS variable) to support theming.'
+    suggested_owner: dev
+
+  - id: L2
+    severity: low
+    category: code
+    description: 'BottomNav component lives in src/app/app/dashboard/components/ but is rendered by the (app) layout — it serves all app routes, not just dashboard.'
+    recommendation: 'Move to src/app/app/components/bottom-nav.tsx or src/components/app/bottom-nav.tsx for better structural clarity.'
+    suggested_owner: dev
+
+  - id: L3
+    severity: low
+    category: tests
+    description: 'T-DB-05 uses the shared auth storage state (a user that may have exams). It does not verify the actual empty-state flow for a new user with zero documents.'
+    recommendation: 'Add a dedicated E2E test with a seeded new-user fixture to verify the no-exam empty state card renders.'
+    suggested_owner: dev
+
+waiver:
+  active: false
+
+quality_score: 80
+
+expires: '2026-04-14T19:00:00Z'
+
+evidence:
+  tests_reviewed:
+    unit: 8
+    e2e: 6
+  risks_identified: 2
+  lint: PASS
+  typecheck: PASS
+  all_unit_tests: PASS
+  trace:
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Auth guard via await auth() before any data access. All DB queries scoped to session.user.id. No dangerouslySetInnerHTML. Drizzle ORM prevents SQL injection.'
+  performance:
+    status: PASS
+    notes: 'Parallel queries via Promise.all. LIMIT 1 on all queries. Suspense boundary enables streaming skeleton. Client boundary pushed to DashboardContent.'
+  reliability:
+    status: PASS
+    notes: 'Optional chaining on structuredData.modules handles undefined gracefully. Empty/null returns handled at every data path.'
+  maintainability:
+    status: CONCERNS
+    notes: 'extractAlteredMarkers duplicated between page.tsx and test file. BottomNav placement is architecturally misaligned with its usage scope.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Extract extractAlteredMarkers to lib/dashboard/markers.ts (fixes M1 and enables coverage)'
+      refs: ['src/app/app/dashboard/page.tsx', 'tests/unit/dashboard.test.ts']
+    - action: 'Fix T-DB-06 skeleton test — remove catch or add testid assertion'
+      refs: ['tests/e2e/dashboard.spec.ts']
+    - action: 'Move BottomNav to src/app/app/components/'
+      refs: ['src/app/app/dashboard/components/bottom-nav.tsx', 'src/app/app/layout.tsx']
+    - action: 'Replace text-blue-400 with semantic color token'
+      refs: ['src/app/app/dashboard/components/altered-marker-card.tsx']
