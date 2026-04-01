@@ -45,6 +45,9 @@ export function AgentForm({ agent }: AgentFormProps) {
 
       if ('error' in result) {
         toast.error(result.error)
+      } else {
+        toast.success(agent ? 'Agente atualizado com sucesso' : 'Agente criado com sucesso')
+        router.push('/admin/agents')
       }
     })
   }

@@ -23,6 +23,7 @@ import {
 } from '@/lib/db/queries/health-agents'
 import {
   createAgentAction,
+  updateAgentAction,
   toggleAgentAction,
   deleteAgentAction,
 } from '@/app/admin/agents/_actions/agents'
@@ -160,6 +161,92 @@ describe('toggleAgentAction', () => {
     // #then
     expect(result).toEqual({ success: true })
     expect(getAgentById).not.toHaveBeenCalled()
+    expect(db.update).toHaveBeenCalled()
+  })
+})
+
+describe('updateAgentAction', () => {
+  it('retorna erro quando agente não existe', async () => {
+    // #given
+    ;(getAgentById as ReturnType<typeof vi.fn>).mockResolvedValue(undefined)
+
+    // #when
+    const result = await updateAgentAction('nonexistent', makeFormData())
+
+    // #then
+    expect(result).toEqual({ error: 'Agente não encontrado' })
+    expect(db.update).not.toHaveBeenCalled()
+  })
+
+  it('retorna erro para dados inválidos (systemPrompt curto)', async () => {
+    // #given
+    ;(getAgentById as ReturnType<typeof vi.fn>).mockResolvedValue(mockSpecializedAgent)
+    const fd = makeFormData({ systemPrompt: 'curto demais' })
+
+    // #when
+    const result = await updateAgentAction('agent-2', fd)
+
+    // #then
+    expect(result).toEqual({ error: 'System prompt deve ter no mínimo 50 caracteres' })
+    expect(db.update).not.toHaveBeenCalled()
+  })
+
+  it('atualiza agente com dados válidos', async () => {
+    // #given
+    ;(getAgentById as ReturnType<typeof vi.fn>).mockResolvedValue(mockSpecializedAgent)
+
+    // #when
+    await updateAgentAction('agent-2', makeFormData({ name: 'Atualizado' }))
+
+    // #then
+    expect(db.update).toHaveBeenCalled()
+  })
+
+  it('bloqueia alteração de role do único foundation ativo', async () => {
+    // #given
+    ;(getAgentById as ReturnType<typeof vi.fn>).mockResolvedValue(mockFoundationAgent)
+    ;(countActiveFoundationAgents as ReturnType<typeof vi.fn>).mockResolvedValue(1)
+    const fd = makeFormData({ analysisRole: 'specialized' })
+
+    // #when
+    const result = await updateAgentAction('agent-1', fd)
+
+    // #then
+    expect(result).toEqual({
+      error:
+        'Pelo menos 1 agente foundation deve estar ativo. Não é possível alterar o role do único foundation ativo.',
+    })
+    expect(db.update).not.toHaveBeenCalled()
+  })
+
+  it('bloqueia desativação do único foundation ativo via isActive=false', async () => {
+    // #given
+    ;(getAgentById as ReturnType<typeof vi.fn>).mockResolvedValue(mockFoundationAgent)
+    ;(countActiveFoundationAgents as ReturnType<typeof vi.fn>).mockResolvedValue(1)
+    const fd = makeFormData({ analysisRole: 'foundation' })
+    fd.delete('isActive') // sem isActive = checkbox desmarcado = false
+
+    // #when
+    const result = await updateAgentAction('agent-1', fd)
+
+    // #then
+    expect(result).toEqual({
+      error:
+        'Pelo menos 1 agente foundation deve estar ativo. Não é possível alterar o role do único foundation ativo.',
+    })
+    expect(db.update).not.toHaveBeenCalled()
+  })
+
+  it('permite alterar role quando há múltiplos foundations ativos', async () => {
+    // #given
+    ;(getAgentById as ReturnType<typeof vi.fn>).mockResolvedValue(mockFoundationAgent)
+    ;(countActiveFoundationAgents as ReturnType<typeof vi.fn>).mockResolvedValue(2)
+    const fd = makeFormData({ analysisRole: 'specialized' })
+
+    // #when
+    await updateAgentAction('agent-1', fd)
+
+    // #then
     expect(db.update).toHaveBeenCalled()
   })
 })

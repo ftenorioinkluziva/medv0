@@ -19,7 +19,10 @@ const AgentSchema = z.object({
   maxTokens: z
     .string()
     .optional()
-    .transform((v) => (v === '' || v === undefined ? null : parseInt(v, 10))),
+    .transform((v) => {
+      if (v === '' || v === undefined) return null
+      return /^\d+$/.test(v) ? parseInt(v, 10) : null
+    }),
   sortOrder: z.coerce.number().int().min(0),
   isActive: z.boolean(),
 })
@@ -78,8 +81,10 @@ export async function updateAgentAction(
 
   const isChangingFromFoundation =
     agent.analysisRole === 'foundation' && parsed.data.analysisRole !== 'foundation'
+  const isDeactivatingFoundation =
+    agent.analysisRole === 'foundation' && agent.isActive && parsed.data.isActive === false
 
-  if (isChangingFromFoundation && agent.isActive) {
+  if ((isChangingFromFoundation && agent.isActive) || isDeactivatingFoundation) {
     const foundationCount = await countActiveFoundationAgents()
     if (foundationCount <= 1) {
       return {

@@ -41,16 +41,20 @@ interface AgentsTableProps {
 }
 
 export function AgentsTable({ agents }: AgentsTableProps) {
-  const [pending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
   const [pendingDeactivate, setPendingDeactivate] = useState<HealthAgent | null>(null)
   const [pendingDelete, setPendingDelete] = useState<HealthAgent | null>(null)
+  const [deactivatingIds, setDeactivatingIds] = useState<Set<string>>(new Set())
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
 
   function confirmToggle() {
     if (!pendingDeactivate) return
     const agent = pendingDeactivate
     setPendingDeactivate(null)
+    setDeactivatingIds((prev) => new Set(prev).add(agent.id))
     startTransition(async () => {
       const result = await toggleAgentAction(agent.id, true)
+      setDeactivatingIds((prev) => { const next = new Set(prev); next.delete(agent.id); return next })
       if ('error' in result) {
         toast.error(result.error)
       } else {
@@ -60,8 +64,10 @@ export function AgentsTable({ agents }: AgentsTableProps) {
   }
 
   function handleActivate(agent: HealthAgent) {
+    setDeactivatingIds((prev) => new Set(prev).add(agent.id))
     startTransition(async () => {
       const result = await toggleAgentAction(agent.id, false)
+      setDeactivatingIds((prev) => { const next = new Set(prev); next.delete(agent.id); return next })
       if ('error' in result) {
         toast.error(result.error)
       } else {
@@ -74,8 +80,10 @@ export function AgentsTable({ agents }: AgentsTableProps) {
     if (!pendingDelete) return
     const agent = pendingDelete
     setPendingDelete(null)
+    setDeletingIds((prev) => new Set(prev).add(agent.id))
     startTransition(async () => {
       const result = await deleteAgentAction(agent.id)
+      setDeletingIds((prev) => { const next = new Set(prev); next.delete(agent.id); return next })
       if ('error' in result) {
         toast.error(result.error)
       } else {
@@ -111,7 +119,7 @@ export function AgentsTable({ agents }: AgentsTableProps) {
                 <TableCell>
                   <Switch
                     checked={agent.isActive}
-                    disabled={pending}
+                    disabled={deactivatingIds.has(agent.id)}
                     onClick={() =>
                       agent.isActive
                         ? setPendingDeactivate(agent)
@@ -132,7 +140,7 @@ export function AgentsTable({ agents }: AgentsTableProps) {
                     <Button
                       variant="destructive"
                       size="sm"
-                      disabled={pending}
+                      disabled={deletingIds.has(agent.id)}
                       onClick={() => setPendingDelete(agent)}
                     >
                       Excluir
