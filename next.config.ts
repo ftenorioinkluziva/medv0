@@ -4,6 +4,7 @@ import withPWA from '@ducanh2912/next-pwa'
 const nextConfig: NextConfig = {
   output: 'standalone',
   experimental: {},
+  turbopack: {},
   async redirects() {
     return [
       {
