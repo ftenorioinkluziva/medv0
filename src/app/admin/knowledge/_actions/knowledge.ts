@@ -12,7 +12,11 @@ export async function deleteArticleAction(id: string): Promise<ActionResult> {
   const article = await getArticleById(id)
   if (!article) return { error: 'Artigo não encontrado' }
 
-  await db.delete(knowledgeBase).where(eq(knowledgeBase.id, id))
+  try {
+    await db.delete(knowledgeBase).where(eq(knowledgeBase.id, id))
+  } catch {
+    return { error: 'Erro ao remover artigo. Tente novamente.' }
+  }
 
   revalidatePath('/admin/knowledge')
   return { success: true }
