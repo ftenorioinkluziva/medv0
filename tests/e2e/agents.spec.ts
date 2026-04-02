@@ -33,19 +33,20 @@ test.describe('Admin Agents CRUD', () => {
     const count = await rows.count()
     expect(count).toBeGreaterThan(0)
 
-    // Find a specialized agent row that is currently INACTIVE (safe to toggle without AlertDialog)
+    // Find any specialized agent row (regardless of current state)
     const specializedRow = page
       .locator('tbody tr')
       .filter({ hasText: 'Specialized' })
-      .filter({ has: page.locator('button[role="switch"][aria-checked="false"]') })
       .first()
 
     const switchEl = specializedRow.locator('button[role="switch"]')
+    const currentState = await switchEl.getAttribute('aria-checked')
+    const expectedState = currentState === 'true' ? 'false' : 'true'
 
-    // #when — click the switch (inactive → active, no confirmation dialog)
+    // #when — click the switch to toggle state
     await switchEl.click()
 
-    // #then — switch is now active
-    await expect(switchEl).toHaveAttribute('aria-checked', 'true')
+    // #then — switch reflects the toggled state
+    await expect(switchEl).toHaveAttribute('aria-checked', expectedState)
   })
 })

@@ -1,0 +1,20 @@
+schema: 1
+story: '6.3'
+gate: PASS
+status_reason: >
+  Todos os ACs atendidos — listagem, busca, remoção com cascade e nav link. Lint,
+  typecheck e 176/176 testes passando. Dois itens de baixa severidade registrados
+  para acompanhamento.
+reviewer: Quinn
+updated: '2026-04-01T22:16:00Z'
+top_issues:
+  - id: MNT-001
+    severity: low
+    finding: 'deleteArticleAction sem try-catch — erros de DB propagam como exceção não tratada em vez de retornar { error: string }'
+    suggested_action: 'Envolver o db.delete em try-catch na próxima refatoração de Server Actions (padrão consistente com Story 6.2)'
+    resolution: 'FIXED by @dev (2026-04-01) — try-catch adicionado em deleteArticleAction'
+  - id: TEST-001
+    severity: low
+    finding: 'Testes de getAllArticlesForAdmin e searchArticles são tautológicos — mockam as próprias funções, não validam lógica Drizzle'
+    suggested_action: 'Considerar testes de integração contra DB real em epic futuro de qualidade; aceitável como unit test MVP'
+waiver: { active: false }
