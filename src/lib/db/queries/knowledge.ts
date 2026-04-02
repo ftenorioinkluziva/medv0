@@ -6,14 +6,19 @@ export async function getAllArticlesForAdmin(): Promise<KnowledgeBase[]> {
   return db.select().from(knowledgeBase).orderBy(desc(knowledgeBase.createdAt))
 }
 
+function escapeLikePattern(str: string): string {
+  return str.replace(/[%_\\]/g, '\\$&')
+}
+
 export async function searchArticles(query: string): Promise<KnowledgeBase[]> {
+  const escaped = escapeLikePattern(query)
   return db
     .select()
     .from(knowledgeBase)
     .where(
       or(
-        ilike(knowledgeBase.title, `%${query}%`),
-        ilike(knowledgeBase.category, `%${query}%`),
+        ilike(knowledgeBase.title, `%${escaped}%`),
+        ilike(knowledgeBase.category, `%${escaped}%`),
       ),
     )
     .orderBy(desc(knowledgeBase.createdAt))

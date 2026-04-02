@@ -163,7 +163,7 @@ export function AgentForm({ agent }: AgentFormProps) {
             min={1}
           />
         </div>
-        {analysisRole === 'foundation' && (
+        {analysisRole === 'foundation' ? (
           <div className="space-y-2">
             <Label htmlFor="sortOrder">Sort Order</Label>
             <Input
@@ -174,6 +174,8 @@ export function AgentForm({ agent }: AgentFormProps) {
               min={0}
             />
           </div>
+        ) : (
+          <input type="hidden" name="sortOrder" value={agent?.sortOrder ?? 0} />
         )}
       </div>
 
