@@ -51,6 +51,19 @@ export function ExamCard({ doc, evolution }: Props) {
     month: 'short',
     year: 'numeric',
   })
+  const analysisStatus = doc.completeAnalysis?.status ?? null
+  const actionHref =
+    analysisStatus === 'completed' || analysisStatus === 'processing'
+      ? `/app/analyses/${doc.completeAnalysis?.id}`
+      : `/app/analyses/run?documentId=${encodeURIComponent(doc.id)}`
+  const actionLabel =
+    analysisStatus === 'completed'
+      ? 'Ver relatório'
+      : analysisStatus === 'processing'
+        ? 'Acompanhar análise'
+        : analysisStatus === 'failed'
+          ? 'Tentar novamente'
+          : 'Analisar'
 
   return (
     <div className="rounded-xl ring-1 ring-foreground/10 p-4 space-y-3">
@@ -74,14 +87,12 @@ export function ExamCard({ doc, evolution }: Props) {
         </div>
       )}
 
-      {doc.completeAnalysis && (
-        <Link
-          href={`/app/analyses/${doc.completeAnalysis.id}`}
-          className={cn(buttonVariants({ variant: 'outline' }), 'w-full min-h-11 text-sm justify-center')}
-        >
-          Ver relatório
-        </Link>
-      )}
+      <Link
+        href={actionHref}
+        className={cn(buttonVariants({ variant: analysisStatus === 'completed' ? 'outline' : 'default' }), 'w-full min-h-11 text-sm justify-center')}
+      >
+        {actionLabel}
+      </Link>
     </div>
   )
 }

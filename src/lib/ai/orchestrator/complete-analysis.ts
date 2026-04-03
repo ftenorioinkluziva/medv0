@@ -73,12 +73,26 @@ interface AgentOutput {
   status: 'completed' | 'timeout' | 'error'
 }
 
+function readTimeoutMs(envName: string, fallbackMs: number): number {
+  const rawValue = process.env[envName]
+  if (!rawValue) return fallbackMs
+
+  const parsed = Number.parseInt(rawValue, 10)
+  if (Number.isNaN(parsed) || parsed <= 0) return fallbackMs
+
+  return parsed
+}
+
 export async function runCompleteAnalysis(
   userId: string,
   documentId: string,
   completeAnalysisId: string,
 ): Promise<void> {
   const startMs = Date.now()
+  const hardTimeoutMs = readTimeoutMs('COMPLETE_ANALYSIS_TIMEOUT_MS', 180_000)
+  const foundationTimeoutMs = readTimeoutMs('FOUNDATION_AGENT_TIMEOUT_MS', 45_000)
+  const specializedTimeoutMs = readTimeoutMs('SPECIALIZED_AGENT_TIMEOUT_MS', 45_000)
+  const synthesisTimeoutMs = readTimeoutMs('SYNTHESIS_TIMEOUT_MS', 45_000)
 
   await db
     .update(completeAnalyses)
@@ -119,18 +133,21 @@ export async function runCompleteAnalysis(
     const foundationAgents = await getActiveAgentsByRole('foundation')
     const specializedAgents = await getActiveAgentsByRole('specialized')
 
+    if (foundationAgents.length === 0 || specializedAgents.length === 0) {
+      throw new Error('No active foundation/specialized agents configured')
+    }
+
     const agentOutputs: AgentOutput[] = []
     const foundationOutputs: AgentOutput[] = []
 
     // Phase 1 — Foundation (sequential)
-    const HARD_TIMEOUT_MS = 60_000
-    const globalDeadline = startMs + HARD_TIMEOUT_MS
+    const globalDeadline = startMs + hardTimeoutMs
 
     for (const agent of foundationAgents) {
       if (Date.now() >= globalDeadline) break
 
       const remainingMs = globalDeadline - Date.now()
-      const timeoutMs = Math.min(30_000, remainingMs)
+      const timeoutMs = Math.min(foundationTimeoutMs, remainingMs)
 
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
@@ -182,7 +199,7 @@ export async function runCompleteAnalysis(
       if (Date.now() >= globalDeadline) return
 
       const remainingMs = globalDeadline - Date.now()
-      const timeoutMs = Math.min(20_000, remainingMs)
+      const timeoutMs = Math.min(specializedTimeoutMs, remainingMs)
 
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
@@ -246,7 +263,7 @@ export async function runCompleteAnalysis(
         const synthController = new AbortController()
         const synthTimeoutId = setTimeout(
           () => synthController.abort(),
-          Math.min(30_000, remainingMs),
+          Math.min(synthesisTimeoutMs, remainingMs),
         )
 
         try {

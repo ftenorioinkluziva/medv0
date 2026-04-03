@@ -114,6 +114,12 @@ DATABASE_URL="postgresql://..."
 GOOGLE_GENERATIVE_AI_API_KEY="..."
 NEXTAUTH_SECRET="..."        # openssl rand -base64 32
 NEXTAUTH_URL="http://localhost:3000"
+
+# Timeouts do pipeline multi-agente (opcional)
+COMPLETE_ANALYSIS_TIMEOUT_MS="180000"
+FOUNDATION_AGENT_TIMEOUT_MS="45000"
+SPECIALIZED_AGENT_TIMEOUT_MS="45000"
+SYNTHESIS_TIMEOUT_MS="45000"
 ```
 
 ---
@@ -135,6 +141,49 @@ pnpm db:setup
 ```
 
 **Workflow de schema:** Modificar `src/lib/db/schema/` → `pnpm db:generate` → `pnpm db:migrate`
+
+**Importante:** `pnpm db:seed` depende de `DATABASE_URL` disponível no ambiente para popular `health_agents`. Sem os agentes ativos, a geração de relatórios não inicia corretamente.
+
+---
+
+## Fluxo de Análise
+
+O início da análise usa a rota de página `/app/analyses/run`, que dispara o POST em `/api/analyses/run` e redireciona para `/app/analyses/{completeAnalysisId}` quando o processamento é criado.
+
+Proteções implementadas no fluxo:
+
+- IDs inválidos em `/app/analyses/[id]` são rejeitados antes de consultar o banco
+- `documentId` inválido em `/app/analyses/run` exibe erro amigável em vez de quebrar a página
+- O orquestrador falha explicitamente se não houver agentes `foundation` e `specialized` ativos
+- Os timeouts por fase podem ser ajustados por variáveis de ambiente
+
+### Timeouts atuais
+
+- Workflow completo: `180000ms`
+- Cada agente foundation: `45000ms`
+- Cada agente specialized: `45000ms`
+- Síntese final: `45000ms`
+
+---
+
+## Troubleshooting
+
+### Relatório não foi gerado
+
+Se a página de relatório mostrar "Não foi possível gerar o relatório", verifique:
+
+1. Se a tabela `health_agents` foi populada com `pnpm db:seed`
+2. Se existem agentes ativos `foundation` e `specialized`
+3. Se `DATABASE_URL` está carregada corretamente no ambiente
+4. Se os timeouts do pipeline estão adequados para o ambiente atual
+
+### `pnpm db:migrate` falha sem stack útil
+
+Se o `drizzle-kit migrate` falhar só com `ELIFECYCLE`, o problema pode estar no estado da tabela `drizzle.__drizzle_migrations`, e não no SQL da migration em si.
+
+### `invalid input syntax for type uuid`
+
+Esse erro normalmente indica que uma rota dinâmica recebeu um valor textual onde o backend esperava UUID. O fluxo atual de `/app/analyses/run` já protege esse caso para análises.
 
 ---
 

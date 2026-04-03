@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 import { extractMedicalDocument } from '@/lib/documents/extractor'
 import { persistSnapshot } from '@/lib/documents/persistence'
+import {
+  DOCUMENT_UPLOAD_ACCEPTED_TYPES,
+  DOCUMENT_UPLOAD_MAX_SIZE_BYTES,
+  DOCUMENT_UPLOAD_SERVER_MAX_DURATION_SECONDS,
+} from '@/lib/documents/upload-config'
 
-export const maxDuration = 60
-
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'application/pdf']
-const MAX_SIZE_BYTES = 20 * 1024 * 1024 // 20MB
+export const maxDuration = DOCUMENT_UPLOAD_SERVER_MAX_DURATION_SECONDS
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await auth()
@@ -26,14 +28,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Nenhum arquivo enviado.' }, { status: 400 })
   }
 
-  if (!ACCEPTED_TYPES.includes(file.type)) {
+  if (!DOCUMENT_UPLOAD_ACCEPTED_TYPES.includes(file.type)) {
     return NextResponse.json(
       { error: 'Tipo de arquivo não suportado. Use PDF, JPG ou PNG.' },
       { status: 422 },
     )
   }
 
-  if (file.size > MAX_SIZE_BYTES) {
+  if (file.size > DOCUMENT_UPLOAD_MAX_SIZE_BYTES) {
     return NextResponse.json(
       { error: 'Arquivo muito grande. Tamanho máximo: 20MB.' },
       { status: 422 },
@@ -41,15 +43,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // Processar em memória — nunca persistir o arquivo original
-  const buffer = Buffer.from(await file.arrayBuffer())
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer())
 
-  const structuredData = await extractMedicalDocument(buffer, file.name, file.type)
+    const structuredData = await extractMedicalDocument(buffer, file.name, file.type)
 
-  const { documentId } = await persistSnapshot({
-    userId: session.user.id,
-    fileName: file.name,
-    structuredData,
-  })
+    const { documentId } = await persistSnapshot({
+      userId: session.user.id,
+      fileName: file.name,
+      structuredData,
+    })
 
-  return NextResponse.json({ success: true, documentId, fileName: file.name })
+    return NextResponse.json({ success: true, documentId, fileName: file.name })
+  } catch (error) {
+    console.error('[documents/upload] failed:', error)
+    return NextResponse.json({ error: 'Erro interno ao salvar o exame.' }, { status: 500 })
+  }
 }

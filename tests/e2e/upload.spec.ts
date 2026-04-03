@@ -153,6 +153,32 @@ test.describe('Upload — Authenticated', () => {
       await expect(page.getByText(/Exame processado/)).toBeVisible({ timeout: 5_000 })
     })
 
+    test('T-UP-08A — slow successful upload does not show premature timeout', async ({ page }) => {
+      // #given
+      await page.route('**/api/documents/upload', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 35_000))
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            success: true,
+            documentId: '00000000-0000-0000-0000-000000000003',
+            fileName: 'sample-exam.jpg',
+          }),
+        })
+      })
+
+      const fileInput = page.locator('input[aria-label="Selecionar arquivo"]')
+      await fileInput.setInputFiles(path.join(FIXTURES_DIR, 'sample-exam.jpg'))
+
+      // #when
+      await page.getByRole('button', { name: 'Enviar exame' }).click()
+
+      // #then
+      await expect(page.getByText('Concluído!')).toBeVisible({ timeout: 45_000 })
+      await expect(page.getByText(/Tempo esgotado\. Tente novamente\./)).not.toBeVisible()
+    })
+
     test('T-UP-09 — API error shows error toast and resets to idle', async ({ page }) => {
       // #given
       await page.route('**/api/documents/upload', async (route) => {

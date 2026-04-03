@@ -7,9 +7,11 @@ import { Camera, FileText, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'application/pdf']
-const MAX_SIZE_BYTES = 20 * 1024 * 1024
+import {
+  DOCUMENT_UPLOAD_ACCEPTED_TYPES,
+  DOCUMENT_UPLOAD_CLIENT_TIMEOUT_MS,
+  DOCUMENT_UPLOAD_MAX_SIZE_BYTES,
+} from '@/lib/documents/upload-config'
 
 type UploadStep = 'idle' | 'preparing' | 'uploading' | 'extracting' | 'saving' | 'done'
 
@@ -52,11 +54,11 @@ export function UploadForm() {
 
   function handleFileSelected(file: File) {
     if (preview?.previewUrl) URL.revokeObjectURL(preview.previewUrl)
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+    if (!DOCUMENT_UPLOAD_ACCEPTED_TYPES.includes(file.type)) {
       toast.error('Tipo não suportado. Use PDF, JPG ou PNG.')
       return
     }
-    if (file.size > MAX_SIZE_BYTES) {
+    if (file.size > DOCUMENT_UPLOAD_MAX_SIZE_BYTES) {
       toast.error('Arquivo muito grande. Máximo: 20MB.')
       return
     }
@@ -88,7 +90,7 @@ export function UploadForm() {
       controller.abort()
       toast.error('Tempo esgotado. Tente novamente.')
       setStep('idle')
-    }, 30_000)
+    }, DOCUMENT_UPLOAD_CLIENT_TIMEOUT_MS)
 
     try {
       setStep('preparing')

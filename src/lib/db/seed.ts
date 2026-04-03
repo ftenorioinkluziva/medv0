@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { seedAdmin } from '@/lib/db/seed/admin'
 import { seedHealthAgents } from '@/lib/db/seed/health-agents'
 

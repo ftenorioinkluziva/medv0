@@ -5,10 +5,15 @@ import { db } from '@/lib/db/client'
 import { completeAnalyses } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AnalysisStatusCard } from './analysis-status-card'
 import { ReportView } from './report-view'
 
 interface AnalysisPageProps {
   params: Promise<{ id: string }>
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
 export default async function AnalysisPage({ params }: AnalysisPageProps) {
@@ -28,10 +33,20 @@ async function AnalysisContent({ id }: { id: string }) {
   const session = await auth()
   if (!session?.user?.id) redirect('/auth/login')
 
+  if (!isUuid(id)) {
+    return (
+      <div className="rounded-lg border bg-card p-6 text-center">
+        <p className="text-muted-foreground">Relatório não encontrado.</p>
+      </div>
+    )
+  }
+
   const [row] = await db
     .select({
+      documentId: completeAnalyses.documentId,
       reportMarkdown: completeAnalyses.reportMarkdown,
       createdAt: completeAnalyses.createdAt,
+      updatedAt: completeAnalyses.updatedAt,
       agentsCount: completeAnalyses.agentsCount,
       userId: completeAnalyses.userId,
       status: completeAnalyses.status,
@@ -58,17 +73,23 @@ async function AnalysisContent({ id }: { id: string }) {
 
   if (row.status === 'processing') {
     return (
-      <div className="rounded-lg border bg-card p-6 text-center">
-        <p className="text-muted-foreground">Análise em andamento. Aguarde alguns instantes.</p>
-      </div>
+      <AnalysisStatusCard
+        status="processing"
+        createdAt={row.createdAt}
+        updatedAt={row.updatedAt}
+        documentId={row.documentId}
+      />
     )
   }
 
   if (row.status === 'failed' || !row.reportMarkdown) {
     return (
-      <div className="rounded-lg border bg-card p-6 text-center">
-        <p className="text-muted-foreground">Não foi possível gerar o relatório.</p>
-      </div>
+      <AnalysisStatusCard
+        status="failed"
+        createdAt={row.createdAt}
+        updatedAt={row.updatedAt}
+        documentId={row.documentId}
+      />
     )
   }
 

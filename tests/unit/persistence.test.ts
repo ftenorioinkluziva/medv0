@@ -2,25 +2,28 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
 
 // Mock db before importing persistence
-const mockInsert = vi.fn()
 const mockReturning = vi.fn()
-const mockValues = vi.fn()
+const mockDocumentValues = vi.fn()
+const mockSnapshotValues = vi.fn()
+const mockDeleteWhere = vi.fn()
+const mockDelete = vi.fn(() => ({ where: mockDeleteWhere }))
 
-const mockTx = {
-  insert: vi.fn(() => ({ values: mockValues })),
-}
-
-mockValues.mockReturnValue({ returning: mockReturning })
+const mockInsert = vi.fn()
 
 vi.mock('@/lib/db/client', () => ({
   db: {
-    transaction: vi.fn(async (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx)),
+    insert: mockInsert,
+    delete: mockDelete,
   },
 }))
 
 vi.mock('@/lib/db/schema', () => ({
   documents: { id: 'documents.id' },
   snapshots: {},
+}))
+
+vi.mock('drizzle-orm', () => ({
+  eq: vi.fn(() => 'documents.id = doc-id'),
 }))
 
 const { persistSnapshot } = await import('@/lib/documents/persistence')
@@ -54,9 +57,13 @@ const VALID_DOCUMENT: SanitizedMedicalDocument = {
 describe('persistSnapshot', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockTx.insert.mockReturnValue({ values: mockValues })
-    mockValues.mockReturnValue({ returning: mockReturning })
+    mockInsert
+      .mockReturnValueOnce({ values: mockDocumentValues })
+      .mockReturnValueOnce({ values: mockSnapshotValues })
+    mockDelete.mockReturnValue({ where: mockDeleteWhere })
+    mockDocumentValues.mockReturnValue({ returning: mockReturning })
     mockReturning.mockResolvedValue([{ id: 'doc-uuid-123' }])
+    mockSnapshotValues.mockResolvedValue(undefined)
   })
 
   describe('successful persistence', () => {
@@ -87,7 +94,7 @@ describe('persistSnapshot', () => {
       await persistSnapshot(input)
 
       // #then
-      const insertValues = mockValues.mock.calls[0][0] as Record<string, unknown>
+      const insertValues = mockDocumentValues.mock.calls[0][0] as Record<string, unknown>
       expect(insertValues.userId).toBe('user-uuid-abc')
       expect(insertValues.originalFileName).toBe('exame.pdf')
       expect(insertValues.documentType).toBe('Hemograma Completo')
@@ -107,7 +114,7 @@ describe('persistSnapshot', () => {
       await persistSnapshot(input)
 
       // #then
-      const insertValues = mockValues.mock.calls[0][0] as Record<string, unknown>
+      const insertValues = mockDocumentValues.mock.calls[0][0] as Record<string, unknown>
       expect(insertValues.examDate).toBe('2024-01-15')
     })
 
@@ -124,7 +131,7 @@ describe('persistSnapshot', () => {
       await persistSnapshot(input)
 
       // #then
-      const insertValues = mockValues.mock.calls[0][0] as Record<string, unknown>
+      const insertValues = mockDocumentValues.mock.calls[0][0] as Record<string, unknown>
       expect(insertValues.examDate).toBeNull()
     })
 
@@ -140,13 +147,13 @@ describe('persistSnapshot', () => {
       await persistSnapshot(input)
 
       // #then
-      const snapshotValues = mockValues.mock.calls[1][0] as Record<string, unknown>
+      const snapshotValues = mockSnapshotValues.mock.calls[0][0] as Record<string, unknown>
       expect(snapshotValues.documentId).toBe('doc-uuid-123')
       expect(snapshotValues.userId).toBe('user-uuid-abc')
       expect(snapshotValues.structuredData).toEqual(VALID_DOCUMENT)
     })
 
-    it('should run both inserts inside a single transaction', async () => {
+    it('should run both inserts sequentially', async () => {
       // #given
       const input = {
         userId: 'user-uuid-abc',
@@ -158,8 +165,7 @@ describe('persistSnapshot', () => {
       await persistSnapshot(input)
 
       // #then
-      expect(vi.mocked(db).transaction).toHaveBeenCalledOnce()
-      expect(mockTx.insert).toHaveBeenCalledTimes(2)
+      expect(vi.mocked(db).insert).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -176,17 +182,20 @@ describe('persistSnapshot', () => {
       await persistSnapshot(input)
 
       // #then
-      const documentInsertValues = mockValues.mock.calls[0][0] as Record<string, unknown>
-      const snapshotInsertValues = mockValues.mock.calls[1][0] as Record<string, unknown>
+      const documentInsertValues = mockDocumentValues.mock.calls[0][0] as Record<string, unknown>
+      const snapshotInsertValues = mockSnapshotValues.mock.calls[0][0] as Record<string, unknown>
       expect(documentInsertValues.userId).toBe('specific-user-id')
       expect(snapshotInsertValues.userId).toBe('specific-user-id')
     })
   })
 
-  describe('rollback on failure', () => {
-    it('should propagate error when transaction fails', async () => {
+  describe('error handling', () => {
+    it('should propagate error when document insert fails', async () => {
       // #given
-      vi.mocked(db).transaction.mockRejectedValueOnce(new Error('DB connection failed'))
+      mockInsert.mockReset()
+      vi.mocked(db).insert.mockImplementationOnce(() => {
+        throw new Error('DB connection failed')
+      })
       const input = {
         userId: 'user-uuid-abc',
         fileName: 'exame.pdf',
@@ -197,20 +206,15 @@ describe('persistSnapshot', () => {
       await expect(persistSnapshot(input)).rejects.toThrow('DB connection failed')
     })
 
-    it('should propagate error when snapshot insert fails', async () => {
+    it('should propagate error when snapshot insert fails and cleanup document', async () => {
       // #given
-      vi.mocked(db).transaction.mockImplementationOnce(async (fn) => {
-        const failingTx = {
-          insert: vi.fn().mockReturnValueOnce({
-            values: vi.fn().mockReturnValue({
-              returning: vi.fn().mockResolvedValue([{ id: 'doc-id' }]),
-            }),
-          }).mockReturnValueOnce({
-            values: vi.fn().mockRejectedValue(new Error('Snapshot insert failed')),
-          }),
-        }
-        return fn(failingTx as never)
-      })
+      mockInsert
+        .mockReset()
+        .mockReturnValueOnce({ values: mockDocumentValues })
+        .mockReturnValueOnce({ values: mockSnapshotValues })
+      mockReturning.mockResolvedValueOnce([{ id: 'doc-id' }])
+      mockDocumentValues.mockReturnValueOnce({ returning: mockReturning })
+      mockSnapshotValues.mockRejectedValueOnce(new Error('Snapshot insert failed'))
       const input = {
         userId: 'user-uuid-abc',
         fileName: 'exame.pdf',
@@ -219,6 +223,8 @@ describe('persistSnapshot', () => {
 
       // #when / #then
       await expect(persistSnapshot(input)).rejects.toThrow('Snapshot insert failed')
+      expect(vi.mocked(db).delete).toHaveBeenCalledOnce()
+      expect(mockDeleteWhere).toHaveBeenCalledOnce()
     })
   })
 
@@ -237,7 +243,7 @@ describe('persistSnapshot', () => {
 
       // #then
       const after = new Date()
-      const insertValues = mockValues.mock.calls[0][0] as Record<string, unknown>
+      const insertValues = mockDocumentValues.mock.calls[0][0] as Record<string, unknown>
       expect(insertValues.extractedAt).toBeInstanceOf(Date)
       const extractedAt = insertValues.extractedAt as Date
       expect(extractedAt.getTime()).toBeGreaterThanOrEqual(before.getTime())
