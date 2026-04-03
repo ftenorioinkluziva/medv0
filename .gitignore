@@ -10,6 +10,7 @@
 # Dependencies (AIOX)
 node_modules/
 node_modules
+package-lock.json
 
 # Build & Logs (AIOX)
 dist/
