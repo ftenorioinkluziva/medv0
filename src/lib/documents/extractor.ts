@@ -57,12 +57,48 @@ Extraia os dados do documento com máxima precisão numérica.
 - Se um campo não existir no documento, omita-o ou use null`
 
 async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  // Import from the internal lib path to avoid pdf-parse loading its test fixture on startup
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mod = await import('pdf-parse/lib/pdf-parse.js' as any)
-  const parse = (typeof mod === 'function' ? mod : mod.default) as (b: Buffer) => Promise<{ text: string }>
-  const data = await parse(buffer)
-  return data.text
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) })
+  const document = await loadingTask.promise
+
+  try {
+    const chunks: string[] = []
+
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      const page = await document.getPage(pageNumber)
+      const textContent = await page.getTextContent({
+        normalizeWhitespace: false,
+        disableCombineTextItems: false,
+      })
+
+      const lines: string[] = []
+      let lastY: number | null = null
+
+      for (const item of textContent.items as Array<{ str?: string; transform?: number[] }>) {
+        if (!item.str) continue
+
+        const y = item.transform?.[5] ?? null
+        if (lastY === null || y === null || y === lastY) {
+          const index = lines.length - 1
+          if (index >= 0) {
+            lines[index] = `${lines[index]}${item.str}`
+          } else {
+            lines.push(item.str)
+          }
+        } else {
+          lines.push(item.str)
+        }
+
+        lastY = y
+      }
+
+      chunks.push(lines.join('\n'))
+    }
+
+    return chunks.join('\n\n')
+  } finally {
+    await document.destroy()
+  }
 }
 
 function truncateWithWarning(text: string): string {

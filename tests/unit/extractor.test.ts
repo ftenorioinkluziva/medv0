@@ -13,15 +13,18 @@ vi.mock('@ai-sdk/google', () => ({
   google: vi.fn(() => 'mocked-google-model'),
 }))
 
-const mockPdfParse = vi.fn()
+const mockGetDocument = vi.fn()
+const mockGetPage = vi.fn()
+const mockGetTextContent = vi.fn()
+const mockDestroy = vi.fn()
 
-vi.mock('pdf-parse/lib/pdf-parse.js', () => ({
-  default: mockPdfParse,
+vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
+  getDocument: mockGetDocument,
 }))
 
 const { extractMedicalDocument } = await import('@/lib/documents/extractor')
 const { generateText } = await import('ai')
-const pdfParse = mockPdfParse
+const getDocument = mockGetDocument
 
 const VALID_OUTPUT: SanitizedMedicalDocument = {
   documentType: 'Hemograma Completo',
@@ -51,20 +54,31 @@ const VALID_OUTPUT: SanitizedMedicalDocument = {
 describe('extractMedicalDocument', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetTextContent.mockResolvedValue({
+      items: [{ str: 'Hemograma texto extraído', transform: [0, 0, 0, 0, 0, 100] }],
+    })
+    mockGetPage.mockResolvedValue({ getTextContent: mockGetTextContent })
+    mockDestroy.mockResolvedValue(undefined)
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve({
+        numPages: 1,
+        getPage: mockGetPage,
+        destroy: mockDestroy,
+      }),
+    })
   })
 
   describe('PDF extraction', () => {
-    it('should extract text via pdf-parse and return structured output', async () => {
+    it('should extract text via pdfjs and return structured output', async () => {
       // #given
       const pdfBuffer = Buffer.from('fake pdf content')
-      vi.mocked(pdfParse).mockResolvedValue({ text: 'Hemograma texto extraído' } as never)
       vi.mocked(generateText).mockResolvedValue({ output: VALID_OUTPUT } as never)
 
       // #when
       const result = await extractMedicalDocument(pdfBuffer, 'exame.pdf', 'application/pdf')
 
       // #then
-      expect(pdfParse).toHaveBeenCalledWith(pdfBuffer)
+      expect(getDocument).toHaveBeenCalled()
       expect(result.documentType).toBe('Hemograma Completo')
       expect(result.modules).toHaveLength(1)
     })
@@ -72,7 +86,9 @@ describe('extractMedicalDocument', () => {
     it('should truncate PDF text exceeding 200k chars and include warning', async () => {
       // #given
       const longText = 'x'.repeat(250_000)
-      vi.mocked(pdfParse).mockResolvedValue({ text: longText } as never)
+      mockGetTextContent.mockResolvedValue({
+        items: [{ str: longText, transform: [0, 0, 0, 0, 0, 100] }],
+      })
       vi.mocked(generateText).mockResolvedValue({ output: VALID_OUTPUT } as never)
 
       // #when
@@ -99,7 +115,7 @@ describe('extractMedicalDocument', () => {
       const result = await extractMedicalDocument(imageBuffer, 'exame.jpg', 'image/jpeg')
 
       // #then
-      expect(pdfParse).not.toHaveBeenCalled()
+      expect(getDocument).not.toHaveBeenCalled()
       const callArgs = vi.mocked(generateText).mock.calls[0][0]
       const content = callArgs.messages![0].content as Array<{ type: string }>
       expect(content.some((c) => c.type === 'image')).toBe(true)
@@ -125,7 +141,9 @@ describe('extractMedicalDocument', () => {
   describe('PII sanitization (LGPD)', () => {
     it('should not include name, cpf, or rg in the output', async () => {
       // #given
-      vi.mocked(pdfParse).mockResolvedValue({ text: 'texto do exame' } as never)
+      mockGetTextContent.mockResolvedValue({
+        items: [{ str: 'texto do exame', transform: [0, 0, 0, 0, 0, 100] }],
+      })
       vi.mocked(generateText).mockResolvedValue({ output: VALID_OUTPUT } as never)
 
       // #when
@@ -146,7 +164,9 @@ describe('extractMedicalDocument', () => {
 
     it('should not include patientInfo PII fields in output schema', async () => {
       // #given
-      vi.mocked(pdfParse).mockResolvedValue({ text: 'texto' } as never)
+      mockGetTextContent.mockResolvedValue({
+        items: [{ str: 'texto', transform: [0, 0, 0, 0, 0, 100] }],
+      })
       vi.mocked(generateText).mockResolvedValue({ output: VALID_OUTPUT } as never)
 
       // #when
@@ -167,7 +187,9 @@ describe('extractMedicalDocument', () => {
   describe('Fallback on error', () => {
     it('should return UNKNOWN fallback when generateText throws', async () => {
       // #given
-      vi.mocked(pdfParse).mockResolvedValue({ text: 'texto' } as never)
+      mockGetTextContent.mockResolvedValue({
+        items: [{ str: 'texto', transform: [0, 0, 0, 0, 0, 100] }],
+      })
       vi.mocked(generateText).mockRejectedValue(new Error('Gemini timeout'))
 
       // #when
@@ -183,9 +205,11 @@ describe('extractMedicalDocument', () => {
       expect(result.modules).toEqual([])
     })
 
-    it('should return UNKNOWN fallback when pdf-parse throws', async () => {
+    it('should return UNKNOWN fallback when pdf parser throws', async () => {
       // #given
-      vi.mocked(pdfParse).mockRejectedValue(new Error('PDF corrupted'))
+      mockGetDocument.mockImplementation(() => {
+        throw new Error('PDF corrupted')
+      })
 
       // #when
       const result = await extractMedicalDocument(
@@ -201,7 +225,9 @@ describe('extractMedicalDocument', () => {
 
     it('should return valid structure on fallback (no throw)', async () => {
       // #given
-      vi.mocked(pdfParse).mockRejectedValue(new Error('error'))
+      mockGetDocument.mockImplementation(() => {
+        throw new Error('error')
+      })
 
       // #when
       const act = () =>
@@ -215,7 +241,9 @@ describe('extractMedicalDocument', () => {
   describe('Output schema validation', () => {
     it('should return output matching SanitizedMedicalDocument shape', async () => {
       // #given
-      vi.mocked(pdfParse).mockResolvedValue({ text: 'texto' } as never)
+      mockGetTextContent.mockResolvedValue({
+        items: [{ str: 'texto', transform: [0, 0, 0, 0, 0, 100] }],
+      })
       vi.mocked(generateText).mockResolvedValue({ output: VALID_OUTPUT } as never)
 
       // #when
@@ -235,7 +263,9 @@ describe('extractMedicalDocument', () => {
 
     it('should pass temperature 0.1 to generateText for precision', async () => {
       // #given
-      vi.mocked(pdfParse).mockResolvedValue({ text: 'texto' } as never)
+      mockGetTextContent.mockResolvedValue({
+        items: [{ str: 'texto', transform: [0, 0, 0, 0, 0, 100] }],
+      })
       vi.mocked(generateText).mockResolvedValue({ output: VALID_OUTPUT } as never)
 
       // #when
