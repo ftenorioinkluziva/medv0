@@ -131,6 +131,7 @@ export function AgentsTable({ agents }: AgentsTableProps) {
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button
+                      nativeButton={false}
                       variant="outline"
                       size="sm"
                       render={<Link href={`/admin/agents/${agent.id}/edit`} />}

@@ -15,7 +15,9 @@ export default async function AdminAgentsPage() {
             Gerencie os agentes de IA do sistema
           </p>
         </div>
-        <Button render={<Link href="/admin/agents/new" />}>Novo Agente</Button>
+        <Button nativeButton={false} render={<Link href="/admin/agents/new" />}>
+          Novo Agente
+        </Button>
       </div>
       <AgentsTable agents={agents} />
     </div>

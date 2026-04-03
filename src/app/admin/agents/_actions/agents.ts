@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
-import { healthAgents } from '@/lib/db/schema'
+import { analyses, healthAgents } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getAgentById, countActiveFoundationAgents } from '@/lib/db/queries/health-agents'
 
@@ -154,7 +154,34 @@ export async function deleteAgentAction(id: string): Promise<ActionResult> {
     }
   }
 
-  await db.delete(healthAgents).where(eq(healthAgents.id, id))
+  const linkedAnalyses = await db
+    .select({ id: analyses.id })
+    .from(analyses)
+    .where(eq(analyses.agentId, id))
+    .limit(1)
+
+  if (linkedAnalyses.length > 0) {
+    return {
+      error:
+        'Este agente já foi usado em análises e não pode ser excluído. Desative-o para impedir novos usos.',
+    }
+  }
+
+  try {
+    await db.delete(healthAgents).where(eq(healthAgents.id, id))
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (
+      message.includes('analyses_agent_id_health_agents_id_fk') ||
+      message.includes('violates foreign key constraint')
+    ) {
+      return {
+        error:
+          'Este agente já foi usado em análises e não pode ser excluído. Desative-o para impedir novos usos.',
+      }
+    }
+    return { error: 'Não foi possível excluir o agente no momento.' }
+  }
 
   revalidatePath('/admin/agents')
   return { success: true }

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/db/client', () => ({
   db: {
+    select: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
@@ -83,6 +84,13 @@ function makeChain() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  ;(db.select as ReturnType<typeof vi.fn>).mockReturnValue({
+    from: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue([]),
+      }),
+    }),
+  })
   ;(db.insert as ReturnType<typeof vi.fn>).mockReturnValue(makeChain())
   ;(db.update as ReturnType<typeof vi.fn>).mockReturnValue(makeChain())
   ;(db.delete as ReturnType<typeof vi.fn>).mockReturnValue(makeChain())
@@ -279,6 +287,28 @@ describe('deleteAgentAction', () => {
     // #then
     expect(result).toEqual({ success: true })
     expect(db.delete).toHaveBeenCalled()
+  })
+
+  it('bloqueia exclusão quando há análises vinculadas ao agente', async () => {
+    // #given
+    ;(getAgentById as ReturnType<typeof vi.fn>).mockResolvedValue(mockSpecializedAgent)
+    ;(db.select as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([{ id: 'analysis-1' }]),
+        }),
+      }),
+    })
+
+    // #when
+    const result = await deleteAgentAction('agent-2')
+
+    // #then
+    expect(result).toEqual({
+      error:
+        'Este agente já foi usado em análises e não pode ser excluído. Desative-o para impedir novos usos.',
+    })
+    expect(db.delete).not.toHaveBeenCalled()
   })
 
   it('retorna erro quando agente não existe', async () => {

@@ -10,6 +10,24 @@ interface SliderProps extends Omit<SliderPrimitive.Root.Props<readonly number[]>
   onValueChange?: (value: number[]) => void
 }
 
+function normalizeSliderValue(value: unknown): number[] {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is number => typeof v === "number")
+  }
+
+  if (typeof value === "number") {
+    return [value]
+  }
+
+  if (value && typeof value === "object" && Symbol.iterator in value) {
+    return Array.from(value as Iterable<unknown>).filter(
+      (v): v is number => typeof v === "number",
+    )
+  }
+
+  return []
+}
+
 function Slider({ className, onValueChange, ...props }: SliderProps) {
   return (
     <SliderPrimitive.Root
@@ -17,7 +35,7 @@ function Slider({ className, onValueChange, ...props }: SliderProps) {
       className={cn("relative flex w-full touch-none select-none items-center", className)}
       onValueChange={
         onValueChange
-          ? (value, _eventDetails) => onValueChange([...value])
+          ? (value, _eventDetails) => onValueChange(normalizeSliderValue(value))
           : undefined
       }
       {...props}
