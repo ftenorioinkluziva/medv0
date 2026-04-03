@@ -59,6 +59,42 @@ const mockRows = [
   },
 ]
 
+const duplicateArticleRows = [
+  {
+    articleId: 'article-1',
+    chunkIndex: 0,
+    content: 'Chunk 1 do artigo 1',
+    score: 0.95,
+    title: 'Artigo 1',
+    source: 'Fonte 1',
+    author: 'Autor 1',
+    category: 'Categoria 1',
+    isVerified: 'verified',
+  },
+  {
+    articleId: 'article-1',
+    chunkIndex: 1,
+    content: 'Chunk 2 do artigo 1',
+    score: 0.93,
+    title: 'Artigo 1',
+    source: 'Fonte 1',
+    author: 'Autor 1',
+    category: 'Categoria 1',
+    isVerified: 'verified',
+  },
+  {
+    articleId: 'article-2',
+    chunkIndex: 0,
+    content: 'Chunk 1 do artigo 2',
+    score: 0.91,
+    title: 'Artigo 2',
+    source: 'Fonte 2',
+    author: 'Autor 2',
+    category: 'Categoria 2',
+    isVerified: 'verified',
+  },
+]
+
 function buildSelectChain(rows: typeof mockRows) {
   const chain = {
     from: vi.fn().mockReturnThis(),
@@ -111,6 +147,7 @@ describe('searchKnowledge', () => {
         articleId: 'article-1',
         chunkIndex: 0,
         content: 'Vitamina D3 melhora absorção com TCM',
+        snippet: 'Vitamina D3 melhora absorção com TCM',
         score: 0.92,
         article: {
           title: 'Otimização de Vitamina D3',
@@ -144,7 +181,21 @@ describe('searchKnowledge', () => {
       await searchKnowledge('proteína', 2)
 
       // #then
-      expect(chain.limit).toHaveBeenCalledWith(2)
+      expect(chain.limit).toHaveBeenCalledWith(10)
+    })
+
+    it('deve retornar apenas um chunk por artigo no topK', async () => {
+      // #given
+      buildSelectChain(duplicateArticleRows)
+
+      // #when
+      const results = await searchKnowledge('foco mental', 2)
+
+      // #then
+      expect(results).toHaveLength(2)
+      expect(results.map((result) => result.articleId)).toEqual(['article-1', 'article-2'])
+      expect(results[0].chunkIndex).toBe(0)
+      expect(results[0].snippet).toBe('Chunk 1 do artigo 1')
     })
   })
 

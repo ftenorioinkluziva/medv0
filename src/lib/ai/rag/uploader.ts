@@ -1,9 +1,12 @@
 import { embedMany } from 'ai'
-import { google } from '@ai-sdk/google'
 import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { knowledgeBase, knowledgeEmbeddings } from '@/lib/db/schema'
 import { chunkText } from './chunker'
+import {
+  getKnowledgeEmbeddingModel,
+  getKnowledgeEmbeddingProviderOptions,
+} from './embedding-model'
 
 export interface UpsertArticleInput {
   title: string
@@ -30,8 +33,9 @@ export async function upsertKnowledgeArticle(
   const chunks = chunkText(input.content)
 
   const { embeddings } = await embedMany({
-    model: google.textEmbeddingModel('text-embedding-004'),
+    model: getKnowledgeEmbeddingModel(),
     values: chunks,
+    providerOptions: getKnowledgeEmbeddingProviderOptions('RETRIEVAL_DOCUMENT'),
   })
 
   const existing = await db
@@ -63,35 +67,31 @@ export async function upsertKnowledgeArticle(
   let articleId: string
   let action: 'created' | 'updated'
 
-  await db.transaction(async (tx) => {
-    if (existing.length > 0) {
-      articleId = existing[0].id
-      action = 'updated'
-      await tx
-        .update(knowledgeBase)
-        .set({ ...articleFields, updatedAt: new Date() })
-        .where(eq(knowledgeBase.id, articleId))
-      await tx
-        .delete(knowledgeEmbeddings)
-        .where(eq(knowledgeEmbeddings.articleId, articleId))
-    } else {
-      const [inserted] = await tx
-        .insert(knowledgeBase)
-        .values(articleFields)
-        .returning({ id: knowledgeBase.id })
-      articleId = inserted.id
-      action = 'created'
-    }
+  if (existing.length > 0) {
+    articleId = existing[0].id
+    action = 'updated'
+    await db
+      .update(knowledgeBase)
+      .set({ ...articleFields, updatedAt: new Date() })
+      .where(eq(knowledgeBase.id, articleId))
+    await db.delete(knowledgeEmbeddings).where(eq(knowledgeEmbeddings.articleId, articleId))
+  } else {
+    const [inserted] = await db
+      .insert(knowledgeBase)
+      .values(articleFields)
+      .returning({ id: knowledgeBase.id })
+    articleId = inserted.id
+    action = 'created'
+  }
 
-    await tx.insert(knowledgeEmbeddings).values(
-      chunks.map((content, i) => ({
-        articleId,
-        chunkIndex: i,
-        content,
-        embedding: embeddings[i],
-      })),
-    )
-  })
+  await db.insert(knowledgeEmbeddings).values(
+    chunks.map((content, i) => ({
+      articleId,
+      chunkIndex: i,
+      content,
+      embedding: embeddings[i],
+    })),
+  )
 
   return { articleId: articleId!, chunksCreated: chunks.length, action: action! }
 }
