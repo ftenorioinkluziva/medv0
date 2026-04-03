@@ -1,0 +1,2 @@
+-- This migration was intentionally left empty.
+-- It was generated but contained no schema changes.
