@@ -1,26 +1,21 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
-import { db } from '@/lib/db/client'
-import { documents, snapshots, completeAnalyses } from '@/lib/db/schema'
-import { eq, desc, sql } from 'drizzle-orm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardContent } from './dashboard-content'
-import { extractAlteredMarkers } from '@/lib/dashboard/markers'
-import type { AlteredMarker } from '@/lib/dashboard/markers'
+import { getDocumentsWithHistory } from '@/lib/db/queries/history'
+import { computeEvolution } from '@/lib/history/evolution'
+import type { DocumentWithHistory } from '@/lib/db/queries/history'
+import type { ParameterEvolution } from '@/lib/history/evolution'
+
+export type HistoryEntry = {
+  doc: DocumentWithHistory
+  evolution: ParameterEvolution[]
+}
 
 export type DashboardData = {
-  lastDocument: {
-    id: string
-    examDate: string | null
-    documentType: string
-  } | null
-  alteredMarkers: AlteredMarker[]
-  lastAnalysis: {
-    id: string
-    status: string
-    createdAt: Date
-  } | null
+  userName: string
+  historyEntries: HistoryEntry[]
 }
 
 export default async function DashboardPage() {
@@ -31,84 +26,41 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-background">
       <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardData userId={session.user.id} />
+        <DashboardDataLoader
+          userId={session.user.id}
+          userName={session.user.name ?? session.user.email ?? ''}
+        />
       </Suspense>
     </main>
   )
 }
 
-async function DashboardData({ userId }: { userId: string }) {
-  const [lastDoc] = await db
-    .select({
-      id: documents.id,
-      examDate: documents.examDate,
-      documentType: documents.documentType,
-    })
-    .from(documents)
-    .where(eq(documents.userId, userId))
-    .orderBy(sql`${documents.examDate} DESC NULLS LAST`, desc(documents.createdAt))
-    .limit(1)
+async function DashboardDataLoader({ userId, userName }: { userId: string; userName: string }) {
+  const allDocs = await getDocumentsWithHistory(userId)
 
-  if (!lastDoc) {
-    return (
-      <DashboardContent
-        data={{ lastDocument: null, alteredMarkers: [], lastAnalysis: null }}
-      />
-    )
-  }
+  const historyEntries: HistoryEntry[] = allDocs.slice(0, 5).map((doc, i) => {
+    const samePrevious = allDocs.slice(i + 1).find((d) => d.documentType === doc.documentType)
+    return { doc, evolution: computeEvolution(doc, samePrevious) }
+  })
 
-  const [snapshotRow, analysisRow] = await Promise.all([
-    db
-      .select({ structuredData: snapshots.structuredData })
-      .from(snapshots)
-      .where(eq(snapshots.documentId, lastDoc.id))
-      .limit(1),
-    db
-      .select({ id: completeAnalyses.id, status: completeAnalyses.status, createdAt: completeAnalyses.createdAt })
-      .from(completeAnalyses)
-      .where(eq(completeAnalyses.documentId, lastDoc.id))
-      .limit(1),
-  ])
-
-  const alteredMarkers = extractAlteredMarkers(snapshotRow[0]?.structuredData ?? null)
-  const lastAnalysis = analysisRow[0] ?? null
-
-  return (
-    <DashboardContent
-      data={{
-        lastDocument: lastDoc,
-        alteredMarkers,
-        lastAnalysis,
-      }}
-    />
-  )
+  return <DashboardContent data={{ userName, historyEntries }} />
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-4 p-4" aria-label="Carregando dashboard...">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-6 w-28" />
-        <Skeleton className="h-9 w-28" />
-      </div>
-      <div className="rounded-xl ring-1 ring-foreground/10 p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-5 w-20 rounded-md" />
+    <div className="space-y-5 p-4 md:p-6" aria-label="Carregando dashboard..." role="status">
+      <div className="rounded-2xl border border-foreground/10 bg-card p-5 space-y-3">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-72" />
+        <div className="flex gap-2 pt-1">
+          <Skeleton className="h-10 w-32 rounded-lg" />
+          <Skeleton className="h-10 w-36 rounded-lg" />
         </div>
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-9 w-full rounded-lg" />
       </div>
-      <Skeleton className="h-4 w-36" />
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="rounded-xl ring-1 ring-foreground/10 p-3">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-        </div>
-      ))}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
     </div>
   )
 }

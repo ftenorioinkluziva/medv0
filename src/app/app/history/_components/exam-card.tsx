@@ -87,12 +87,20 @@ export function ExamCard({ doc, evolution }: Props) {
         </div>
       )}
 
-      <Link
-        href={actionHref}
-        className={cn(buttonVariants({ variant: analysisStatus === 'completed' ? 'outline' : 'default' }), 'w-full min-h-11 text-sm justify-center')}
-      >
-        {actionLabel}
-      </Link>
+      <div className="flex gap-2">
+        <Link
+          href={`/app/documents/${doc.id}`}
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'flex-1 justify-center text-xs')}
+        >
+          Ver exame
+        </Link>
+        <Link
+          href={actionHref}
+          className={cn(buttonVariants({ variant: analysisStatus === 'completed' ? 'outline' : 'default', size: 'sm' }), 'flex-1 justify-center text-xs')}
+        >
+          {actionLabel}
+        </Link>
+      </div>
     </div>
   )
 }
