@@ -26,7 +26,7 @@ vi.mock('drizzle-orm', () => ({
   eq: vi.fn(() => 'documents.id = doc-id'),
 }))
 
-const { persistSnapshot } = await import('@/lib/documents/persistence')
+const { persistSnapshot, persistFailedDocument } = await import('@/lib/documents/persistence')
 const { db } = await import('@/lib/db/client')
 
 const VALID_DOCUMENT: SanitizedMedicalDocument = {
@@ -248,6 +248,34 @@ describe('persistSnapshot', () => {
       const extractedAt = insertValues.extractedAt as Date
       expect(extractedAt.getTime()).toBeGreaterThanOrEqual(before.getTime())
       expect(extractedAt.getTime()).toBeLessThanOrEqual(after.getTime())
+    })
+  })
+
+  describe('failed extraction persistence', () => {
+    it('should persist failed document without creating snapshot', async () => {
+      // #given
+      const input = {
+        userId: 'user-uuid-abc',
+        fileName: 'falho.pdf',
+        structuredData: {
+          documentType: 'UNKNOWN',
+          overallSummary: 'Não foi possível extrair os dados',
+          patientInfo: {},
+          modules: [],
+        },
+        processingError: 'Não foi possível extrair dados utilizáveis do documento enviado.',
+      }
+
+      // #when
+      const result = await persistFailedDocument(input)
+
+      // #then
+      expect(result).toEqual({ documentId: 'doc-uuid-123' })
+      expect(vi.mocked(db).insert).toHaveBeenCalledTimes(1)
+      const insertValues = mockDocumentValues.mock.calls[0][0] as Record<string, unknown>
+      expect(insertValues.processingStatus).toBe('failed')
+      expect(insertValues.processingError).toBe(input.processingError)
+      expect(mockSnapshotValues).not.toHaveBeenCalled()
     })
   })
 })

@@ -29,8 +29,8 @@ vi.mock('@/lib/auth/config', () => ({
   auth: vi.fn(),
 }))
 
-vi.mock('@/lib/ai/orchestrator/complete-analysis', () => ({
-  runCompleteAnalysis: vi.fn(),
+vi.mock('@/lib/ai/orchestrator/living-analysis', () => ({
+  runLivingAnalysis: vi.fn(),
 }))
 
 vi.mock('next/server', async (importOriginal) => {
@@ -48,7 +48,7 @@ import { generateText } from 'ai'
 import { searchKnowledge } from '@/lib/ai/rag/vector-search'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 import { analyzeWithAgent } from '@/lib/ai/agents/analyze'
-import { runCompleteAnalysis } from '@/lib/ai/orchestrator/complete-analysis'
+import { runLivingAnalysis } from '@/lib/ai/orchestrator/living-analysis'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import { POST } from '@/app/api/analyses/run/route'
@@ -241,31 +241,30 @@ describe('analyzeWithAgent — AC4', () => {
   })
 })
 
-describe('runCompleteAnalysis — AC3, AC6', () => {
+describe('runLivingAnalysis — AC3, AC6', () => {
   it('foundation é executado antes de specialized (ordem garantida)', async () => {
-    // #given — runCompleteAnalysis está mockado, testamos o contrato de ordem internamente
-    // via a sequência de calls no mock
+    // #given — runLivingAnalysis está mockado, testamos o contrato de ordem internamente
     const callOrder: string[] = []
 
-    vi.mocked(runCompleteAnalysis).mockImplementation(async () => {
+    vi.mocked(runLivingAnalysis).mockImplementation(async () => {
       callOrder.push('foundation')
       callOrder.push('specialized')
     })
 
     // #when
-    await runCompleteAnalysis('user-1', 'doc-1', 'analysis-1')
+    await runLivingAnalysis('user-1', 'doc-1', 'analysis-1', 'version-1')
 
     // #then
     expect(callOrder.indexOf('foundation')).toBeLessThan(callOrder.indexOf('specialized'))
   })
 
   it('análise parcial não quebra quando foundation timeout ocorre', async () => {
-    // #given — runCompleteAnalysis não lança mesmo com timeout parcial
-    vi.mocked(runCompleteAnalysis).mockResolvedValue(undefined)
+    // #given — runLivingAnalysis não lança mesmo com timeout parcial
+    vi.mocked(runLivingAnalysis).mockResolvedValue(undefined)
 
     // #when / #then — não deve lançar
     await expect(
-      runCompleteAnalysis('user-1', 'doc-1', 'analysis-1'),
+      runLivingAnalysis('user-1', 'doc-1', 'analysis-1', 'version-1'),
     ).resolves.not.toThrow()
   })
 })
@@ -319,17 +318,106 @@ describe('POST /api/analyses/run — AC7', () => {
     expect(res.status).toBe(400)
   })
 
-  it('retorna 200 com completeAnalysisId quando válido', async () => {
+  it('retorna 409 quando o documento não tem dados extraídos suficientes', async () => {
+    // #given
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as never)
+    const docId = crypto.randomUUID()
+
+    const docSelectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([{ id: docId }]),
+    }
+    const snapshotSelectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([
+        {
+          structuredData: {
+            documentType: 'UNKNOWN',
+            overallSummary: 'Não foi possível extrair os dados',
+            patientInfo: {},
+            modules: [],
+          },
+        },
+      ]),
+    }
+    vi.mocked(db.select)
+      .mockReturnValueOnce(docSelectChain as never)
+      .mockReturnValueOnce(snapshotSelectChain as never)
+
+    // #when
+    const res = await POST(makeRunRequest({ documentId: docId }))
+
+    // #then
+    expect(res.status).toBe(409)
+    const json = await res.json()
+    expect(json.error).toContain('Não há dados extraídos suficientes')
+  })
+
+  it('retorna 200 com livingAnalysisId quando válido', async () => {
     // #given
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as never)
 
     const docId = crypto.randomUUID()
-    vi.mocked(db.select).mockReturnValue({
+    const mockAgents = [{ id: 'agent-1', name: 'Test', analysisRole: 'foundation' }]
+
+    vi.mocked(getActiveAgentsByRole)
+      .mockResolvedValueOnce(mockAgents as never)
+      .mockResolvedValueOnce(mockAgents as never)
+
+    const docSelectChain = {
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockResolvedValue([{ id: docId }]),
+    }
+    const livingSelectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]),
+    }
+    const triggerSnapshotSelectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([
+        {
+          structuredData: {
+            documentType: 'Hemograma',
+            overallSummary: 'Resumo válido',
+            patientInfo: {},
+            modules: [
+              {
+                moduleName: 'A',
+                category: 'B',
+                status: 'normal',
+                summary: 'ok',
+                parameters: [{ name: 'LDL', value: 100, unit: 'mg/dL' }],
+              },
+            ],
+          },
+        },
+      ]),
+    }
+    const snapshotsSelectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([{ id: 'snap-1' }]),
+    }
+    vi.mocked(db.select)
+      .mockReturnValueOnce(docSelectChain as never)
+      .mockReturnValueOnce(triggerSnapshotSelectChain as never)
+      .mockReturnValueOnce(livingSelectChain as never)
+      .mockReturnValueOnce(snapshotsSelectChain as never)
+
+    vi.mocked(db.insert).mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 'new-living-id' }]),
+      }),
     } as never)
-    vi.mocked(db.insert).mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) } as never)
+    vi.mocked(db.update).mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
+      }),
+    } as never)
 
     // #when
     const res = await POST(makeRunRequest({ documentId: docId }))
@@ -337,8 +425,8 @@ describe('POST /api/analyses/run — AC7', () => {
     // #then
     expect(res.status).toBe(200)
     const json = await res.json()
-    expect(json.completeAnalysisId).toBeDefined()
-    expect(typeof json.completeAnalysisId).toBe('string')
+    expect(json.livingAnalysisId).toBeDefined()
+    expect(typeof json.livingAnalysisId).toBe('string')
   })
 })
 

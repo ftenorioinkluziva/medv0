@@ -40,9 +40,9 @@ export default function RunAnalysisPage() {
           body: JSON.stringify({ documentId }),
         })
 
-        const payload = (await response.json()) as { completeAnalysisId?: string; error?: string }
+        const payload = (await response.json()) as { livingAnalysisId?: string; error?: string }
 
-        if (!response.ok || !payload.completeAnalysisId) {
+        if (!response.ok || !payload.livingAnalysisId) {
           if (!cancelled) {
             setState({
               status: 'error',
@@ -52,7 +52,7 @@ export default function RunAnalysisPage() {
           return
         }
 
-        router.replace(`/app/analyses/${payload.completeAnalysisId}`)
+        router.replace(`/app/analyses/${payload.livingAnalysisId}`)
       } catch {
         if (!cancelled) {
           setState({ status: 'error', message: 'Falha de conexao ao iniciar a analise.' })

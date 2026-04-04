@@ -15,14 +15,14 @@ interface AnalysisStatusCardProps {
   status: AnalysisStatus
   createdAt: Date
   updatedAt: Date
-  documentId: string
+  livingAnalysisId: string
 }
 
 export function AnalysisStatusCard({
   status,
   createdAt,
   updatedAt,
-  documentId,
+  livingAnalysisId: _livingAnalysisId,
 }: AnalysisStatusCardProps) {
   const router = useRouter()
   const [now, setNow] = useState(() => Date.now())
@@ -81,10 +81,10 @@ export function AnalysisStatusCard({
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Link
-                href={`/app/analyses/run?documentId=${encodeURIComponent(documentId)}`}
+                href="/app/upload"
                 className={cn(buttonVariants(), 'min-h-11 justify-center')}
               >
-                Tentar novamente
+                Enviar novo exame
               </Link>
               <Link
                 href="/app/history"

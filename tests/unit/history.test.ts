@@ -21,7 +21,7 @@ function makeDoc(
     createdAt: new Date('2026-01-01'),
     processingStatus: 'completed',
     snapshot: null,
-    completeAnalysis: null,
+    livingAnalysis: null,
     ...overrides,
   }
 }
@@ -166,14 +166,22 @@ describe('getDocumentsWithHistory', () => {
 
   it('retorna lista vazia quando usuário não tem documentos', async () => {
     // #given
-    const chain = {
+    const livingChain = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]),
+    }
+    const docsChain = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
       leftJoin: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
       orderBy: vi.fn().mockResolvedValue([]),
     }
-    vi.mocked(db.select).mockReturnValue(chain as never)
+    vi.mocked(db.select)
+      .mockReturnValueOnce(livingChain as never)
+      .mockReturnValueOnce(docsChain as never)
 
     // #when
     const result = await getDocumentsWithHistory('user-1')
@@ -182,10 +190,10 @@ describe('getDocumentsWithHistory', () => {
     expect(result).toEqual([])
   })
 
-  it('mapeia snapshot e completeAnalysis corretamente', async () => {
+  it('mapeia snapshot e livingAnalysis corretamente', async () => {
     // #given
     const structuredData = { documentType: 'Hemograma', overallSummary: '', patientInfo: {}, modules: [] }
-    const row = {
+    const docRow = {
       id: 'doc-1',
       documentType: 'Hemograma',
       originalFileName: 'exam.pdf',
@@ -193,18 +201,28 @@ describe('getDocumentsWithHistory', () => {
       createdAt: new Date('2026-01-01'),
       processingStatus: 'completed',
       snapshotStructuredData: structuredData,
-      analysisId: 'analysis-1',
-      analysisStatus: 'completed',
-      analysisCreatedAt: new Date('2026-01-02'),
     }
-    const chain = {
+    const livingRow = {
+      id: 'living-1',
+      status: 'completed',
+      updatedAt: new Date('2026-01-02'),
+    }
+    const livingChain = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([livingRow]),
+    }
+    const docsChain = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
       leftJoin: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
-      orderBy: vi.fn().mockResolvedValue([row]),
+      orderBy: vi.fn().mockResolvedValue([docRow]),
     }
-    vi.mocked(db.select).mockReturnValue(chain as never)
+    vi.mocked(db.select)
+      .mockReturnValueOnce(livingChain as never)
+      .mockReturnValueOnce(docsChain as never)
 
     // #when
     const result = await getDocumentsWithHistory('user-1')
@@ -212,10 +230,10 @@ describe('getDocumentsWithHistory', () => {
     // #then
     expect(result).toHaveLength(1)
     expect(result[0].snapshot).toEqual({ structuredData })
-    expect(result[0].completeAnalysis).toEqual({
-      id: 'analysis-1',
+    expect(result[0].livingAnalysis).toEqual({
+      id: 'living-1',
       status: 'completed',
-      createdAt: new Date('2026-01-02'),
+      updatedAt: new Date('2026-01-02'),
     })
   })
 
@@ -229,24 +247,29 @@ describe('getDocumentsWithHistory', () => {
       createdAt: new Date('2026-01-05'),
       processingStatus: 'completed',
       snapshotStructuredData: null,
-      analysisId: null,
-      analysisStatus: null,
-      analysisCreatedAt: null,
     }
-    const chain = {
+    const livingChain = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]),
+    }
+    const docsChain = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
       leftJoin: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
       orderBy: vi.fn().mockResolvedValue([row]),
     }
-    vi.mocked(db.select).mockReturnValue(chain as never)
+    vi.mocked(db.select)
+      .mockReturnValueOnce(livingChain as never)
+      .mockReturnValueOnce(docsChain as never)
 
     // #when
     const result = await getDocumentsWithHistory('user-1')
 
     // #then
     expect(result[0].snapshot).toBeNull()
-    expect(result[0].completeAnalysis).toBeNull()
+    expect(result[0].livingAnalysis).toBeNull()
   })
 })

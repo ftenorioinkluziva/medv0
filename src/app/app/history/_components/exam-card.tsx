@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
@@ -11,12 +10,6 @@ import type { ParameterEvolution } from '@/lib/history/evolution'
 type Props = {
   doc: DocumentWithHistory
   evolution: ParameterEvolution[]
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  processing: 'Processando',
-  completed: 'Concluído',
-  failed: 'Falhou',
 }
 
 function EvolutionItem({ ev }: { ev: ParameterEvolution }) {
@@ -51,19 +44,6 @@ export function ExamCard({ doc, evolution }: Props) {
     month: 'short',
     year: 'numeric',
   })
-  const analysisStatus = doc.completeAnalysis?.status ?? null
-  const actionHref =
-    analysisStatus === 'completed' || analysisStatus === 'processing'
-      ? `/app/analyses/${doc.completeAnalysis?.id}`
-      : `/app/analyses/run?documentId=${encodeURIComponent(doc.id)}`
-  const actionLabel =
-    analysisStatus === 'completed'
-      ? 'Ver relatório'
-      : analysisStatus === 'processing'
-        ? 'Acompanhar análise'
-        : analysisStatus === 'failed'
-          ? 'Tentar novamente'
-          : 'Analisar'
 
   return (
     <div className="rounded-xl ring-1 ring-foreground/10 p-4 space-y-3">
@@ -74,9 +54,6 @@ export function ExamCard({ doc, evolution }: Props) {
             {examDateLabel ? `Exame: ${examDateLabel}` : `Enviado: ${uploadDateLabel}`}
           </p>
         </div>
-        <Badge variant={doc.completeAnalysis?.status === 'completed' ? 'default' : 'secondary'} className="shrink-0 text-xs">
-          {doc.completeAnalysis ? STATUS_LABELS[doc.completeAnalysis.status] ?? doc.completeAnalysis.status : 'Sem análise'}
-        </Badge>
       </div>
 
       {evolution.length > 0 && (
@@ -87,20 +64,12 @@ export function ExamCard({ doc, evolution }: Props) {
         </div>
       )}
 
-      <div className="flex gap-2">
-        <Link
-          href={`/app/documents/${doc.id}`}
-          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'flex-1 justify-center text-xs')}
-        >
-          Ver exame
-        </Link>
-        <Link
-          href={actionHref}
-          className={cn(buttonVariants({ variant: analysisStatus === 'completed' ? 'outline' : 'default', size: 'sm' }), 'flex-1 justify-center text-xs')}
-        >
-          {actionLabel}
-        </Link>
-      </div>
+      <Link
+        href={`/app/documents/${doc.id}`}
+        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'w-full justify-center text-xs')}
+      >
+        Ver exame
+      </Link>
     </div>
   )
 }

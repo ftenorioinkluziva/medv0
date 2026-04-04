@@ -1,7 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
+import { eq, and, ne } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
-import { extractMedicalDocument } from '@/lib/documents/extractor'
-import { persistSnapshot } from '@/lib/documents/persistence'
+import { db } from '@/lib/db/client'
+import { documents } from '@/lib/db/schema'
+import { extractMedicalDocument, hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
+import { persistFailedDocument, persistSnapshot } from '@/lib/documents/persistence'
+import { triggerLivingAnalysis } from '@/lib/ai/orchestrator/trigger-living-analysis'
 import {
   DOCUMENT_UPLOAD_ACCEPTED_TYPES,
   DOCUMENT_UPLOAD_MAX_SIZE_BYTES,
@@ -9,6 +13,8 @@ import {
 } from '@/lib/documents/upload-config'
 
 export const maxDuration = DOCUMENT_UPLOAD_SERVER_MAX_DURATION_SECONDS
+
+const EXTRACTION_FAILED_MESSAGE = 'Não foi possível extrair dados utilizáveis do documento enviado.'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await auth()
@@ -42,16 +48,57 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // Processar em memória — nunca persistir o arquivo original
   try {
     const buffer = Buffer.from(await file.arrayBuffer())
 
     const structuredData = await extractMedicalDocument(buffer, file.name, file.type)
 
+    const [existingDoc] = await db
+      .select({ id: documents.id })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.userId, session.user.id),
+          eq(documents.originalFileName, file.name),
+          ne(documents.processingStatus, 'failed'),
+        ),
+      )
+      .limit(1)
+
+    if (existingDoc) {
+      return NextResponse.json(
+        { error: 'Este documento já foi enviado anteriormente.' },
+        { status: 409 },
+      )
+    }
+
+    if (!hasUsableMedicalDocumentData(structuredData)) {
+      const { documentId } = await persistFailedDocument({
+        userId: session.user.id,
+        fileName: file.name,
+        structuredData,
+        processingError: EXTRACTION_FAILED_MESSAGE,
+      })
+
+      return NextResponse.json(
+        { error: EXTRACTION_FAILED_MESSAGE, documentId, fileName: file.name },
+        { status: 422 },
+      )
+    }
+
     const { documentId } = await persistSnapshot({
       userId: session.user.id,
       fileName: file.name,
       structuredData,
+    })
+
+    const userId = session.user.id
+    after(async () => {
+      try {
+        await triggerLivingAnalysis(userId, documentId)
+      } catch (error) {
+        console.error('[documents/upload] trigger living analysis failed:', error)
+      }
     })
 
     return NextResponse.json({ success: true, documentId, fileName: file.name })

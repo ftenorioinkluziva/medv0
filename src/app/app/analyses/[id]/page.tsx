@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { completeAnalyses } from '@/lib/db/schema'
+import { livingAnalyses } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnalysisStatusCard } from './analysis-status-card'
@@ -43,16 +43,15 @@ async function AnalysisContent({ id }: { id: string }) {
 
   const [row] = await db
     .select({
-      documentId: completeAnalyses.documentId,
-      reportMarkdown: completeAnalyses.reportMarkdown,
-      createdAt: completeAnalyses.createdAt,
-      updatedAt: completeAnalyses.updatedAt,
-      agentsCount: completeAnalyses.agentsCount,
-      userId: completeAnalyses.userId,
-      status: completeAnalyses.status,
+      reportMarkdown: livingAnalyses.reportMarkdown,
+      createdAt: livingAnalyses.createdAt,
+      updatedAt: livingAnalyses.updatedAt,
+      currentVersion: livingAnalyses.currentVersion,
+      userId: livingAnalyses.userId,
+      status: livingAnalyses.status,
     })
-    .from(completeAnalyses)
-    .where(eq(completeAnalyses.id, id))
+    .from(livingAnalyses)
+    .where(eq(livingAnalyses.id, id))
     .limit(1)
 
   if (!row) {
@@ -77,7 +76,7 @@ async function AnalysisContent({ id }: { id: string }) {
         status="processing"
         createdAt={row.createdAt}
         updatedAt={row.updatedAt}
-        documentId={row.documentId}
+        livingAnalysisId={id}
       />
     )
   }
@@ -88,7 +87,7 @@ async function AnalysisContent({ id }: { id: string }) {
         status="failed"
         createdAt={row.createdAt}
         updatedAt={row.updatedAt}
-        documentId={row.documentId}
+        livingAnalysisId={id}
       />
     )
   }
@@ -96,7 +95,7 @@ async function AnalysisContent({ id }: { id: string }) {
   return (
     <ReportView
       reportMarkdown={row.reportMarkdown}
-      agentsCount={row.agentsCount}
+      version={row.currentVersion}
       createdAt={row.createdAt}
     />
   )

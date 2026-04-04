@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { Upload, ClipboardList, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type { DashboardData } from './page'
 import type { DocumentWithHistory } from '@/lib/db/queries/history'
@@ -17,12 +16,6 @@ const displayName = (name: string | null | undefined): string => {
   if (!raw) return 'você'
   const token = raw.includes('@') ? raw.split('@')[0] : raw.split(' ')[0]
   return token.length > 18 ? `${token.slice(0, 17)}…` : token
-}
-
-const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'warning' }> = {
-  completed: { label: 'Concluído', variant: 'default' },
-  processing: { label: 'Processando', variant: 'warning' },
-  failed: { label: 'Falhou', variant: 'destructive' },
 }
 
 function EvolutionBadge({ ev }: { ev: ParameterEvolution }) {
@@ -44,23 +37,12 @@ function EvolutionBadge({ ev }: { ev: ParameterEvolution }) {
 }
 
 function ExamRow({ doc, evolution }: { doc: DocumentWithHistory; evolution: ParameterEvolution[] }) {
-  const status = doc.completeAnalysis?.status ?? null
-  const statusConfig = status ? STATUS_CONFIG[status] : null
-
   const examDate = doc.examDate
     ? new Date(doc.examDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
     : doc.createdAt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 
-  const action =
-    status === 'completed'
-      ? { label: 'Ver relatório', href: `/app/analyses/${doc.completeAnalysis!.id}` }
-      : status === 'processing'
-        ? { label: 'Acompanhar', href: `/app/analyses/${doc.completeAnalysis!.id}` }
-        : { label: 'Analisar', href: `/app/analyses/run?documentId=${encodeURIComponent(doc.id)}` }
-
   return (
     <div className="rounded-lg border border-foreground/8 bg-background/50 px-3 py-3 space-y-2 transition-colors hover:bg-background/70">
-      {/* Linha principal */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-0.5">
           <p className="truncate text-sm font-medium text-foreground" title={doc.originalFileName}>
@@ -69,24 +51,6 @@ function ExamRow({ doc, evolution }: { doc: DocumentWithHistory; evolution: Para
           <p className="text-[10px] text-muted-foreground">
             {doc.documentType} • {examDate}
           </p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          {statusConfig ? (
-            <Badge variant={statusConfig.variant} className="text-[10px] px-1.5 py-0">
-              {statusConfig.label}
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              Sem análise
-            </Badge>
-          )}
-          <Link
-            href={action.href}
-            className="flex items-center gap-0.5 text-[11px] font-semibold text-primary hover:underline focus-visible:outline-none"
-          >
-            {action.label}
-            <ArrowRight className="size-3" aria-hidden="true" />
-          </Link>
         </div>
       </div>
 
@@ -105,7 +69,8 @@ function ExamRow({ doc, evolution }: { doc: DocumentWithHistory; evolution: Para
 export function DashboardContent({ data }: DashboardContentProps) {
   const { userName, historyEntries } = data
   const hasAnyDoc = historyEntries.length > 0
-  const hasNoAnalysis = hasAnyDoc && historyEntries.every(({ doc }) => !doc.completeAnalysis)
+  const livingAnalysis = historyEntries[0]?.doc.livingAnalysis ?? null
+  const hasAnalysis = livingAnalysis !== null
 
   return (
     <div className="space-y-5 p-4 md:p-6">
@@ -163,7 +128,6 @@ export function DashboardContent({ data }: DashboardContentProps) {
           </div>
 
           {!hasAnyDoc ? (
-            /* Estado vazio: sem nenhum documento */
             <div className="flex flex-col items-center gap-3 py-10 text-center">
               <p className="text-sm text-muted-foreground">
                 Você ainda não enviou nenhum exame.
@@ -176,32 +140,43 @@ export function DashboardContent({ data }: DashboardContentProps) {
                 Enviar primeiro exame
               </Link>
             </div>
-          ) : hasNoAnalysis ? (
-            /* Tem documentos mas nenhuma análise */
-            <>
+          ) : (
+            <div className="space-y-3">
+              {hasAnalysis && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Sua Análise Integrativa</p>
+                      <p className="text-xs text-muted-foreground">
+                        {livingAnalysis.status === 'processing'
+                          ? 'Atualizando...'
+                          : livingAnalysis.status === 'completed'
+                            ? `Versão mais recente`
+                            : 'Falhou — envie novo exame para retry'}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/app/analyses/${livingAnalysis.id}`}
+                      className="flex items-center gap-0.5 text-xs font-semibold text-primary hover:underline"
+                    >
+                      {livingAnalysis.status === 'completed' ? 'Ver relatório' : 'Acompanhar'}
+                      <ArrowRight className="size-3" aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 {historyEntries.map(({ doc, evolution }) => (
                   <ExamRow key={doc.id} doc={doc} evolution={evolution} />
                 ))}
               </div>
-              <div className="rounded-lg border border-dashed border-foreground/15 bg-foreground/2 px-4 py-3 text-center">
-                <p className="text-xs text-muted-foreground">
-                  Seus documentos ainda não foram analisados.{' '}
-                  <Link
-                    href={`/app/analyses/run?documentId=${encodeURIComponent(historyEntries[0].doc.id)}`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    Iniciar análise
-                  </Link>
-                </p>
-              </div>
-            </>
-          ) : (
-            /* Estado normal: docs com análises */
-            <div className="space-y-2">
-              {historyEntries.map(({ doc, evolution }) => (
-                <ExamRow key={doc.id} doc={doc} evolution={evolution} />
-              ))}
+              {!hasAnalysis && (
+                <div className="rounded-lg border border-dashed border-foreground/15 bg-foreground/2 px-4 py-3 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    Sua análise será gerada automaticamente após o processamento dos exames.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

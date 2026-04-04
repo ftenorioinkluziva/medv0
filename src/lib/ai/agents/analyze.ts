@@ -20,6 +20,7 @@ export async function analyzeWithAgent(
     medicalProfileContext: string
     knowledgeContext?: string
     foundationContext?: string
+    previousAnalysisContext?: string
   },
   signal?: AbortSignal,
 ): Promise<AgentAnalysisResult> {
@@ -56,6 +57,10 @@ export async function analyzeWithAgent(
 
   if (context.foundationContext) {
     contextParts.push(`## Análises Foundation\n${context.foundationContext}`)
+  }
+
+  if (context.previousAnalysisContext) {
+    contextParts.push(`## Análise Anterior (referência para evolução)\n${context.previousAnalysisContext}`)
   }
 
   const fullPrompt = `${analysisPrompt}\n\n---\n\n${contextParts.join('\n\n')}`

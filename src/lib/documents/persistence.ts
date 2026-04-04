@@ -13,8 +13,16 @@ export interface PersistSnapshotResult {
   documentId: string
 }
 
-export async function persistSnapshot(input: PersistSnapshotInput): Promise<PersistSnapshotResult> {
-  const { userId, fileName, structuredData } = input
+interface InsertDocumentInput {
+  userId: string
+  fileName: string
+  structuredData: SanitizedMedicalDocument
+  processingStatus: 'completed' | 'failed'
+  processingError?: string | null
+}
+
+async function insertDocument(input: InsertDocumentInput): Promise<string> {
+  const { userId, fileName, structuredData, processingStatus, processingError } = input
 
   const [doc] = await db
     .insert(documents)
@@ -25,20 +33,55 @@ export async function persistSnapshot(input: PersistSnapshotInput): Promise<Pers
       examDate: structuredData.examDate ?? null,
       extractedAt: new Date(),
       overallSummary: structuredData.overallSummary ?? null,
-      processingStatus: 'completed',
+      processingStatus,
+      processingError: processingError ?? null,
     })
     .returning({ id: documents.id })
 
+  return doc.id
+}
+
+export async function persistSnapshot(input: PersistSnapshotInput): Promise<PersistSnapshotResult> {
+  const { userId, fileName, structuredData } = input
+
+  const documentId = await insertDocument({
+    userId,
+    fileName,
+    structuredData,
+    processingStatus: 'completed',
+  })
+
   try {
     await db.insert(snapshots).values({
-      documentId: doc.id,
+      documentId,
       userId,
       structuredData,
     })
   } catch (error) {
-    await db.delete(documents).where(eq(documents.id, doc.id))
+    await db.delete(documents).where(eq(documents.id, documentId))
     throw error
   }
 
-  return { documentId: doc.id }
+  return { documentId }
+}
+
+export interface PersistFailedDocumentInput {
+  userId: string
+  fileName: string
+  structuredData: SanitizedMedicalDocument
+  processingError: string
+}
+
+export async function persistFailedDocument(
+  input: PersistFailedDocumentInput,
+): Promise<PersistSnapshotResult> {
+  const documentId = await insertDocument({
+    userId: input.userId,
+    fileName: input.fileName,
+    structuredData: input.structuredData,
+    processingStatus: 'failed',
+    processingError: input.processingError,
+  })
+
+  return { documentId }
 }

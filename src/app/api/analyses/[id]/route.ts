@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { completeAnalyses } from '@/lib/db/schema'
+import { livingAnalyses } from '@/lib/db/schema'
 
 export async function GET(
   _request: NextRequest,
@@ -17,13 +17,13 @@ export async function GET(
 
   const [row] = await db
     .select({
-      reportMarkdown: completeAnalyses.reportMarkdown,
-      createdAt: completeAnalyses.createdAt,
-      agentsCount: completeAnalyses.agentsCount,
-      userId: completeAnalyses.userId,
+      reportMarkdown: livingAnalyses.reportMarkdown,
+      createdAt: livingAnalyses.createdAt,
+      currentVersion: livingAnalyses.currentVersion,
+      userId: livingAnalyses.userId,
     })
-    .from(completeAnalyses)
-    .where(eq(completeAnalyses.id, id))
+    .from(livingAnalyses)
+    .where(eq(livingAnalyses.id, id))
     .limit(1)
 
   if (!row) {
@@ -37,6 +37,6 @@ export async function GET(
   return NextResponse.json({
     reportMarkdown: row.reportMarkdown,
     createdAt: row.createdAt,
-    agentsCount: row.agentsCount,
+    currentVersion: row.currentVersion,
   })
 }

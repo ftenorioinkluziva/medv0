@@ -1,6 +1,6 @@
 import { desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { documents, snapshots, completeAnalyses } from '@/lib/db/schema'
+import { documents, snapshots, livingAnalyses } from '@/lib/db/schema'
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
 
 export type DocumentWithHistory = {
@@ -11,10 +11,20 @@ export type DocumentWithHistory = {
   createdAt: Date
   processingStatus: string
   snapshot: { structuredData: SanitizedMedicalDocument } | null
-  completeAnalysis: { id: string; status: string; createdAt: Date } | null
+  livingAnalysis: { id: string; status: string; updatedAt: Date } | null
 }
 
 export async function getDocumentsWithHistory(userId: string): Promise<DocumentWithHistory[]> {
+  const [livingAnalysis] = await db
+    .select({
+      id: livingAnalyses.id,
+      status: livingAnalyses.status,
+      updatedAt: livingAnalyses.updatedAt,
+    })
+    .from(livingAnalyses)
+    .where(eq(livingAnalyses.userId, userId))
+    .limit(1)
+
   const rows = await db
     .select({
       id: documents.id,
@@ -24,13 +34,9 @@ export async function getDocumentsWithHistory(userId: string): Promise<DocumentW
       createdAt: documents.createdAt,
       processingStatus: documents.processingStatus,
       snapshotStructuredData: snapshots.structuredData,
-      analysisId: completeAnalyses.id,
-      analysisStatus: completeAnalyses.status,
-      analysisCreatedAt: completeAnalyses.createdAt,
     })
     .from(documents)
     .leftJoin(snapshots, eq(snapshots.documentId, documents.id))
-    .leftJoin(completeAnalyses, eq(completeAnalyses.documentId, documents.id))
     .where(eq(documents.userId, userId))
     .orderBy(desc(documents.examDate), desc(documents.createdAt))
 
@@ -44,12 +50,6 @@ export async function getDocumentsWithHistory(userId: string): Promise<DocumentW
     snapshot: row.snapshotStructuredData
       ? { structuredData: row.snapshotStructuredData }
       : null,
-    completeAnalysis: row.analysisId
-      ? {
-          id: row.analysisId,
-          status: row.analysisStatus ?? 'completed',
-          createdAt: row.analysisCreatedAt ?? new Date(),
-        }
-      : null,
+    livingAnalysis: livingAnalysis ?? null,
   }))
 }

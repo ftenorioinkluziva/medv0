@@ -1,11 +1,18 @@
 import { after } from 'next/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { analyses, completeAnalyses, documents } from '@/lib/db/schema'
-import { runCompleteAnalysis } from '@/lib/ai/orchestrator/complete-analysis'
+import {
+  analyses,
+  documents,
+  livingAnalyses,
+  livingAnalysisVersions,
+  snapshots,
+} from '@/lib/db/schema'
+import { hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
+import { runLivingAnalysis } from '@/lib/ai/orchestrator/living-analysis'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 
 export const maxDuration = 60
@@ -48,6 +55,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Documento não encontrado.' }, { status: 404 })
   }
 
+  const [triggerSnapshot] = await db
+    .select({ structuredData: snapshots.structuredData })
+    .from(snapshots)
+    .where(eq(snapshots.documentId, documentId))
+    .limit(1)
+
+  if (!hasUsableMedicalDocumentData(triggerSnapshot?.structuredData ?? null)) {
+    return NextResponse.json(
+      { error: 'Não há dados extraídos suficientes para gerar a análise deste documento.' },
+      { status: 409 },
+    )
+  }
+
   const [foundationAgents, specializedAgents] = await Promise.all([
     getActiveAgentsByRole('foundation'),
     getActiveAgentsByRole('specialized'),
@@ -63,57 +83,59 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const [existingCompleteAnalysis] = await db
-    .select({
-      id: completeAnalyses.id,
-      status: completeAnalyses.status,
-    })
-    .from(completeAnalyses)
-    .where(and(eq(completeAnalyses.documentId, documentId), eq(completeAnalyses.userId, userId)))
+  const [existing] = await db
+    .select({ id: livingAnalyses.id, currentVersion: livingAnalyses.currentVersion, status: livingAnalyses.status })
+    .from(livingAnalyses)
+    .where(eq(livingAnalyses.userId, userId))
     .limit(1)
 
-  if (existingCompleteAnalysis?.status === 'processing') {
-    return NextResponse.json({ completeAnalysisId: existingCompleteAnalysis.id })
+  if (existing?.status === 'processing') {
+    return NextResponse.json({ livingAnalysisId: existing.id })
   }
 
-  const completeAnalysisId = existingCompleteAnalysis?.id ?? crypto.randomUUID()
+  let livingAnalysisId: string
+  let nextVersion: number
 
-  if (existingCompleteAnalysis) {
-    await db.delete(analyses).where(eq(analyses.completeAnalysisId, completeAnalysisId))
-
-    await db
-      .update(completeAnalyses)
-      .set({
-        reportMarkdown: '',
-        analysisData: null,
-        agentsCount: 0,
-        foundationCompleted: 0,
-        specializedCompleted: 0,
-        totalDurationMs: null,
-        status: 'processing',
-        updatedAt: new Date(),
-      })
-      .where(eq(completeAnalyses.id, completeAnalysisId))
+  if (existing) {
+    livingAnalysisId = existing.id
+    nextVersion = existing.currentVersion + 1
   } else {
-    await db.insert(completeAnalyses).values({
-      id: completeAnalysisId,
-      userId,
-      documentId,
-      reportMarkdown: '',
-      agentsCount: 0,
-      foundationCompleted: 0,
-      specializedCompleted: 0,
+    const [created] = await db
+      .insert(livingAnalyses)
+      .values({ userId, status: 'processing' })
+      .returning({ id: livingAnalyses.id })
+    livingAnalysisId = created.id
+    nextVersion = 1
+  }
+
+  const userSnapshots = await db
+    .select({ id: snapshots.id })
+    .from(snapshots)
+    .where(eq(snapshots.userId, userId))
+
+  const [version] = await db
+    .insert(livingAnalysisVersions)
+    .values({
+      livingAnalysisId,
+      version: nextVersion,
+      triggerDocumentId: documentId,
+      snapshotIds: userSnapshots.map((s) => s.id),
       status: 'processing',
     })
-  }
+    .returning({ id: livingAnalysisVersions.id })
+
+  await db
+    .update(livingAnalyses)
+    .set({ status: 'processing', updatedAt: new Date() })
+    .where(eq(livingAnalyses.id, livingAnalysisId))
 
   after(async () => {
     try {
-      await runCompleteAnalysis(userId, documentId, completeAnalysisId)
+      await runLivingAnalysis(userId, documentId, livingAnalysisId, version.id)
     } catch (error) {
       console.error('[analyses/run] Background analysis failed:', error)
     }
   })
 
-  return NextResponse.json({ completeAnalysisId })
+  return NextResponse.json({ livingAnalysisId })
 }
