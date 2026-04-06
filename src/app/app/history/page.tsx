@@ -22,7 +22,7 @@ export default async function HistoryPage() {
     <main className="min-h-screen bg-background">
       <div className="p-4 space-y-4">
         <div>
-          <h1 className="text-xl font-semibold">Histórico de Exames</h1>
+          <h1 className="text-xl font-semibold">Histórico de Uploads de Exames</h1>
           {docs.length > 0 && (
             <p className="text-xs text-muted-foreground mt-0.5">
               {docs.length} {docs.length === 1 ? 'exame' : 'exames'}

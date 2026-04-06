@@ -44,9 +44,14 @@ export default auth(function proxy(req: NextRequest) {
   }
 
   if (pathname === '/') {
-    if (session?.user.role === 'admin') {
+    if (!session) {
+      return NextResponse.redirect(new URL('/auth/login', req.url))
+    }
+    if (session.user.role === 'admin') {
       return NextResponse.redirect(new URL('/admin', req.url))
     }
+    const dest = session.user.onboardingCompleted ? '/app/dashboard' : '/app/onboarding'
+    return NextResponse.redirect(new URL(dest, req.url))
   }
 
   return NextResponse.next()

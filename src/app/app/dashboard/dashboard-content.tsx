@@ -52,6 +52,13 @@ function ExamRow({ doc, evolution }: { doc: DocumentWithHistory; evolution: Para
             {doc.documentType} • {examDate}
           </p>
         </div>
+        <Link
+          href={`/app/documents/${doc.id}`}
+          className="shrink-0 inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
+        >
+          Ver dados
+          <ArrowRight className="size-3" aria-hidden="true" />
+        </Link>
       </div>
 
       {/* Evolução de parâmetros */}
@@ -116,15 +123,6 @@ export function DashboardContent({ data }: DashboardContentProps) {
               <ClipboardList className="size-4 text-muted-foreground" aria-hidden="true" />
               <h2 id="exams-heading" className="font-semibold text-foreground">Meus Exames</h2>
             </div>
-            {hasAnyDoc && (
-              <Link
-                href="/app/history"
-                className="flex items-center gap-1 text-xs font-medium text-primary hover:underline focus-visible:outline-none"
-              >
-                Ver histórico completo
-                <ArrowRight className="size-3" aria-hidden="true" />
-              </Link>
-            )}
           </div>
 
           {!hasAnyDoc ? (

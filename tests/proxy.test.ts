@@ -8,7 +8,9 @@ vi.mock('@/lib/auth/config', () => ({
 const proxyModule = await import('@/proxy')
 const proxy = proxyModule.default as unknown as (req: NextRequest) => Promise<Response>
 
-function makeRequest(path: string, session: { user: { role: string } } | null = null) {
+type TestSession = { user: { role: string; onboardingCompleted: boolean } }
+
+function makeRequest(path: string, session: TestSession | null = null) {
   const req = new NextRequest(`http://localhost${path}`) as NextRequest & {
     auth: typeof session
   }
@@ -28,27 +30,27 @@ describe('proxy — /admin routes', () => {
   })
 
   it('redirects patient to / when accessing /admin', async () => {
-    const req = makeRequest('/admin', { user: { role: 'patient' } })
+    const req = makeRequest('/admin', { user: { role: 'patient', onboardingCompleted: true } })
     const res = await proxy(req)
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toMatch(/\/$/)
   })
 
   it('redirects doctor to / when accessing /admin', async () => {
-    const req = makeRequest('/admin', { user: { role: 'doctor' } })
+    const req = makeRequest('/admin', { user: { role: 'doctor', onboardingCompleted: true } })
     const res = await proxy(req)
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toMatch(/\/$/)
   })
 
   it('allows admin to access /admin', async () => {
-    const req = makeRequest('/admin', { user: { role: 'admin' } })
+    const req = makeRequest('/admin', { user: { role: 'admin', onboardingCompleted: true } })
     const res = await proxy(req)
     expect(res.status).toBe(200)
   })
 
   it('allows admin to access /admin/agents', async () => {
-    const req = makeRequest('/admin/agents', { user: { role: 'admin' } })
+    const req = makeRequest('/admin/agents', { user: { role: 'admin', onboardingCompleted: true } })
     const res = await proxy(req)
     expect(res.status).toBe(200)
   })
@@ -64,13 +66,13 @@ describe('proxy — /app routes', () => {
   })
 
   it('allows authenticated patient to access /app', async () => {
-    const req = makeRequest('/app/dashboard', { user: { role: 'patient' } })
+    const req = makeRequest('/app/dashboard', { user: { role: 'patient', onboardingCompleted: true } })
     const res = await proxy(req)
     expect(res.status).toBe(200)
   })
 
   it('redirects admin away from /app to /admin', async () => {
-    const req = makeRequest('/app/dashboard', { user: { role: 'admin' } })
+    const req = makeRequest('/app/dashboard', { user: { role: 'admin', onboardingCompleted: true } })
     const res = await proxy(req)
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toContain('/admin')
@@ -78,17 +80,32 @@ describe('proxy — /app routes', () => {
 })
 
 describe('proxy — / root redirect', () => {
+  it('redirects unauthenticated from / to /auth/login', async () => {
+    const req = makeRequest('/', null)
+    const res = await proxy(req)
+    expect(res.status).toBe(307)
+    expect(res.headers.get('location')).toContain('/auth/login')
+  })
+
   it('redirects authenticated admin from / to /admin', async () => {
-    const req = makeRequest('/', { user: { role: 'admin' } })
+    const req = makeRequest('/', { user: { role: 'admin', onboardingCompleted: true } })
     const res = await proxy(req)
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toContain('/admin')
   })
 
-  it('does not redirect patient from /', async () => {
-    const req = makeRequest('/', { user: { role: 'patient' } })
+  it('redirects patient with onboarding complete from / to /app/dashboard', async () => {
+    const req = makeRequest('/', { user: { role: 'patient', onboardingCompleted: true } })
     const res = await proxy(req)
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(307)
+    expect(res.headers.get('location')).toContain('/app/dashboard')
+  })
+
+  it('redirects patient with pending onboarding from / to /app/onboarding', async () => {
+    const req = makeRequest('/', { user: { role: 'patient', onboardingCompleted: false } })
+    const res = await proxy(req)
+    expect(res.status).toBe(307)
+    expect(res.headers.get('location')).toContain('/app/onboarding')
   })
 })
 
