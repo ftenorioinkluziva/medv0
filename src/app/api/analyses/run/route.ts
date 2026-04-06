@@ -1,11 +1,10 @@
 import { after } from 'next/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import {
-  analyses,
   documents,
   livingAnalyses,
   livingAnalysisVersions,

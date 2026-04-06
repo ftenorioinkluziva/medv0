@@ -20,6 +20,7 @@ export async function GET(
       reportMarkdown: livingAnalyses.reportMarkdown,
       createdAt: livingAnalyses.createdAt,
       currentVersion: livingAnalyses.currentVersion,
+      agentsCount: livingAnalyses.agentsCount,
       userId: livingAnalyses.userId,
     })
     .from(livingAnalyses)
@@ -38,5 +39,6 @@ export async function GET(
     reportMarkdown: row.reportMarkdown,
     createdAt: row.createdAt,
     currentVersion: row.currentVersion,
+    agentsCount: row.agentsCount,
   })
 }
