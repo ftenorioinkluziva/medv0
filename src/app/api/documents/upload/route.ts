@@ -9,10 +9,9 @@ import { triggerLivingAnalysis } from '@/lib/ai/orchestrator/trigger-living-anal
 import {
   DOCUMENT_UPLOAD_ACCEPTED_TYPES,
   DOCUMENT_UPLOAD_MAX_SIZE_BYTES,
-  DOCUMENT_UPLOAD_SERVER_MAX_DURATION_SECONDS,
 } from '@/lib/documents/upload-config'
 
-export const maxDuration = DOCUMENT_UPLOAD_SERVER_MAX_DURATION_SECONDS
+export const maxDuration = 90
 
 const EXTRACTION_FAILED_MESSAGE = 'Não foi possível extrair dados utilizáveis do documento enviado.'
 
