@@ -1,11 +1,10 @@
-# Deploy — SAMI em VPS com Docker + Nginx + SSL
+# Deploy — SAMI em VPS com Docker + Nginx Proxy Manager
 
 ## Stack
 
 - **VPS**: Hetzner (`89.167.106.38`)
-- **App**: Next.js 16 rodando em container Docker
-- **Reverse proxy**: Nginx (alpine) com SSL terminado na borda
-- **SSL**: Let's Encrypt via Certbot (renovação automática)
+- **App**: Next.js 16 rodando em container Docker (porta 3000)
+- **Reverse proxy + SSL**: Nginx Proxy Manager (já instalado em `http://89.167.106.38:81/`)
 - **Banco de dados**: Neon PostgreSQL (externo, não roda na VPS)
 - **Registry**: GitHub Container Registry (`ghcr.io`)
 - **CD**: GitHub Actions → build → push GHCR → deploy SSH
@@ -15,17 +14,18 @@
 ## Arquivos de infraestrutura
 
 ```
-docker-compose.yml          # Stack completo (app + nginx + certbot)
-nginx/
-  nginx.conf                # Config base Nginx
-  conf.d/
-    sami.conf               # VHost: HTTP→HTTPS + proxy + cache de assets
+docker-compose.yml          # Apenas o container da app (porta 3000)
 scripts/
   server-setup.sh           # Provisionamento inicial da VPS (executar uma vez)
 .github/workflows/
   ci.yml                    # CI: lint → typecheck → test → build → docker build
   deploy.yml                # CD: build → push GHCR → deploy SSH
+docs/infra/
+  deploy.md                 # Este arquivo
 ```
+
+> Nginx e Certbot **não** estão no docker-compose.yml — o Nginx Proxy Manager
+> já instalado na VPS cuida de proxy reverso e SSL.
 
 ---
 
@@ -34,14 +34,20 @@ scripts/
 O domínio ainda não foi definido. Quando estiver disponível:
 
 1. Aponte o DNS `A` do domínio para `89.167.106.38`
-2. Substitua `${DOMAIN}` em `nginx/conf.d/sami.conf` pelo domínio real
+2. No NPM (`http://89.167.106.38:81/`), crie um **Proxy Host**:
+   - **Domain Names**: `<dominio>`
+   - **Scheme**: `http`
+   - **Forward Hostname/IP**: IP interno da VPS ou nome do container (`172.17.0.1` ou o IP do host Docker)
+   - **Forward Port**: `3000`
+   - Ative **SSL** → Request a new SSL Certificate (Let's Encrypt)
+   - Marque **Force SSL** e **HTTP/2 Support**
 3. Atualize o secret `NEXTAUTH_URL` no GitHub para `https://<dominio>`
 
 ---
 
 ## 2. GitHub Secrets
 
-Configure estes secrets em **Settings → Secrets and variables → Actions** do repositório:
+Configure em **Settings → Secrets and variables → Actions** do repositório:
 
 | Secret | Descrição | Exemplo |
 |--------|-----------|---------|
@@ -62,54 +68,53 @@ Configure estes secrets em **Settings → Secrets and variables → Actions** do
 
 ## 3. Provisionamento inicial da VPS (uma vez)
 
-Executar a partir da raiz do repositório, conectado à VPS ou localmente com acesso SSH:
+O NPM já está instalado. Só é necessário preparar o diretório da app:
 
 ```bash
 # Na VPS como root
-bash scripts/server-setup.sh <dominio> <email-certbot>
+mkdir -p /opt/sami
+cd /opt/sami
 
-# Exemplo
-bash scripts/server-setup.sh sami.example.com admin@example.com
+# Copiar docker-compose.yml para a VPS
+scp docker-compose.yml root@89.167.106.38:/opt/sami/
+
+# Criar .env.production na VPS
+cat > /opt/sami/.env.production << 'EOF'
+DATABASE_URL=postgresql://...
+GOOGLE_GENERATIVE_AI_API_KEY=...
+AUTH_SECRET=...
+NEXTAUTH_URL=https://<dominio>
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=SAMI <noreply@dominio>
+EOF
 ```
-
-O script:
-- Instala Docker, docker-compose-plugin, ufw
-- Abre portas 80, 443 e SSH no firewall
-- Cria `/opt/sami/` com os arquivos de configuração
-- Gera `.env.production` para preencher
-- Exibe as próximas etapas
 
 ---
 
-## 4. Primeiro deploy manual (após provisionamento)
+## 4. Primeiro deploy manual
 
 ```bash
-# 1. Preencher variáveis de ambiente na VPS
-nano /opt/sami/.env.production
+# 1. Na VPS: autenticar no GHCR
+ssh root@89.167.106.38
+echo "<GITHUB_PAT>" | docker login ghcr.io -u <github-user> --password-stdin
 
-# 2. Subir apenas o Nginx (para obter o certificado SSL)
+# 2. Subir o container da app
 cd /opt/sami
-docker compose up -d nginx
-
-# 3. Emitir certificado SSL
-docker compose run --rm certbot certonly \
-  --webroot -w /var/www/certbot \
-  --email <email> --agree-tos --no-eff-email \
-  -d <dominio>
-
-# 4. Reiniciar Nginx com SSL ativo
-docker compose restart nginx
-
-# 5. Subir o stack completo
 GITHUB_REPOSITORY=<org>/<repo> IMAGE_TAG=latest \
   docker compose --env-file .env.production up -d
+
+# 3. Verificar que está rodando
+docker compose ps
+curl http://localhost:3000
 ```
+
+> Após o container subir, configure o Proxy Host no NPM apontando para a porta 3000.
 
 ---
 
 ## 5. Pipeline CD automático
 
-Após configurar os GitHub Secrets, **todo push em `main`** dispara o pipeline:
+Após configurar os GitHub Secrets, **todo push em `main`** dispara:
 
 ```
 push main
@@ -117,14 +122,13 @@ push main
        └─ Deploy: build Docker → push ghcr.io → SSH na VPS → docker compose up
 ```
 
-O CD só executa se o CI passar. O deploy é zero-downtime: só o container `app` é
-substituído; Nginx permanece em pé durante a atualização.
+O deploy substitui apenas o container `app` sem derrubar nada mais na VPS.
 
 ---
 
 ## 6. Operações no dia a dia
 
-### Ver status dos containers
+### Ver status
 ```bash
 ssh root@89.167.106.38 "cd /opt/sami && docker compose ps"
 ```
@@ -134,47 +138,24 @@ ssh root@89.167.106.38 "cd /opt/sami && docker compose ps"
 ssh root@89.167.106.38 "cd /opt/sami && docker compose logs -f app"
 ```
 
-### Ver logs do Nginx
-```bash
-ssh root@89.167.106.38 "cd /opt/sami && docker compose logs -f nginx"
-```
-
 ### Forçar redeploy manual
 ```bash
-# Dispara o workflow de deploy manualmente pelo GitHub CLI
 gh workflow run deploy.yml
 ```
 
-### Renovação SSL (automática via Certbot)
-O container `certbot` tenta renovar a cada 12 horas. Para forçar manualmente:
-```bash
-ssh root@89.167.106.38 "cd /opt/sami && docker compose run --rm certbot renew"
+### Acesso ao Nginx Proxy Manager
+```
+http://89.167.106.38:81/
 ```
 
 ---
 
-## 7. Variáveis de ambiente de produção
+## 7. Checklist de ativação
 
-Arquivo em `/opt/sami/.env.production` na VPS (nunca commitado no repositório):
-
-```env
-DATABASE_URL=postgresql://...
-GOOGLE_GENERATIVE_AI_API_KEY=...
-AUTH_SECRET=...
-NEXTAUTH_URL=https://<dominio>
-RESEND_API_KEY=
-RESEND_FROM_EMAIL=SAMI <noreply@dominio>
-```
-
----
-
-## 8. Checklist de ativação
-
-- [ ] Domínio definido e DNS apontando para `89.167.106.38`
-- [ ] `${DOMAIN}` substituído em `nginx/conf.d/sami.conf`
+- [ ] Domínio definido e DNS `A` apontando para `89.167.106.38`
 - [ ] GitHub Secrets configurados (9 secrets da tabela acima)
-- [ ] Provisionamento inicial executado (`scripts/server-setup.sh`)
-- [ ] `.env.production` preenchido na VPS
-- [ ] Certificado SSL emitido via Certbot
-- [ ] Primeiro deploy manual executado com sucesso
+- [ ] `/opt/sami/docker-compose.yml` copiado para a VPS
+- [ ] `/opt/sami/.env.production` preenchido na VPS
+- [ ] Primeiro deploy manual executado com sucesso (`docker compose ps` mostra `app` running)
+- [ ] Proxy Host criado no NPM com SSL Let's Encrypt
 - [ ] Pipeline CD validado com um push em `main`
