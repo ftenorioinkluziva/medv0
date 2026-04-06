@@ -4,6 +4,7 @@ import { loginSchema } from '@/lib/auth/validation'
 import { verifyCredentials } from '@/lib/auth/verify-credentials'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/auth/login',
