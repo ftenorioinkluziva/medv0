@@ -108,15 +108,15 @@ jobs:
             # Pull nova imagem e reinicia apenas o container da app
             GITHUB_REPOSITORY="${{ github.repository }}" \
             IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}" \
-            docker compose pull app
+            docker-compose pull app
 
             GITHUB_REPOSITORY="${{ github.repository }}" \
             IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}" \
-            docker compose up -d --no-deps app
+            docker-compose up -d --no-deps app
 
             # Aguarda healthcheck
             sleep 10
-            docker compose ps app
+            docker-compose ps app
 
             # Limpa imagens antigas
             docker image prune -f
@@ -129,5 +129,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /opt/sami
-            docker compose ps
+            docker-compose ps
             curl -sf http://localhost:3000/api/health || echo "Health check endpoint not available"
