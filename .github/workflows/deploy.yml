@@ -105,21 +105,32 @@ jobs:
             RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}
             EOF
 
-            # Para o container atual, faz pull e sobe novamente
-            # (--force-recreate contorna bug do docker-compose v1 com ContainerConfig)
-            GITHUB_REPOSITORY="${{ github.repository }}" \
-            IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}" \
-            docker-compose pull app
+            # Deploy direto via docker (contorna bug ContainerConfig do docker-compose v1)
+            IMAGE="ghcr.io/${{ github.repository }}:${{ needs.build-and-push.outputs.image_tag }}"
 
-            GITHUB_REPOSITORY="${{ github.repository }}" \
-            IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}" \
-            docker-compose up -d --force-recreate --no-deps app
+            docker pull "$IMAGE"
 
-            # Aguarda healthcheck
+            docker stop sami-app 2>/dev/null || true
+            docker rm   sami-app 2>/dev/null || true
+
+            docker run -d \
+              --name sami-app \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              -e NODE_ENV=production \
+              -e PORT=3000 \
+              -e HOSTNAME=0.0.0.0 \
+              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              -e GOOGLE_GENERATIVE_AI_API_KEY="${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}" \
+              -e AUTH_SECRET="${{ secrets.AUTH_SECRET }}" \
+              -e NEXTAUTH_URL="${{ secrets.NEXTAUTH_URL }}" \
+              -e RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" \
+              -e RESEND_FROM_EMAIL="${{ secrets.RESEND_FROM_EMAIL }}" \
+              "$IMAGE"
+
             sleep 10
-            docker-compose ps app
+            docker ps --filter name=sami-app
 
-            # Limpa imagens antigas
             docker image prune -f
 
       - name: Verify deployment
@@ -129,6 +140,5 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /opt/sami
-            docker-compose ps
-            curl -sf http://localhost:3000/api/health || echo "Health check endpoint not available"
+            docker ps --filter name=sami-app
+            curl -sf http://localhost:3000 || echo "App not responding yet"
