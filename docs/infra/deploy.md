@@ -152,7 +152,8 @@ http://89.167.106.38:81/
 - [x] Pipeline CI verde (lint, typecheck, 202 testes, build, docker build)
 - [x] Pipeline Deploy verde (build → push GHCR → deploy SSH)
 - [x] Container rodando na VPS (`/opt/sami`)
-- [ ] DNS `A` de `sami.blackboxinovacao.com.br` apontando para `89.167.106.38`
-- [ ] Proxy Host criado no NPM (`sami.blackboxinovacao.com.br` → `172.17.0.1:3000`) com SSL Let's Encrypt
+- [x] DNS `A` de `sami.blackboxinovacao.com.br` apontando para `89.167.106.38`
+- [x] Proxy Host criado no NPM (`sami.blackboxinovacao.com.br` → `172.17.0.1:3000`) com SSL Let's Encrypt
+- [x] HTTPS ativo em https://sami.blackboxinovacao.com.br
 - [ ] Secret `NEXTAUTH_URL` atualizado para `https://sami.blackboxinovacao.com.br`
 - [ ] `RESEND_API_KEY` e `RESEND_FROM_EMAIL` configurados (e-mail transacional)
