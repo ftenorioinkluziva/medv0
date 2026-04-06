@@ -174,6 +174,7 @@ describe('analyzeWithAgent — AC4', () => {
         articleId: 'art-1',
         chunkIndex: 0,
         content: 'Contexto relevante de vitamina D',
+        snippet: 'Contexto relevante de vitamina D',
         score: 0.92,
         article: { title: 'Vitamina D', source: null, author: null, category: null, isVerified: 'verified' },
       },

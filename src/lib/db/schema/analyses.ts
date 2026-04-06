@@ -19,6 +19,7 @@ export const livingAnalyses = pgTable('living_analyses', {
     .unique()
     .references(() => users.id),
   currentVersion: integer('current_version').notNull().default(0),
+  agentsCount: integer('agents_count').notNull().default(0),
   reportMarkdown: text('report_markdown').notNull().default(''),
   analysisData: jsonb('analysis_data'),
   status: text('status').notNull().default('pending'),

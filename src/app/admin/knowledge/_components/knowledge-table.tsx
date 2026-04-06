@@ -141,7 +141,7 @@ export function KnowledgeTable({ articles }: KnowledgeTableProps) {
         <Select
           value={categoryFilter}
           onValueChange={(value) => {
-            setCategoryFilter(value)
+            setCategoryFilter(value ?? ALL_CATEGORIES)
             setPage(1)
           }}
         >
@@ -161,7 +161,7 @@ export function KnowledgeTable({ articles }: KnowledgeTableProps) {
         <Select
           value={authorFilter}
           onValueChange={(value) => {
-            setAuthorFilter(value)
+            setAuthorFilter(value ?? ALL_AUTHORS)
             setPage(1)
           }}
         >

@@ -64,6 +64,13 @@
       "when": 1775263001297,
       "tag": "0008_bent_jazinda",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1775481198530,
+      "tag": "0009_many_killmonger",
+      "breakpoints": true
     }
   ]
 }

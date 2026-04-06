@@ -1,0 +1,1 @@
+ALTER TABLE "living_analyses" ADD COLUMN "agents_count" integer DEFAULT 0 NOT NULL;
