@@ -105,14 +105,15 @@ jobs:
             RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}
             EOF
 
-            # Pull nova imagem e reinicia apenas o container da app
+            # Para o container atual, faz pull e sobe novamente
+            # (--force-recreate contorna bug do docker-compose v1 com ContainerConfig)
             GITHUB_REPOSITORY="${{ github.repository }}" \
             IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}" \
             docker-compose pull app
 
             GITHUB_REPOSITORY="${{ github.repository }}" \
             IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}" \
-            docker-compose up -d --no-deps app
+            docker-compose up -d --force-recreate --no-deps app
 
             # Aguarda healthcheck
             sleep 10
