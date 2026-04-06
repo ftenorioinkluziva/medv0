@@ -3,6 +3,7 @@
 ## Stack
 
 - **VPS**: Hetzner (`89.167.106.38`)
+- **Domínio**: `sami.blackboxinovacao.com.br`
 - **App**: Next.js 16 rodando em container Docker (porta 3000)
 - **Reverse proxy + SSL**: Nginx Proxy Manager (instalado em `http://89.167.106.38:81/`)
 - **Banco de dados**: Neon PostgreSQL (externo, não roda na VPS)
@@ -40,17 +41,19 @@ docs/infra/
 
 ## 1. Domínio
 
-O domínio ainda não foi definido. Quando estiver disponível:
+**Domínio:** `sami.blackboxinovacao.com.br`
 
-1. Aponte o DNS `A` do domínio para `89.167.106.38`
+Passos para ativar HTTPS:
+
+1. Aponte o DNS `A` de `sami.blackboxinovacao.com.br` para `89.167.106.38`
 2. No NPM (`http://89.167.106.38:81/`), crie um **Proxy Host**:
-   - **Domain Names**: `<dominio>`
+   - **Domain Names**: `sami.blackboxinovacao.com.br`
    - **Scheme**: `http`
    - **Forward Hostname/IP**: `172.17.0.1` (IP do host Docker na VPS)
    - **Forward Port**: `3000`
    - Ative **SSL** → Request a new SSL Certificate (Let's Encrypt)
    - Marque **Force SSL** e **HTTP/2 Support**
-3. Atualize o secret `NEXTAUTH_URL` no GitHub para `https://<dominio>`
+3. Atualize o secret `NEXTAUTH_URL` no GitHub para `https://sami.blackboxinovacao.com.br`
 
 ---
 
@@ -66,7 +69,7 @@ Configure em **Settings → Secrets and variables → Actions** do repositório:
 | `DATABASE_URL` | Connection string Neon | ✅ configurado |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | API key Google AI | ✅ configurado |
 | `AUTH_SECRET` | Secret do NextAuth | ✅ configurado |
-| `NEXTAUTH_URL` | URL pública da app | ✅ configurado (atualizar quando tiver domínio) |
+| `NEXTAUTH_URL` | `https://sami.blackboxinovacao.com.br` | ⏳ atualizar após DNS propagado |
 | `RESEND_API_KEY` | API key Resend (e-mail) | ⏳ pendente |
 | `RESEND_FROM_EMAIL` | Remetente de e-mails | ⏳ pendente |
 
@@ -149,7 +152,7 @@ http://89.167.106.38:81/
 - [x] Pipeline CI verde (lint, typecheck, 202 testes, build, docker build)
 - [x] Pipeline Deploy verde (build → push GHCR → deploy SSH)
 - [x] Container rodando na VPS (`/opt/sami`)
-- [ ] Domínio definido e DNS `A` apontando para `89.167.106.38`
-- [ ] Proxy Host criado no NPM com SSL Let's Encrypt
-- [ ] `NEXTAUTH_URL` atualizado para `https://<dominio>`
+- [ ] DNS `A` de `sami.blackboxinovacao.com.br` apontando para `89.167.106.38`
+- [ ] Proxy Host criado no NPM (`sami.blackboxinovacao.com.br` → `172.17.0.1:3000`) com SSL Let's Encrypt
+- [ ] Secret `NEXTAUTH_URL` atualizado para `https://sami.blackboxinovacao.com.br`
 - [ ] `RESEND_API_KEY` e `RESEND_FROM_EMAIL` configurados (e-mail transacional)
