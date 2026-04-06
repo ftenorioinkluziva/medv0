@@ -158,6 +158,7 @@ jobs:
               -e GOOGLE_GENERATIVE_AI_API_KEY="${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}" \
               -e AUTH_SECRET="${{ secrets.AUTH_SECRET }}" \
               -e NEXTAUTH_URL="${{ secrets.NEXTAUTH_URL }}" \
+              -e AUTH_TRUSTED_HOSTS="${{ secrets.AUTH_TRUSTED_HOSTS }}" \
               -e RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" \
               -e RESEND_FROM_EMAIL="${{ secrets.RESEND_FROM_EMAIL }}" \
               "$IMAGE"
