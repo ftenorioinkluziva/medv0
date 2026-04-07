@@ -16,7 +16,11 @@ services:
       - "3000:3000"
     networks:
       - sami
+      - shared-network
 
 networks:
   sami:
     driver: bridge
+  shared-network:
+    external: true
+    name: shared-network
