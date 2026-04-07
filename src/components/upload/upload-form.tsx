@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Camera, FileText, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -39,6 +40,7 @@ interface FilePreview {
 }
 
 export function UploadForm() {
+  const router = useRouter()
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -117,7 +119,8 @@ export function UploadForm() {
       }
 
       setStep('done')
-      toast.success('Exame processado! Acesse o dashboard para ver a análise.')
+      toast.success('Exame processado!')
+      router.push('/app/dashboard')
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
       toast.error((err as Error).message ?? 'Erro inesperado. Tente novamente.')

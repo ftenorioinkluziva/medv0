@@ -41,3 +41,9 @@ recommendations:
       refs: ['src/lib/db/schema/knowledge.ts']
     - action: 'updatedAt em knowledgeBase não tem .onUpdateNow() — considerar trigger DB ou atualização manual em UPDATE paths futuros.'
       refs: ['src/lib/db/schema/knowledge.ts']
+    - action: 'Adicionar testes para hybrid search (BM25 path, RRF fusion, fallback quando sem tsvector)'
+      refs: ['tests/unit/vector-search.test.ts']
+
+changes_post_done:
+  - date: '2026-04-07'
+    description: 'Hybrid search implementado — coluna content_tsv (tsvector) + índice GIN adicionados; searchKnowledge() atualizado para BM25 + RRF (k=60); uploader.ts popula content_tsv via to_tsvector; migration 0010 aplicada'

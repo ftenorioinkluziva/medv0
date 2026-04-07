@@ -4,20 +4,25 @@ vi.mock('@/lib/ai/rag/uploader', () => ({
   upsertKnowledgeArticle: vi.fn(),
 }))
 
+vi.mock('@/lib/db/client', () => ({
+  db: {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]),
+    }),
+  },
+}))
+
 import { upsertKnowledgeArticle } from '@/lib/ai/rag/uploader'
 import { POST } from '@/app/api/admin/knowledge/auto-upload/route'
 import { NextRequest } from 'next/server'
 import { chunkText } from '@/lib/ai/rag/chunker'
 
-const VALID_API_KEY = 'test-api-key-123'
-
-function makeRequest(body: unknown, apiKey?: string): NextRequest {
+function makeRequest(body: unknown): NextRequest {
   return new NextRequest('http://localhost/api/admin/knowledge/auto-upload', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(apiKey !== undefined ? { 'x-api-key': apiKey } : {}),
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
 }
@@ -31,43 +36,13 @@ const validPayload = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.unstubAllEnvs()
-  vi.stubEnv('KNOWLEDGE_API_KEY', VALID_API_KEY)
 })
 
 describe('POST /api/admin/knowledge/auto-upload', () => {
-  describe('AC1 — autenticação por API key', () => {
-    it('retorna 401 quando x-api-key está ausente', async () => {
-      // #given
-      const req = makeRequest(validPayload)
-
-      // #when
-      const res = await POST(req)
-
-      // #then
-      expect(res.status).toBe(401)
-      const json = await res.json()
-      expect(json).toEqual({ error: 'Unauthorized' })
-    })
-
-    it('retorna 401 quando x-api-key é inválida', async () => {
-      // #given
-      const req = makeRequest(validPayload, 'wrong-key')
-
-      // #when
-      const res = await POST(req)
-
-      // #then
-      expect(res.status).toBe(401)
-      const json = await res.json()
-      expect(json).toEqual({ error: 'Unauthorized' })
-    })
-  })
-
   describe('AC2 — validação de payload', () => {
     it('retorna 400 quando payload é inválido (title ausente)', async () => {
       // #given
-      const req = makeRequest({ content: 'algum conteúdo' }, VALID_API_KEY)
+      const req = makeRequest({ content: 'algum conteúdo' })
 
       // #when
       const res = await POST(req)
@@ -81,10 +56,7 @@ describe('POST /api/admin/knowledge/auto-upload', () => {
 
     it('retorna 413 quando content excede 500k caracteres', async () => {
       // #given
-      const req = makeRequest(
-        { ...validPayload, content: 'x'.repeat(500_001) },
-        VALID_API_KEY,
-      )
+      const req = makeRequest({ ...validPayload, content: 'x'.repeat(500_001) })
 
       // #when
       const res = await POST(req)
@@ -100,7 +72,7 @@ describe('POST /api/admin/knowledge/auto-upload', () => {
     it('retorna 500 quando upsertKnowledgeArticle lança erro', async () => {
       // #given
       vi.mocked(upsertKnowledgeArticle).mockRejectedValue(new Error('DB connection failed'))
-      const req = makeRequest(validPayload, VALID_API_KEY)
+      const req = makeRequest(validPayload)
 
       // #when
       const res = await POST(req)
@@ -120,7 +92,7 @@ describe('POST /api/admin/knowledge/auto-upload', () => {
         chunksCreated: 1,
         action: 'created',
       })
-      const req = makeRequest(validPayload, VALID_API_KEY)
+      const req = makeRequest(validPayload)
 
       // #when
       const res = await POST(req)
@@ -145,8 +117,8 @@ describe('POST /api/admin/knowledge/auto-upload', () => {
       })
 
       // #when — duas requests independentes com mesmo payload
-      const res1 = await POST(makeRequest(validPayload, VALID_API_KEY))
-      const res2 = await POST(makeRequest(validPayload, VALID_API_KEY))
+      const res1 = await POST(makeRequest(validPayload))
+      const res2 = await POST(makeRequest(validPayload))
 
       // #then — upsert chamado 2x, ambos retornam action=updated (não cria duplicata)
       expect(upsertKnowledgeArticle).toHaveBeenCalledTimes(2)

@@ -1,5 +1,11 @@
-import { pgTable, uuid, text, integer, timestamp, date, index } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, timestamp, date, index, customType } from 'drizzle-orm/pg-core'
 import { vector } from 'drizzle-orm/pg-core'
+
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return 'tsvector'
+  },
+})
 
 export const knowledgeBase = pgTable('knowledge_base', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -31,6 +37,7 @@ export const knowledgeEmbeddings = pgTable(
     chunkIndex: integer('chunk_index').notNull(),
     content: text('content').notNull(),
     embedding: vector('embedding', { dimensions: 768 }).notNull(),
+    contentTsv: tsvector('content_tsv'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => [
@@ -38,6 +45,7 @@ export const knowledgeEmbeddings = pgTable(
       'hnsw',
       table.embedding.op('vector_cosine_ops'),
     ),
+    index('knowledge_embeddings_gin_idx').using('gin', table.contentTsv),
   ],
 )
 

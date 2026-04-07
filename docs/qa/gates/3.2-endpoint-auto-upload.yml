@@ -9,9 +9,10 @@ updated: '2026-03-30T09:24:00Z'
 top_issues:
   - severity: medium
     category: security
-    description: 'Comparação direta de API key via !== vulnerável a timing attack'
-    recommendation: 'Substituir por crypto.timingSafeEqual() em iteração futura'
+    description: 'Endpoint sem autenticação — x-api-key removido em 2026-04-07 para uso local via script Python'
+    recommendation: 'Reimplementar auth antes de ir para produção (API key ou sessão NextAuth admin)'
     suggested_owner: dev
+    status: KNOWN_DEBT
 
 waiver:
   active: false
@@ -42,7 +43,13 @@ nfr_validation:
     notes: 'Código limpo, tipado, funções coesas. chunkText é lógica pura testável isoladamente.'
 
 recommendations:
-  immediate: []
-  future:
-    - action: 'Substituir comparação de API key por crypto.timingSafeEqual() para eliminar timing attack'
+  immediate:
+    - action: 'Reimplementar autenticação no endpoint antes de deploy em produção'
       refs: ['src/app/api/admin/knowledge/auto-upload/route.ts']
+  future:
+    - action: 'Adicionar testes para GET ?source= (verificação de duplicatas)'
+      refs: ['tests/unit/knowledge-auto-upload.test.ts']
+
+changes_post_done:
+  - date: '2026-04-07'
+    description: 'Auth x-api-key removida; tags aceita string CSV; GET ?source= adicionado para deduplicação; tsvector populado no insert'

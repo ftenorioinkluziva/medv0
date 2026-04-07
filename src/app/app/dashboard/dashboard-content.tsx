@@ -1,7 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { Upload, ClipboardList, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { Upload, ClipboardList, ArrowRight, TrendingUp, TrendingDown, Minus, Loader2, FlaskConical } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { DashboardData } from './page'
 import type { DocumentWithHistory } from '@/lib/db/queries/history'
@@ -74,10 +77,34 @@ function ExamRow({ doc, evolution }: { doc: DocumentWithHistory; evolution: Para
 }
 
 export function DashboardContent({ data }: DashboardContentProps) {
-  const { userName, historyEntries } = data
+  const router = useRouter()
+  const { userName, historyEntries, latestDocumentId } = data
   const hasAnyDoc = historyEntries.length > 0
   const livingAnalysis = historyEntries[0]?.doc.livingAnalysis ?? null
   const hasAnalysis = livingAnalysis !== null
+  const [triggering, setTriggering] = useState(false)
+
+  async function handleTriggerAnalysis() {
+    if (!latestDocumentId) return
+    setTriggering(true)
+    try {
+      const resp = await fetch('/api/analyses/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: latestDocumentId }),
+      })
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}))
+        throw new Error(data.error ?? 'Erro ao iniciar análise.')
+      }
+      toast.success('Análise iniciada! Aguarde alguns instantes.')
+      router.refresh()
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setTriggering(false)
+    }
+  }
 
   return (
     <div className="space-y-5 p-4 md:p-6">
@@ -169,10 +196,22 @@ export function DashboardContent({ data }: DashboardContentProps) {
                 ))}
               </div>
               {!hasAnalysis && (
-                <div className="rounded-lg border border-dashed border-foreground/15 bg-foreground/2 px-4 py-3 text-center">
+                <div className="rounded-lg border border-dashed border-foreground/15 bg-foreground/2 px-4 py-4 flex flex-col items-center gap-3 text-center">
+                  <FlaskConical className="size-6 text-muted-foreground" aria-hidden="true" />
                   <p className="text-xs text-muted-foreground">
-                    Sua análise será gerada automaticamente após o processamento dos exames.
+                    Seu exame foi processado. Inicie a análise para ver seus indicadores.
                   </p>
+                  <button
+                    onClick={handleTriggerAnalysis}
+                    disabled={triggering || !latestDocumentId}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {triggering ? (
+                      <><Loader2 className="size-4 animate-spin" />Iniciando...</>
+                    ) : (
+                      'Gerar análise'
+                    )}
+                  </button>
                 </div>
               )}
             </div>

@@ -71,6 +71,13 @@
       "when": 1775481198530,
       "tag": "0009_many_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1775567890469,
+      "tag": "0010_previous_turbo",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { eq } from 'drizzle-orm'
+import { db } from '@/lib/db/client'
+import { knowledgeBase } from '@/lib/db/schema'
 import { upsertKnowledgeArticle } from '@/lib/ai/rag/uploader'
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const source = request.nextUrl.searchParams.get('source')
+  if (!source) {
+    return NextResponse.json({ error: 'Missing source param' }, { status: 400 })
+  }
+
+  const existing = await db
+    .select({ id: knowledgeBase.id })
+    .from(knowledgeBase)
+    .where(eq(knowledgeBase.source, source))
+    .limit(1)
+
+  return NextResponse.json({ exists: existing.length > 0 })
+}
 
 export const maxDuration = 60
 
@@ -15,16 +33,14 @@ const KnowledgeArticleSchema = z.object({
   published_date: z.string().optional(),
   category: z.string().optional(),
   subcategory: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z
+    .string()
+    .transform((val) => val.split(/,\s*/).filter(Boolean))
+    .optional(),
   language: z.string().default('pt-BR'),
 })
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const apiKey = request.headers.get('x-api-key')
-  if (!apiKey || apiKey !== process.env.KNOWLEDGE_API_KEY) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   let body: unknown
   try {
     body = await request.json()

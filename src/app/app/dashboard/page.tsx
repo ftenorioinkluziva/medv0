@@ -16,6 +16,7 @@ export type HistoryEntry = {
 export type DashboardData = {
   userName: string
   historyEntries: HistoryEntry[]
+  latestDocumentId: string | null
 }
 
 export default async function DashboardPage() {
@@ -43,7 +44,9 @@ async function DashboardDataLoader({ userId, userName }: { userId: string; userN
     return { doc, evolution: computeEvolution(doc, samePrevious) }
   })
 
-  return <DashboardContent data={{ userName, historyEntries }} />
+  const latestDocumentId = allDocs[0]?.id ?? null
+
+  return <DashboardContent data={{ userName, historyEntries, latestDocumentId }} />
 }
 
 function DashboardSkeleton() {

@@ -1,5 +1,5 @@
 import { embedMany } from 'ai'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { knowledgeBase, knowledgeEmbeddings } from '@/lib/db/schema'
 import { chunkText } from './chunker'
@@ -90,6 +90,7 @@ export async function upsertKnowledgeArticle(
       chunkIndex: i,
       content,
       embedding: embeddings[i],
+      contentTsv: sql`to_tsvector('portuguese', ${content})`,
     })),
   )
 

@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { loginSchema } from '@/lib/auth/validation'
 import { verifyCredentials } from '@/lib/auth/verify-credentials'
+import { getUserById } from '@/lib/db/queries/users'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -20,6 +21,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       if (trigger === 'update' && session?.onboardingCompleted !== undefined) {
         token.onboardingCompleted = session.onboardingCompleted
+      }
+      // Validate user still exists in DB on every token refresh
+      if (token.id && !user) {
+        const dbUser = await getUserById(token.id as string)
+        if (!dbUser || !dbUser.isActive) return null
       }
       return token
     },

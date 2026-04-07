@@ -56,3 +56,6 @@ coverage/
 notes.md
 task_plan.md
 docs/legacy-knowledge-migration-analysis.md
+
+# Scripts locais (não expor publicamente)
+scripts/*.py

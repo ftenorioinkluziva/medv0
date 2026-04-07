@@ -99,6 +99,7 @@ function buildSelectChain(rows: typeof mockRows) {
   const chain = {
     from: vi.fn().mockReturnThis(),
     innerJoin: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue(rows),
   }
@@ -142,13 +143,12 @@ describe('searchKnowledge', () => {
       // #when
       const results = await searchKnowledge('vitamina D3')
 
-      // #then
-      expect(results[0]).toEqual({
+      // #then — score is now an RRF score, not raw cosine similarity
+      expect(results[0]).toMatchObject({
         articleId: 'article-1',
         chunkIndex: 0,
         content: 'Vitamina D3 melhora absorção com TCM',
         snippet: 'Vitamina D3 melhora absorção com TCM',
-        score: 0.92,
         article: {
           title: 'Otimização de Vitamina D3',
           source: 'Dra. Kátia Haranaka',
@@ -157,6 +157,7 @@ describe('searchKnowledge', () => {
           isVerified: 'verified',
         },
       })
+      expect(results[0].score).toBeGreaterThan(0)
     })
 
     it('deve gerar embedding da query antes de buscar', async () => {
@@ -180,8 +181,8 @@ describe('searchKnowledge', () => {
       // #when
       await searchKnowledge('proteína', 2)
 
-      // #then
-      expect(chain.limit).toHaveBeenCalledWith(10)
+      // #then — candidateLimit = max(topK * 5, 25) = max(10, 25) = 25
+      expect(chain.limit).toHaveBeenCalledWith(25)
     })
 
     it('deve retornar apenas um chunk por artigo no topK', async () => {

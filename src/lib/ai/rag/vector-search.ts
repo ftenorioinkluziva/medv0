@@ -93,15 +93,63 @@ function dedupeRowsByArticle(rows: SearchRow[], topK: number): SearchRow[] {
   return Array.from(uniqueRows.values())
 }
 
+// Reciprocal Rank Fusion — combines vector and BM25 rankings
+// k=60 is the standard constant that dampens rank differences
+const RRF_K = 60
+
+function reciprocalRankFusion(
+  vectorRows: SearchRow[],
+  bm25Rows: SearchRow[],
+): SearchRow[] {
+  const scores = new Map<string, { row: SearchRow; rrfScore: number }>()
+
+  const key = (r: SearchRow) => `${r.articleId}:${r.chunkIndex}`
+
+  vectorRows.forEach((row, rank) => {
+    const k = key(row)
+    const prev = scores.get(k)
+    const rrfScore = (prev?.rrfScore ?? 0) + 1 / (RRF_K + rank + 1)
+    scores.set(k, { row, rrfScore })
+  })
+
+  bm25Rows.forEach((row, rank) => {
+    const k = key(row)
+    const prev = scores.get(k)
+    const rrfScore = (prev?.rrfScore ?? 0) + 1 / (RRF_K + rank + 1)
+    scores.set(k, { row: prev?.row ?? row, rrfScore })
+  })
+
+  return Array.from(scores.values())
+    .sort((a, b) => b.rrfScore - a.rrfScore)
+    .map(({ row, rrfScore }) => ({ ...row, score: rrfScore }))
+}
+
+// Converts a plain query string into a tsquery-compatible string
+// e.g. "diabetes tipo 2" → "diabetes & tipo & 2"
+function toTsQuery(query: string): string {
+  return query
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((term) => term.replace(/[^a-zA-Z0-9À-ÿ]/g, ''))
+    .filter(Boolean)
+    .join(' & ')
+}
+
 export async function searchKnowledge(
   query: string,
   topK: number = 5,
 ): Promise<KnowledgeChunk[]> {
-  const queryEmbedding = await generateQueryEmbedding(query)
+  const candidateLimit = Math.max(topK * 5, 25)
+
+  const [queryEmbedding, tsQuery] = await Promise.all([
+    generateQueryEmbedding(query),
+    Promise.resolve(toTsQuery(query)),
+  ])
 
   const similarity = sql<number>`1 - (${cosineDistance(knowledgeEmbeddings.embedding, queryEmbedding)})`
 
-  const rows = await db
+  const vectorRowsPromise = db
     .select({
       articleId: knowledgeEmbeddings.articleId,
       chunkIndex: knowledgeEmbeddings.chunkIndex,
@@ -116,9 +164,39 @@ export async function searchKnowledge(
     .from(knowledgeEmbeddings)
     .innerJoin(knowledgeBase, eq(knowledgeEmbeddings.articleId, knowledgeBase.id))
     .orderBy(desc(similarity))
-    .limit(Math.max(topK * 5, topK))
+    .limit(candidateLimit)
 
-  const dedupedRows = dedupeRowsByArticle(rows, topK)
+  // BM25 via Postgres full-text search — only when tsvector is populated
+  const bm25RowsPromise = tsQuery
+    ? db
+        .select({
+          articleId: knowledgeEmbeddings.articleId,
+          chunkIndex: knowledgeEmbeddings.chunkIndex,
+          content: knowledgeEmbeddings.content,
+          score: sql<number>`ts_rank_cd(${knowledgeEmbeddings.contentTsv}, to_tsquery('portuguese', ${tsQuery}))`,
+          title: knowledgeBase.title,
+          source: knowledgeBase.source,
+          author: knowledgeBase.author,
+          category: knowledgeBase.category,
+          isVerified: knowledgeBase.isVerified,
+        })
+        .from(knowledgeEmbeddings)
+        .innerJoin(knowledgeBase, eq(knowledgeEmbeddings.articleId, knowledgeBase.id))
+        .where(
+          sql`${knowledgeEmbeddings.contentTsv} @@ to_tsquery('portuguese', ${tsQuery})`,
+        )
+        .orderBy(
+          desc(
+            sql`ts_rank_cd(${knowledgeEmbeddings.contentTsv}, to_tsquery('portuguese', ${tsQuery}))`,
+          ),
+        )
+        .limit(candidateLimit)
+    : Promise.resolve([])
+
+  const [vectorRows, bm25Rows] = await Promise.all([vectorRowsPromise, bm25RowsPromise])
+
+  const fusedRows = reciprocalRankFusion(vectorRows as SearchRow[], bm25Rows as SearchRow[])
+  const dedupedRows = dedupeRowsByArticle(fusedRows, topK)
 
   return dedupedRows.map((r) => ({
     articleId: r.articleId,
