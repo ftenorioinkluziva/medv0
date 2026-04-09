@@ -213,6 +213,13 @@ describe('getDocumentsWithHistory', () => {
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockResolvedValue([livingRow]),
     }
+    const currentVersionChain = {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([{ triggerDocumentId: 'doc-1' }]),
+    }
     const docsChain = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
@@ -222,6 +229,7 @@ describe('getDocumentsWithHistory', () => {
     }
     vi.mocked(db.select)
       .mockReturnValueOnce(livingChain as never)
+      .mockReturnValueOnce(currentVersionChain as never)
       .mockReturnValueOnce(docsChain as never)
 
     // #when
@@ -234,6 +242,7 @@ describe('getDocumentsWithHistory', () => {
       id: 'living-1',
       status: 'completed',
       updatedAt: new Date('2026-01-02'),
+      currentTriggerDocumentId: 'doc-1',
     })
   })
 
