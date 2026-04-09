@@ -67,16 +67,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const [foundationAgents, specializedAgents] = await Promise.all([
-    getActiveAgentsByRole('foundation'),
-    getActiveAgentsByRole('specialized'),
-  ])
+  const foundationAgents = await getActiveAgentsByRole('foundation')
 
-  if (foundationAgents.length === 0 || specializedAgents.length === 0) {
+  if (foundationAgents.length === 0) {
     return NextResponse.json(
       {
         error:
-          'Configuração incompleta de agentes. É necessário pelo menos 1 agente foundation e 1 specialized ativos.',
+          'Configuração incompleta de agentes. É necessário pelo menos 1 agente foundation ativo.',
       },
       { status: 409 },
     )

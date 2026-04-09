@@ -1,5 +1,3 @@
-import { generateText } from 'ai'
-import { google } from '@ai-sdk/google'
 import { and, desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import {
@@ -11,80 +9,45 @@ import {
 } from '@/lib/db/schema'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 import { analyzeWithAgent, type AgentAnalysisResult } from '@/lib/ai/agents/analyze'
-import { validateReportSections } from '@/lib/ai/utils/validate-report-sections'
+import { searchKnowledge } from '@/lib/ai/rag/vector-search'
 
-const LIVING_ANALYSIS_PROMPT = `Realize uma análise funcional e integrativa dos dados fornecidos.
+const LIVING_ANALYSIS_PROMPT = `Realize uma análise funcional e integrativa **focada e concisa** dos dados fornecidos.
 
-Você está operando em modo de **análise contínua (documento vivo)**. Os dados podem incluir:
-- Um snapshot do exame mais recente do paciente
-- A análise anterior (se existir), que representa o estado consolidado até o momento
+**Modo:** Análise contínua (documento vivo). Aborde apenas biomarcadores com desvio funcional ou tendências relevantes — **não descreva marcadores dentro da normalidade** se não houver nada clinicamente significativo a destacar.
 
-Processo de análise (6 passos):
-1. Extração e priorização de biomarcadores por eixos funcionais
-2. Análise e interpretação funcional (faixas otimizadas, não apenas referências laboratoriais)
-3. Comparação com a análise anterior (quando disponível): identifique tendências de melhora, piora ou estabilidade
-4. Identificação de padrões e correlações sistêmicas
-5. Contextualização com a base de conhecimento
-6. Geração de insights e recomendações educacionais
+**Processo interno (não escreva os passos):**
+1. Identifique desvios das faixas funcionais otimizadas (não apenas referências laboratoriais)
+2. Correlacione padrões sistêmicos e causas-raiz (ex: resistência à insulina → dislipidemia)
+3. Compare com a análise anterior se disponível; use ↑↓= para indicar direção
+4. Fundamente com a base de conhecimento apenas quando agregar insight novo
+5. Priorize pelo impacto no objetivo de saúde declarado pelo paciente
 
-Estruture sua resposta em Markdown com: Resumo Executivo, Análise por Eixos Funcionais, Evolução (quando houver análise anterior), Padrões e Pontos de Atenção, Insights e Hipóteses, Recomendações Educacionais.
+**Formato de saída obrigatório em Markdown:**
 
-Quando houver análise anterior disponível:
-- Compare valores atuais com os anteriores usando ↑ (subiu), ↓ (desceu), = (estável)
-- Destaque novos achados que não existiam na análise anterior
-- Identifique tendências positivas e negativas
+## Resumo
+4-6 linhas com os 3-5 achados mais relevantes e uma frase conectando ao objetivo do paciente.
 
-IMPORTANTE: Esta análise é para fins educacionais e não substitui avaliação médica profissional.`
+## Principais Achados
+Biomarcadores fora do ideal funcional, agrupados por sistema (Metabólico/Cardiovascular, Hormonal, Renal, Nutricional, etc.). Para cada achado: **Nome (valor)** — interpretação funcional em 1-2 frases. Inclua ↑↓= vs análise anterior quando disponível. **Omita marcadores normais sem relevância clínica.**
+
+## Evolução
+*(Apenas quando há análise anterior)* Bullet list de mudanças significativas: ↑ melhora / ↓ piora / = estável. Máximo 6 itens.
+
+## Prioridades
+3 pontos críticos ordenados por impacto, com justificativa em 1 linha cada.
+
+## Recomendações
+3-5 estratégias educacionais específicas e acionáveis fundamentadas na base de conhecimento. Evite generalidades vagas.
+
+**Restrições de saída:**
+- Limite: 900-1200 palavras no total
+- Não repita informações entre seções
+- Não liste marcadores normais sem relevância
+- Não afirme que análise anterior não foi fornecida quando o bloco estiver presente
+- Não inclua aviso médico no início (o sistema já adiciona automaticamente)`
 
 const DISCLAIMER_TEXT =
   'Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional. Consulte sempre um médico qualificado.'
-
-const LIVING_SYNTHESIS_PROMPT = `Você é um especialista em síntese de análises médicas integrativas. Sua missão é consolidar os outputs de múltiplos agentes especializados em um relatório final coeso, completo e acionável.
-
-Este é um **documento vivo** — pode haver uma análise anterior que serve de referência para evolução.
-
-Integre todas as perspectivas (foundation e specialized) seguindo EXATAMENTE este template — as seções com emojis são âncoras obrigatórias:
-
-# Análise Integrativa de Saúde
-
-## 📋 Resumo Executivo
-[Visão geral em 2-3 parágrafos dos principais achados e correlações entre todas as especialidades]
-[Se houver análise anterior, inclua um parágrafo sobre a evolução geral]
-
-## 📈 Evolução
-[Se houver análise anterior: compare os principais biomarcadores com valores anteriores]
-[Use indicadores: ↑ subiu, ↓ desceu, = estável]
-[Destaque: novos achados, tendências positivas, pontos de atenção que pioraram]
-[Se for a primeira análise: "Esta é a primeira análise. Futuras análises mostrarão a evolução dos seus biomarcadores."]
-
-## 🔍 Análise Detalhada por Eixos Funcionais
-
-### Eixo Tireoidiano e Energético
-- **Biomarcador:** [Valor] (Ref. Lab: [X-Y] | **Alvo Funcional: [valor]**)
-  - **Interpretação:** [análise]
-
-[Inclua outros eixos relevantes conforme os achados: Saúde Metabólica e Inflamatória, Status Nutricional e Hematológico, Função Detox e Imunológica]
-
-## ⚠️ Padrões e Pontos de Atenção
-- **[Padrão]:** [Descrição com indicadores visuais]
-
-## 💡 Insights e Hipóteses de Causa Raiz
-[Hipóteses sobre causas raiz — SEMPRE use "sugere", "indica", nunca diagnóstico direto]
-
-## 📚 Recomendações Educacionais
-1. **[Área]:** [Sugestão educacional]
-   - Fonte: [título do artigo] — [autor]
-
-REGRAS OBRIGATÓRIAS:
-1. TÍTULO FIXO: Use exatamente "# Análise Integrativa de Saúde" — sem nome de paciente (LGPD)
-2. INDICADORES VISUAIS nos biomarcadores — aplique com base nos dados do snapshot fornecido:
-   - Status "high" ou "abnormal" → prefixo ↑ antes do valor (ex: "TSH: ↑ 8.2 mUI/L")
-   - Status "low" → prefixo ↓ antes do valor (ex: "Vitamina D: ↓ 18 ng/mL")
-   - Status "borderline" → prefixo ⚠ antes do valor (ex: "Glicose: ⚠ 99 mg/dL")
-3. CITAÇÕES RAG: Adicione "Fonte: [título] — [autor]" SOMENTE quando o agente citou conhecimento da base de conhecimento. NUNCA invente citações.
-4. Elimine redundâncias entre especialidades e priorize achados mais relevantes
-5. NÃO inclua seção de disclaimer — será adicionado automaticamente pelo sistema
-6. Seção "📈 Evolução" é OBRIGATÓRIA — mesmo na primeira análise`
 
 interface AgentOutput {
   agentId: string
@@ -92,6 +55,11 @@ interface AgentOutput {
   role: string
   content: string
   status: 'completed' | 'timeout' | 'error'
+}
+
+function truncateText(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value
+  return `${value.slice(0, maxChars)}\n\n[conteudo truncado para manter consistencia da analise]`
 }
 
 function readTimeoutMs(envName: string, fallbackMs: number): number {
@@ -111,10 +79,18 @@ export async function runLivingAnalysis(
   versionId: string,
 ): Promise<void> {
   const startMs = Date.now()
-  const hardTimeoutMs = readTimeoutMs('COMPLETE_ANALYSIS_TIMEOUT_MS', 180_000)
-  const foundationTimeoutMs = readTimeoutMs('FOUNDATION_AGENT_TIMEOUT_MS', 45_000)
+  const hardTimeoutMs = readTimeoutMs('COMPLETE_ANALYSIS_TIMEOUT_MS', 360_000)
+  const foundationTimeoutMs = readTimeoutMs('FOUNDATION_AGENT_TIMEOUT_MS', 180_000)
   const specializedTimeoutMs = readTimeoutMs('SPECIALIZED_AGENT_TIMEOUT_MS', 45_000)
-  const synthesisTimeoutMs = readTimeoutMs('SYNTHESIS_TIMEOUT_MS', 45_000)
+
+  const [existingLivingAnalysis] = await db
+    .select({
+      reportMarkdown: livingAnalyses.reportMarkdown,
+      currentVersion: livingAnalyses.currentVersion,
+    })
+    .from(livingAnalyses)
+    .where(eq(livingAnalyses.id, livingAnalysisId))
+    .limit(1)
 
   await db
     .update(livingAnalyses)
@@ -149,7 +125,10 @@ export async function runLivingAnalysis(
       .orderBy(desc(livingAnalysisVersions.version))
       .limit(1)
 
-    const previousAnalysisContext = previousVersion?.reportMarkdown || ''
+    // Keep previous context compact to avoid prompt bloat and repetitive outputs.
+    const previousAnalysisContext = previousVersion?.reportMarkdown
+      ? truncateText(previousVersion.reportMarkdown, 5000)
+      : ''
 
     const [profile] = await db
       .select()
@@ -174,37 +153,96 @@ export async function runLivingAnalysis(
     const foundationAgents = await getActiveAgentsByRole('foundation')
     const specializedAgents = await getActiveAgentsByRole('specialized')
 
-    if (foundationAgents.length === 0 || specializedAgents.length === 0) {
-      throw new Error('No active foundation/specialized agents configured')
+    if (foundationAgents.length === 0) {
+      throw new Error('No active foundation agents configured')
     }
+
+    // Pre-fetch RAG knowledge using biomarker names from the snapshot so the
+    // query targets actual content in the knowledge base (hormones, lipids, etc.)
+    // rather than generic specialty/objective terms.
+    const prebuiltKnowledgeContext = await (async () => {
+      try {
+        const ragTerms: string[] = []
+
+        try {
+          const snapshot = JSON.parse(snapshotContext) as Record<string, unknown>
+          const biomarkerNames = Object.keys(snapshot).slice(0, 20).join(' ')
+          if (biomarkerNames) ragTerms.push(biomarkerNames)
+        } catch {
+          // non-blocking
+        }
+
+        try {
+          const profileObj = JSON.parse(medicalProfileContext) as Record<string, unknown>
+          if (typeof profileObj.healthObjectives === 'string' && profileObj.healthObjectives) {
+            ragTerms.push(profileObj.healthObjectives)
+          }
+        } catch {
+          // non-blocking
+        }
+
+        if (ragTerms.length === 0) return undefined
+
+        const chunks = await searchKnowledge(ragTerms.join(' '), 8)
+        return chunks.length > 0 ? chunks.map((c) => c.content).join('\n\n') : undefined
+      } catch {
+        return undefined
+      }
+    })()
 
     const agentOutputs: AgentOutput[] = []
     const foundationOutputs: AgentOutput[] = []
     const globalDeadline = startMs + hardTimeoutMs
 
     for (const agent of foundationAgents) {
+      if (!agent.isActive) continue
       if (Date.now() >= globalDeadline) break
 
-      const remainingMs = globalDeadline - Date.now()
-      const timeoutMs = Math.min(foundationTimeoutMs, remainingMs)
+      const foundationContexts = [
+        {
+          snapshotContext,
+          medicalProfileContext,
+          previousAnalysisContext,
+          knowledgeContext: prebuiltKnowledgeContext,
+        },
+        {
+          snapshotContext,
+          medicalProfileContext,
+          previousAnalysisContext: truncateText(previousAnalysisContext, 1800),
+          knowledgeContext: prebuiltKnowledgeContext,
+        },
+      ]
 
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+      let result: AgentAnalysisResult = {
+        content: '',
+        ragContextUsed: false,
+        tokensUsed: null,
+        durationMs: null,
+        status: 'timeout',
+      }
 
-      let result: AgentAnalysisResult
-      try {
-        result = await analyzeWithAgent(
-          agent,
-          LIVING_ANALYSIS_PROMPT,
-          {
-            snapshotContext,
-            medicalProfileContext,
-            previousAnalysisContext,
-          },
-          controller.signal,
-        )
-      } finally {
-        clearTimeout(timeoutId)
+      for (const context of foundationContexts) {
+        if (Date.now() >= globalDeadline) break
+
+        const remainingMs = globalDeadline - Date.now()
+        const timeoutMs = Math.min(foundationTimeoutMs, remainingMs)
+        if (timeoutMs <= 0) break
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+        try {
+          result = await analyzeWithAgent(
+            agent,
+            LIVING_ANALYSIS_PROMPT,
+            context,
+            controller.signal,
+          )
+        } finally {
+          clearTimeout(timeoutId)
+        }
+
+        if (result.status === 'completed') break
       }
 
       await db.insert(analyses).values({
@@ -238,6 +276,7 @@ export async function runLivingAnalysis(
       .join('\n\n')
 
     const specializedTasks = specializedAgents.map(async (agent) => {
+      if (!agent.isActive) return
       if (Date.now() >= globalDeadline) return
 
       const remainingMs = globalDeadline - Date.now()
@@ -256,6 +295,7 @@ export async function runLivingAnalysis(
             medicalProfileContext,
             foundationContext,
             previousAnalysisContext,
+            knowledgeContext: prebuiltKnowledgeContext,
           },
           controller.signal,
         )
@@ -296,44 +336,12 @@ export async function runLivingAnalysis(
       }
     }
 
-    let reportMarkdown = ''
-    const allOutputsForSynthesis = [...foundationOutputs, ...specializedOutputs]
-
-    if (allOutputsForSynthesis.length > 0) {
-      const synthesisInput = allOutputsForSynthesis
-        .map((o) => `## Análise: ${o.agentName}\n${o.content}`)
-        .join('\n\n---\n\n')
-
-      const previousSection = previousAnalysisContext
-        ? `\n\n## Análise Anterior (use para comparação de evolução)\n${previousAnalysisContext}`
-        : '\n\n## Análise Anterior\nEsta é a primeira análise deste paciente. Não há dados anteriores para comparação.'
-
-      const remainingMs = globalDeadline - Date.now()
-      if (remainingMs > 5_000) {
-        const synthController = new AbortController()
-        const synthTimeoutId = setTimeout(
-          () => synthController.abort(),
-          Math.min(synthesisTimeoutMs, remainingMs),
-        )
-
-        try {
-          const { text } = await generateText({
-            model: google('gemini-2.5-flash'),
-            system: LIVING_SYNTHESIS_PROMPT,
-            prompt: `Snapshot de biomarcadores (use para indicadores ↑↓⚠):\n${snapshotContext}${previousSection}\n\nConsolide as seguintes análises especializadas em um relatório integrado:\n\n${synthesisInput}`,
-            abortSignal: synthController.signal,
-          })
-          reportMarkdown = text + '\n\n---\n\n> ' + DISCLAIMER_TEXT
-          validateReportSections(reportMarkdown)
-        } catch {
-          reportMarkdown = synthesisInput + '\n\n---\n\n> ' + DISCLAIMER_TEXT
-        } finally {
-          clearTimeout(synthTimeoutId)
-        }
-      } else {
-        reportMarkdown = synthesisInput + '\n\n---\n\n> ' + DISCLAIMER_TEXT
-      }
+    if (foundationOutputs.length === 0) {
+      throw new Error('No completed foundation output to build user-facing report')
     }
+
+    const primaryFoundationReport = foundationOutputs[0].content.trim()
+    const reportMarkdown = `${primaryFoundationReport}\n\n---\n\n> ${DISCLAIMER_TEXT}`
 
     const foundationCompleted = foundationOutputs.filter((o) => o.status === 'completed').length
     const specializedCompleted = specializedOutputs.filter((o) => o.status === 'completed').length
@@ -377,10 +385,13 @@ export async function runLivingAnalysis(
       })
       .where(eq(livingAnalysisVersions.id, versionId))
 
+    const hasPreviousReport = Boolean(existingLivingAnalysis?.reportMarkdown?.trim())
+
     await db
       .update(livingAnalyses)
       .set({
-        status: 'failed',
+        status: hasPreviousReport ? 'completed' : 'failed',
+        currentVersion: existingLivingAnalysis?.currentVersion ?? 0,
         updatedAt: new Date(),
       })
       .where(eq(livingAnalyses.id, livingAnalysisId))

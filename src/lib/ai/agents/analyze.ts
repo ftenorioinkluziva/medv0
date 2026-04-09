@@ -31,10 +31,16 @@ export async function analyzeWithAgent(
 
   if (!knowledgeContext) {
     try {
-      const ragChunks = await searchKnowledge(
-        `${agent.specialty}: ${analysisPrompt.slice(0, 200)}`,
-        5,
-      )
+      const ragQueryParts: string[] = [agent.specialty]
+      try {
+        const profile = JSON.parse(context.medicalProfileContext) as Record<string, unknown>
+        if (typeof profile.healthObjectives === 'string' && profile.healthObjectives) {
+          ragQueryParts.push(profile.healthObjectives)
+        }
+      } catch {
+        // profile parse failure is non-blocking
+      }
+      const ragChunks = await searchKnowledge(ragQueryParts.join('. '), 8)
       if (ragChunks.length > 0) {
         knowledgeContext = ragChunks.map((c) => c.content).join('\n\n')
         ragContextUsed = true

@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import {
   documents,
@@ -10,58 +10,14 @@ import { hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
 import { runLivingAnalysis } from '@/lib/ai/orchestrator/living-analysis'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 
-const DEBOUNCE_MS = 60_000
-const WAIT_POLL_MS = 5_000
-const MAX_RESCHEDULE_MS = 10 * 60_000
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-async function waitForTriggerSlot(livingAnalysisId: string): Promise<void> {
-  const deadline = Date.now() + MAX_RESCHEDULE_MS
-
-  while (Date.now() < deadline) {
-    const [latestVersion] = await db
-      .select({
-        createdAt: livingAnalysisVersions.createdAt,
-        status: livingAnalysisVersions.status,
-      })
-      .from(livingAnalysisVersions)
-      .where(eq(livingAnalysisVersions.livingAnalysisId, livingAnalysisId))
-      .orderBy(desc(livingAnalysisVersions.version))
-      .limit(1)
-
-    if (!latestVersion) return
-
-    if (latestVersion.status === 'processing') {
-      await delay(Math.min(WAIT_POLL_MS, deadline - Date.now()))
-      continue
-    }
-
-    const elapsed = Date.now() - latestVersion.createdAt.getTime()
-    if (elapsed < DEBOUNCE_MS) {
-      await delay(Math.min(DEBOUNCE_MS - elapsed, deadline - Date.now()))
-      continue
-    }
-
-    return
-  }
-
-  console.warn('[trigger] Reschedule deadline reached, skipping')
-}
-
 export async function triggerLivingAnalysis(
   userId: string,
   triggerDocumentId: string,
 ): Promise<void> {
-  const [foundationAgents, specializedAgents] = await Promise.all([
-    getActiveAgentsByRole('foundation'),
-    getActiveAgentsByRole('specialized'),
-  ])
+  const foundationAgents = await getActiveAgentsByRole('foundation')
 
-  if (foundationAgents.length === 0 || specializedAgents.length === 0) {
-    console.warn('[trigger] Skipping: no active foundation/specialized agents')
+  if (foundationAgents.length === 0) {
+    console.warn('[trigger] Skipping: no active foundation agents')
     return
   }
 
@@ -84,21 +40,16 @@ export async function triggerLivingAnalysis(
     return
   }
 
-  const [existingBeforeWait] = await db
-    .select({ id: livingAnalyses.id })
-    .from(livingAnalyses)
-    .where(eq(livingAnalyses.userId, userId))
-    .limit(1)
-
-  if (existingBeforeWait) {
-    await waitForTriggerSlot(existingBeforeWait.id)
-  }
-
   const [existing] = await db
-    .select({ id: livingAnalyses.id, currentVersion: livingAnalyses.currentVersion })
+    .select({ id: livingAnalyses.id, currentVersion: livingAnalyses.currentVersion, status: livingAnalyses.status })
     .from(livingAnalyses)
     .where(eq(livingAnalyses.userId, userId))
     .limit(1)
+
+  if (existing?.status === 'processing') {
+    console.info('[trigger] Skipping: analysis already processing')
+    return
+  }
 
   let livingAnalysisId: string
 

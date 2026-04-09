@@ -39,6 +39,10 @@ interface FilePreview {
   previewUrl: string | null
 }
 
+interface UploadSuccessInfo {
+  fileName: string
+}
+
 export function UploadForm() {
   const router = useRouter()
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -47,6 +51,7 @@ export function UploadForm() {
 
   const [preview, setPreview] = useState<FilePreview | null>(null)
   const [step, setStep] = useState<UploadStep>('idle')
+  const [successInfo, setSuccessInfo] = useState<UploadSuccessInfo | null>(null)
 
   useEffect(() => {
     return () => {
@@ -80,6 +85,7 @@ export function UploadForm() {
     abortControllerRef.current?.abort()
     setStep('idle')
     setPreview(null)
+    setSuccessInfo(null)
   }
 
   async function handleSubmit() {
@@ -113,14 +119,18 @@ export function UploadForm() {
       setStep('saving')
       await new Promise((r) => setTimeout(r, 300))
 
+      const payload = await response.json().catch(() => ({}))
+
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
+        const data = payload
         throw new Error(data.error ?? 'Erro ao processar arquivo.')
       }
 
       setStep('done')
+      setSuccessInfo({
+        fileName: payload.fileName ?? preview.file.name,
+      })
       toast.success('Exame processado!')
-      router.push('/app/dashboard')
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
       toast.error((err as Error).message ?? 'Erro inesperado. Tente novamente.')
@@ -237,9 +247,14 @@ export function UploadForm() {
                   Cancelar
                 </Button>
               ) : step === 'done' ? (
-                <Button variant="outline" className="flex-1" onClick={handleCancel}>
-                  Enviar outro
-                </Button>
+                <>
+                  <Button variant="outline" className="flex-1" onClick={handleCancel}>
+                    Enviar outro
+                  </Button>
+                  <Button className="flex-1" onClick={() => router.push('/app/dashboard')}>
+                    Ir para dashboard
+                  </Button>
+                </>
               ) : (
                 <>
                   <Button variant="outline" className="flex-1" onClick={handleCancel}>
@@ -251,6 +266,14 @@ export function UploadForm() {
                 </>
               )}
             </div>
+
+            {step === 'done' && successInfo && (
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300">
+                <p className="font-medium">Upload concluído com sucesso.</p>
+                <p className="mt-1 break-all">Documento: {successInfo.fileName}</p>
+                <p className="mt-1">A análise será iniciada automaticamente pelo servidor usando este exame.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

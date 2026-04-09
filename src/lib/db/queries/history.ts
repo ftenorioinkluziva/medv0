@@ -1,6 +1,6 @@
 import { desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { documents, snapshots, livingAnalyses } from '@/lib/db/schema'
+import { documents, snapshots, livingAnalyses, livingAnalysisVersions } from '@/lib/db/schema'
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
 
 export type DocumentWithHistory = {
@@ -11,7 +11,7 @@ export type DocumentWithHistory = {
   createdAt: Date
   processingStatus: string
   snapshot: { structuredData: SanitizedMedicalDocument } | null
-  livingAnalysis: { id: string; status: string; updatedAt: Date } | null
+  livingAnalysis: { id: string; status: string; updatedAt: Date; currentTriggerDocumentId: string | null } | null
 }
 
 export async function getDocumentsWithHistory(userId: string): Promise<DocumentWithHistory[]> {
@@ -24,6 +24,19 @@ export async function getDocumentsWithHistory(userId: string): Promise<DocumentW
     .from(livingAnalyses)
     .where(eq(livingAnalyses.userId, userId))
     .limit(1)
+
+  let currentTriggerDocumentId: string | null = null
+
+  if (livingAnalysis) {
+    const [currentVersion] = await db
+      .select({ triggerDocumentId: livingAnalysisVersions.triggerDocumentId })
+      .from(livingAnalysisVersions)
+      .where(eq(livingAnalysisVersions.livingAnalysisId, livingAnalysis.id))
+      .orderBy(desc(livingAnalysisVersions.version))
+      .limit(1)
+
+    currentTriggerDocumentId = currentVersion?.triggerDocumentId ?? null
+  }
 
   const rows = await db
     .select({
@@ -50,6 +63,11 @@ export async function getDocumentsWithHistory(userId: string): Promise<DocumentW
     snapshot: row.snapshotStructuredData
       ? { structuredData: row.snapshotStructuredData }
       : null,
-    livingAnalysis: livingAnalysis ?? null,
+    livingAnalysis: livingAnalysis
+      ? {
+          ...livingAnalysis,
+          currentTriggerDocumentId,
+        }
+      : null,
   }))
 }

@@ -2,8 +2,8 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { livingAnalyses } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { analyses, livingAnalyses, livingAnalysisVersions } from '@/lib/db/schema'
+import { and, asc, eq } from 'drizzle-orm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnalysisStatusCard } from './analysis-status-card'
 import { ReportView } from './report-view'
@@ -92,11 +92,71 @@ async function AnalysisContent({ id }: { id: string }) {
     )
   }
 
+  const [currentVersionRow] = await db
+    .select({ id: livingAnalysisVersions.id })
+    .from(livingAnalysisVersions)
+    .where(
+      and(
+        eq(livingAnalysisVersions.livingAnalysisId, id),
+        eq(livingAnalysisVersions.version, row.currentVersion),
+      ),
+    )
+    .limit(1)
+
+  let foundationAgentName: string | undefined
+  let foundationGeneratedAt: Date | undefined
+  let specializedTotal = 0
+  let specializedCompleted = 0
+  let specializedTimeout = 0
+  let specializedError = 0
+
+  if (currentVersionRow) {
+    const [foundationRow] = await db
+      .select({
+        agentName: analyses.agentName,
+        createdAt: analyses.createdAt,
+      })
+      .from(analyses)
+      .where(
+        and(
+          eq(analyses.livingAnalysisVersionId, currentVersionRow.id),
+          eq(analyses.analysisRole, 'foundation'),
+          eq(analyses.status, 'completed'),
+        ),
+      )
+      .orderBy(asc(analyses.createdAt))
+      .limit(1)
+
+    foundationAgentName = foundationRow?.agentName
+    foundationGeneratedAt = foundationRow?.createdAt
+
+    const specializedRows = await db
+      .select({ status: analyses.status })
+      .from(analyses)
+      .where(
+        and(
+          eq(analyses.livingAnalysisVersionId, currentVersionRow.id),
+          eq(analyses.analysisRole, 'specialized'),
+        ),
+      )
+
+    specializedTotal = specializedRows.length
+    specializedCompleted = specializedRows.filter((row) => row.status === 'completed').length
+    specializedTimeout = specializedRows.filter((row) => row.status === 'timeout').length
+    specializedError = specializedRows.filter((row) => row.status === 'error').length
+  }
+
   return (
     <ReportView
       reportMarkdown={row.reportMarkdown}
       version={row.currentVersion}
       createdAt={row.createdAt}
+      foundationAgentName={foundationAgentName}
+      foundationGeneratedAt={foundationGeneratedAt}
+      specializedTotal={specializedTotal}
+      specializedCompleted={specializedCompleted}
+      specializedTimeout={specializedTimeout}
+      specializedError={specializedError}
     />
   )
 }

@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { Upload, ClipboardList, ArrowRight, TrendingUp, TrendingDown, Minus, Loader2, FlaskConical } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Upload, ClipboardList, ArrowRight, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { DashboardData } from './page'
@@ -82,7 +82,13 @@ export function DashboardContent({ data }: DashboardContentProps) {
   const hasAnyDoc = historyEntries.length > 0
   const livingAnalysis = historyEntries[0]?.doc.livingAnalysis ?? null
   const hasAnalysis = livingAnalysis !== null
+  const analysisIsCurrentForLatestDocument =
+    livingAnalysis?.currentTriggerDocumentId != null &&
+    latestDocumentId != null &&
+    livingAnalysis.currentTriggerDocumentId === latestDocumentId
+  const needsAnalysisUpdate = hasAnyDoc && latestDocumentId != null && !analysisIsCurrentForLatestDocument
   const [triggering, setTriggering] = useState(false)
+  const autoTriggerAttemptedRef = useRef(false)
 
   async function handleTriggerAnalysis() {
     if (!latestDocumentId) return
@@ -105,6 +111,15 @@ export function DashboardContent({ data }: DashboardContentProps) {
       setTriggering(false)
     }
   }
+
+  useEffect(() => {
+    if (!needsAnalysisUpdate || !latestDocumentId) return
+    if (livingAnalysis?.status === 'processing') return
+    if (autoTriggerAttemptedRef.current) return
+
+    autoTriggerAttemptedRef.current = true
+    void handleTriggerAnalysis()
+  }, [latestDocumentId, livingAnalysis?.status, needsAnalysisUpdate])
 
   return (
     <div className="space-y-5 p-4 md:p-6">
@@ -174,9 +189,11 @@ export function DashboardContent({ data }: DashboardContentProps) {
                       <p className="text-sm font-medium text-foreground">Sua Análise Integrativa</p>
                       <p className="text-xs text-muted-foreground">
                         {livingAnalysis.status === 'processing'
-                          ? 'Atualizando...'
+                          ? 'Atualizando com o exame mais recente...'
                           : livingAnalysis.status === 'completed'
-                            ? `Versão mais recente`
+                            ? analysisIsCurrentForLatestDocument
+                              ? 'Versão mais recente'
+                              : 'Relatório anterior disponível enquanto a nova análise é gerada'
                             : 'Falhou — envie novo exame para retry'}
                       </p>
                     </div>
@@ -195,23 +212,18 @@ export function DashboardContent({ data }: DashboardContentProps) {
                   <ExamRow key={doc.id} doc={doc} evolution={evolution} />
                 ))}
               </div>
-              {!hasAnalysis && (
+              {needsAnalysisUpdate && (
                 <div className="rounded-lg border border-dashed border-foreground/15 bg-foreground/2 px-4 py-4 flex flex-col items-center gap-3 text-center">
-                  <FlaskConical className="size-6 text-muted-foreground" aria-hidden="true" />
                   <p className="text-xs text-muted-foreground">
-                    Seu exame foi processado. Inicie a análise para ver seus indicadores.
+                    {triggering || livingAnalysis?.status === 'processing'
+                      ? 'Seu exame foi processado e a análise está sendo atualizada automaticamente.'
+                      : 'Seu exame foi processado. A análise será atualizada automaticamente com este novo documento.'}
                   </p>
-                  <button
-                    onClick={handleTriggerAnalysis}
-                    disabled={triggering || !latestDocumentId}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {triggering ? (
-                      <><Loader2 className="size-4 animate-spin" />Iniciando...</>
-                    ) : (
-                      'Gerar análise'
-                    )}
-                  </button>
+                  {(triggering || livingAnalysis?.status === 'processing') && (
+                    <div className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Loader2 className="size-4 animate-spin" />Atualizando análise...
+                    </div>
+                  )}
                 </div>
               )}
             </div>

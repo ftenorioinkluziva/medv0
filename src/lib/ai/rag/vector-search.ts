@@ -124,16 +124,17 @@ function reciprocalRankFusion(
     .map(({ row, rrfScore }) => ({ ...row, score: rrfScore }))
 }
 
-// Converts a plain query string into a tsquery-compatible string
-// e.g. "diabetes tipo 2" → "diabetes & tipo & 2"
+// Converts a plain query string into a tsquery-compatible string using OR (|).
+// OR maximizes recall: a chunk matches if it contains ANY of the query terms.
+// e.g. "colesterol triglicerídeos insulina" → "colesterol | triglicerid | insulin"
 function toTsQuery(query: string): string {
   return query
     .trim()
     .split(/\s+/)
     .filter(Boolean)
     .map((term) => term.replace(/[^a-zA-Z0-9À-ÿ]/g, ''))
-    .filter(Boolean)
-    .join(' & ')
+    .filter((term) => term.length >= 3)
+    .join(' | ')
 }
 
 export async function searchKnowledge(
