@@ -4,8 +4,21 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { knowledgeBase } from '@/lib/db/schema'
 import { upsertKnowledgeArticle } from '@/lib/ai/rag/uploader'
+import { auth } from '@/lib/auth/config'
+
+function isAuthorized(request: NextRequest, session: { user?: { role?: string } } | null): boolean {
+  const apiKey = request.headers.get('x-api-key')
+  if (apiKey && apiKey === process.env.KNOWLEDGE_UPLOAD_API_KEY) return true
+  if (session?.user?.role === 'admin') return true
+  return false
+}
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const session = await auth()
+  if (!isAuthorized(request, session)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const source = request.nextUrl.searchParams.get('source')
   if (!source) {
     return NextResponse.json({ error: 'Missing source param' }, { status: 400 })
@@ -41,6 +54,11 @@ const KnowledgeArticleSchema = z.object({
 })
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const session = await auth()
+  if (!isAuthorized(request, session)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let body: unknown
   try {
     body = await request.json()

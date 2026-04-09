@@ -5,10 +5,17 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { knowledgeBase } from '@/lib/db/schema'
 import { getArticleById } from '@/lib/db/queries/knowledge'
+import { requireAdmin } from '@/lib/auth/require-admin'
 
 type ActionResult = { error: string } | { success: true }
 
 export async function deleteArticleAction(id: string): Promise<ActionResult> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { error: 'Unauthorized' }
+  }
+
   const article = await getArticleById(id)
   if (!article) return { error: 'Artigo não encontrado' }
 

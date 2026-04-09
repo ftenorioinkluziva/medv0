@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { eq } from 'drizzle-orm'
-import { auth } from '@/lib/auth/config'
+import { requireAdmin } from '@/lib/auth/require-admin'
 import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema'
 import { getUserById } from '@/lib/db/queries/users'
@@ -13,8 +13,14 @@ export async function toggleUserActiveAction(
   id: string,
   isActive: boolean,
 ): Promise<ActionResult> {
-  const session = await auth()
-  if (session?.user?.id === id) {
+  let session: Awaited<ReturnType<typeof requireAdmin>>
+  try {
+    session = await requireAdmin()
+  } catch {
+    return { error: 'Unauthorized' }
+  }
+
+  if (session.user.id === id) {
     return { error: 'Não é possível desativar a própria conta.' }
   }
 
