@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/lib/auth/require-admin', () => ({
-  requireAdmin: vi.fn(),
-}))
+vi.mock('@/lib/auth/require-admin', () => {
+  class UnauthorizedError extends Error {
+    constructor() { super('Unauthorized'); this.name = 'UnauthorizedError' }
+  }
+  return {
+    requireAdmin: vi.fn(),
+    UnauthorizedError,
+  }
+})
 
 vi.mock('@/lib/auth/config', () => ({
   auth: vi.fn(),
@@ -32,7 +38,7 @@ vi.mock('@/lib/db/queries/users', () => ({
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('next/navigation', () => ({ redirect: vi.fn() }))
 
-import { requireAdmin } from '@/lib/auth/require-admin'
+import { requireAdmin, UnauthorizedError } from '@/lib/auth/require-admin'
 import { auth } from '@/lib/auth/config'
 import { toggleAgentAction, deleteAgentAction } from '@/app/admin/agents/_actions/agents'
 import { deleteArticleAction } from '@/app/admin/knowledge/_actions/knowledge'
@@ -58,7 +64,7 @@ beforeEach(() => {
 
 describe('AC4 — Server Actions: patient não pode executar mutações admin', () => {
   beforeEach(() => {
-    vi.mocked(requireAdmin).mockRejectedValue(new Error('Unauthorized'))
+    vi.mocked(requireAdmin).mockRejectedValue(new UnauthorizedError())
   })
 
   it('toggleAgentAction retorna Unauthorized para não-admin', async () => {
@@ -124,11 +130,15 @@ describe('AC4 — auto-upload POST: acesso sem credenciais', () => {
     )
 
     // #when
-    const res = await POST(req)
+    let res: Response
+    try {
+      res = await POST(req)
+    } finally {
+      delete process.env.KNOWLEDGE_UPLOAD_API_KEY
+    }
 
     // #then
-    expect(res.status).toBe(401)
-    delete process.env.KNOWLEDGE_UPLOAD_API_KEY
+    expect(res!.status).toBe(401)
   })
 
   it('retorna 401 para session com role patient', async () => {

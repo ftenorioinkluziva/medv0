@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { eq } from 'drizzle-orm'
-import { requireAdmin } from '@/lib/auth/require-admin'
+import { requireAdmin, UnauthorizedError } from '@/lib/auth/require-admin'
 import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema'
 import { getUserById } from '@/lib/db/queries/users'
@@ -16,8 +16,9 @@ export async function toggleUserActiveAction(
   let session: Awaited<ReturnType<typeof requireAdmin>>
   try {
     session = await requireAdmin()
-  } catch {
-    return { error: 'Unauthorized' }
+  } catch (error) {
+    if (error instanceof UnauthorizedError) return { error: 'Unauthorized' }
+    throw error
   }
 
   if (session.user.id === id) {

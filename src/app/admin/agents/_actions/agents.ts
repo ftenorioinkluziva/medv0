@@ -7,7 +7,7 @@ import { db } from '@/lib/db/client'
 import { analyses, healthAgents } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getAgentById, countActiveFoundationAgents } from '@/lib/db/queries/health-agents'
-import { requireAdmin } from '@/lib/auth/require-admin'
+import { requireAdmin, UnauthorizedError } from '@/lib/auth/require-admin'
 
 const AgentSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -48,8 +48,9 @@ function parseFormData(formData: FormData) {
 export async function createAgentAction(formData: FormData): Promise<ActionResult> {
   try {
     await requireAdmin()
-  } catch {
-    return { error: 'Unauthorized' }
+  } catch (error) {
+    if (error instanceof UnauthorizedError) return { error: 'Unauthorized' }
+    throw error
   }
 
   const parsed = AgentSchema.safeParse(parseFormData(formData))
@@ -80,8 +81,9 @@ export async function updateAgentAction(
 ): Promise<ActionResult> {
   try {
     await requireAdmin()
-  } catch {
-    return { error: 'Unauthorized' }
+  } catch (error) {
+    if (error instanceof UnauthorizedError) return { error: 'Unauthorized' }
+    throw error
   }
 
   const agent = await getAgentById(id)
@@ -134,8 +136,9 @@ export async function toggleAgentAction(
 ): Promise<ActionResult> {
   try {
     await requireAdmin()
-  } catch {
-    return { error: 'Unauthorized' }
+  } catch (error) {
+    if (error instanceof UnauthorizedError) return { error: 'Unauthorized' }
+    throw error
   }
 
   if (currentlyActive) {
@@ -162,8 +165,9 @@ export async function toggleAgentAction(
 export async function deleteAgentAction(id: string): Promise<ActionResult> {
   try {
     await requireAdmin()
-  } catch {
-    return { error: 'Unauthorized' }
+  } catch (error) {
+    if (error instanceof UnauthorizedError) return { error: 'Unauthorized' }
+    throw error
   }
 
   const agent = await getAgentById(id)

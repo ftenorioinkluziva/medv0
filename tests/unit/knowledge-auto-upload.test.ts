@@ -20,7 +20,7 @@ vi.mock('@/lib/db/client', () => ({
 
 import { auth } from '@/lib/auth/config'
 import { upsertKnowledgeArticle } from '@/lib/ai/rag/uploader'
-import { GET, POST } from '@/app/api/admin/knowledge/auto-upload/route'
+import { POST } from '@/app/api/admin/knowledge/auto-upload/route'
 import { NextRequest } from 'next/server'
 import { chunkText } from '@/lib/ai/rag/chunker'
 

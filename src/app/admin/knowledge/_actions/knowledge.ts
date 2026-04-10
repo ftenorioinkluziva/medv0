@@ -5,15 +5,16 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { knowledgeBase } from '@/lib/db/schema'
 import { getArticleById } from '@/lib/db/queries/knowledge'
-import { requireAdmin } from '@/lib/auth/require-admin'
+import { requireAdmin, UnauthorizedError } from '@/lib/auth/require-admin'
 
 type ActionResult = { error: string } | { success: true }
 
 export async function deleteArticleAction(id: string): Promise<ActionResult> {
   try {
     await requireAdmin()
-  } catch {
-    return { error: 'Unauthorized' }
+  } catch (error) {
+    if (error instanceof UnauthorizedError) return { error: 'Unauthorized' }
+    throw error
   }
 
   const article = await getArticleById(id)
