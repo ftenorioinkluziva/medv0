@@ -91,11 +91,8 @@ describe('triggerLivingAnalysis', () => {
     expect(mockRunLivingAnalysis).not.toHaveBeenCalled()
   })
 
-  it('reagenda o trigger durante a janela de debounce em vez de descartar o documento', async () => {
+  it('cria nova versão e roda análise quando análise existente está concluída', async () => {
     // #given
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-04-03T00:00:00.000Z'))
-
     mockGetActiveAgentsByRole.mockResolvedValue([{ id: 'agent-1' }])
 
     mockSelect
@@ -105,10 +102,7 @@ describe('triggerLivingAnalysis', () => {
         patientInfo: {},
         modules: [{ moduleName: 'A', category: 'B', status: 'normal', summary: 'ok', parameters: [{ name: 'LDL', value: 100, unit: 'mg/dL' }] }],
       } }]) as never)
-      .mockReturnValueOnce(makeLimitChain([{ id: 'living-1' }]) as never)
-      .mockReturnValueOnce(makeLimitChain([{ createdAt: new Date('2026-04-02T23:59:30.000Z'), status: 'completed' }]) as never)
-      .mockReturnValueOnce(makeLimitChain([{ createdAt: new Date('2026-04-02T23:59:30.000Z'), status: 'completed' }]) as never)
-      .mockReturnValueOnce(makeLimitChain([{ id: 'living-1', currentVersion: 1 }]) as never)
+      .mockReturnValueOnce(makeLimitChain([{ id: 'living-1', currentVersion: 1, status: 'completed' }]) as never)
       .mockReturnValueOnce(makeWhereChain([{ id: 'snap-1' }]) as never)
 
     mockInsert.mockReturnValue({
@@ -123,9 +117,7 @@ describe('triggerLivingAnalysis', () => {
     } as never)
 
     // #when
-    const promise = triggerLivingAnalysis('user-1', 'doc-1')
-    await vi.advanceTimersByTimeAsync(31_000)
-    await promise
+    await triggerLivingAnalysis('user-1', 'doc-1')
 
     // #then
     expect(mockInsert).toHaveBeenCalled()

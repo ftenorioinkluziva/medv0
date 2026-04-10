@@ -14,16 +14,20 @@ vi.mock('@/lib/db/queries/users', () => ({
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
-vi.mock('@/lib/auth/config', () => ({
-  auth: vi.fn(),
+vi.mock('@/lib/auth/require-admin', () => ({
+  requireAdmin: vi.fn(),
 }))
 
 import { db } from '@/lib/db/client'
 import { getUserById, getAllUsersForAdmin } from '@/lib/db/queries/users'
-import { auth } from '@/lib/auth/config'
+import { requireAdmin } from '@/lib/auth/require-admin'
 import { toggleUserActiveAction } from '@/app/admin/users/_actions/users'
 import type { User } from '@/lib/db/schema'
 import type { UserForAdmin } from '@/lib/db/queries/users'
+
+const mockAdminSession = {
+  user: { id: 'admin-1', role: 'admin', email: 'admin@test.com', name: 'Admin', onboardingCompleted: true },
+} as never
 
 const mockUser: User = {
   id: 'user-1',
@@ -49,12 +53,12 @@ const mockUserForAdmin: UserForAdmin = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(requireAdmin).mockResolvedValue(mockAdminSession)
 })
 
 describe('toggleUserActiveAction', () => {
   it('deactivates user and returns success', async () => {
     // #given
-    vi.mocked(auth).mockResolvedValue({ user: { id: 'admin-1' } } as never)
     vi.mocked(getUserById).mockResolvedValue(mockUser)
     ;(db.update as ReturnType<typeof vi.fn>).mockReturnValue({
       set: vi.fn().mockReturnValue({
@@ -72,7 +76,6 @@ describe('toggleUserActiveAction', () => {
 
   it('returns error when user does not exist', async () => {
     // #given
-    vi.mocked(auth).mockResolvedValue({ user: { id: 'admin-1' } } as never)
     vi.mocked(getUserById).mockResolvedValue(undefined)
 
     // #when
@@ -84,8 +87,7 @@ describe('toggleUserActiveAction', () => {
   })
 
   it('blocks admin from deactivating own account', async () => {
-    // #given
-    vi.mocked(auth).mockResolvedValue({ user: { id: 'admin-1' } } as never)
+    // #given — requireAdmin returns session with id: 'admin-1'
 
     // #when
     const result = await toggleUserActiveAction('admin-1', false)

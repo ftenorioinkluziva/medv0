@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('@/lib/auth/require-admin', () => ({
+  requireAdmin: vi.fn().mockResolvedValue({
+    user: { id: 'admin-1', role: 'admin', email: 'admin@test.com', name: 'Admin', onboardingCompleted: true },
+  }),
+}))
+
 vi.mock('@/lib/db/client', () => ({
   db: {
     select: vi.fn(),

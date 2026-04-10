@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('@/lib/auth/config', () => ({
+  auth: vi.fn(),
+}))
+
 vi.mock('@/lib/ai/rag/uploader', () => ({
   upsertKnowledgeArticle: vi.fn(),
 }))
@@ -14,15 +18,20 @@ vi.mock('@/lib/db/client', () => ({
   },
 }))
 
+import { auth } from '@/lib/auth/config'
 import { upsertKnowledgeArticle } from '@/lib/ai/rag/uploader'
 import { POST } from '@/app/api/admin/knowledge/auto-upload/route'
 import { NextRequest } from 'next/server'
 import { chunkText } from '@/lib/ai/rag/chunker'
 
-function makeRequest(body: unknown): NextRequest {
+const adminSession = {
+  user: { id: 'admin-1', role: 'admin', email: 'admin@test.com', name: 'Admin', onboardingCompleted: true },
+} as never
+
+function makeRequest(body: unknown, headers: Record<string, string> = {}): NextRequest {
   return new NextRequest('http://localhost/api/admin/knowledge/auto-upload', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
   })
 }
@@ -36,6 +45,7 @@ const validPayload = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(auth).mockResolvedValue(adminSession)
 })
 
 describe('POST /api/admin/knowledge/auto-upload', () => {
