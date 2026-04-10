@@ -7,25 +7,29 @@ const tsvector = customType<{ data: string }>({
   },
 })
 
-export const knowledgeBase = pgTable('knowledge_base', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  title: text('title').notNull(),
-  content: text('content').notNull(),
-  summary: text('summary'),
-  source: text('source'),
-  author: text('author'),
-  publishedDate: date('published_date'),
-  category: text('category'),
-  subcategory: text('subcategory'),
-  tags: text('tags').array(),
-  language: text('language').notNull().default('pt-BR'),
-  isVerified: text('is_verified').notNull().default('unverified'),
-  usageCount: integer('usage_count').notNull().default(0),
-  lastAnalyzedAt: timestamp('last_analyzed_at'),
-  analysisVersion: text('analysis_version'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-})
+export const knowledgeBase = pgTable(
+  'knowledge_base',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    title: text('title').notNull(),
+    content: text('content').notNull(),
+    summary: text('summary'),
+    source: text('source'),
+    author: text('author'),
+    publishedDate: date('published_date'),
+    category: text('category'),
+    subcategory: text('subcategory'),
+    tags: text('tags').array(),
+    language: text('language').notNull().default('pt-BR'),
+    isVerified: text('is_verified').notNull().default('unverified'),
+    usageCount: integer('usage_count').notNull().default(0),
+    lastAnalyzedAt: timestamp('last_analyzed_at'),
+    analysisVersion: text('analysis_version'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [index('knowledge_base_source_idx').on(table.source)],
+)
 
 export const knowledgeEmbeddings = pgTable(
   'knowledge_embeddings',
