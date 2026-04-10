@@ -7,6 +7,7 @@ import {
   timestamp,
   jsonb,
   unique,
+  index,
 } from 'drizzle-orm/pg-core'
 import { users } from './users'
 import { documents } from './documents'
@@ -27,25 +28,31 @@ export const livingAnalyses = pgTable('living_analyses', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-export const livingAnalysisVersions = pgTable('living_analysis_versions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  livingAnalysisId: uuid('living_analysis_id')
-    .notNull()
-    .references(() => livingAnalyses.id),
-  version: integer('version').notNull(),
-  reportMarkdown: text('report_markdown').notNull().default(''),
-  analysisData: jsonb('analysis_data'),
-  triggerDocumentId: uuid('trigger_document_id')
-    .notNull()
-    .references(() => documents.id),
-  snapshotIds: jsonb('snapshot_ids').$type<string[]>().notNull().default([]),
-  agentsCount: integer('agents_count').notNull().default(0),
-  foundationCompleted: integer('foundation_completed').notNull().default(0),
-  specializedCompleted: integer('specialized_completed').notNull().default(0),
-  totalDurationMs: integer('total_duration_ms'),
-  status: text('status').notNull().default('processing'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+export const livingAnalysisVersions = pgTable(
+  'living_analysis_versions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    livingAnalysisId: uuid('living_analysis_id')
+      .notNull()
+      .references(() => livingAnalyses.id),
+    version: integer('version').notNull(),
+    reportMarkdown: text('report_markdown').notNull().default(''),
+    analysisData: jsonb('analysis_data'),
+    triggerDocumentId: uuid('trigger_document_id')
+      .notNull()
+      .references(() => documents.id),
+    snapshotIds: jsonb('snapshot_ids').$type<string[]>().notNull().default([]),
+    agentsCount: integer('agents_count').notNull().default(0),
+    foundationCompleted: integer('foundation_completed').notNull().default(0),
+    specializedCompleted: integer('specialized_completed').notNull().default(0),
+    totalDurationMs: integer('total_duration_ms'),
+    status: text('status').notNull().default('processing'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('living_analysis_versions_living_analysis_id_idx').on(table.livingAnalysisId),
+  ],
+)
 
 /** @deprecated Use livingAnalyses instead */
 export const completeAnalyses = pgTable('complete_analyses', {
@@ -69,34 +76,41 @@ export const completeAnalyses = pgTable('complete_analyses', {
   unique('complete_analyses_document_id_unique').on(table.documentId),
 ])
 
-export const analyses = pgTable('analyses', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  documentId: uuid('document_id')
-    .notNull()
-    .references(() => documents.id),
-  /** @deprecated Use livingAnalysisVersionId instead */
-  completeAnalysisId: uuid('complete_analysis_id').references(
-    () => completeAnalyses.id,
-  ),
-  livingAnalysisVersionId: uuid('living_analysis_version_id').references(
-    () => livingAnalysisVersions.id,
-  ),
-  agentId: uuid('agent_id')
-    .notNull()
-    .references(() => healthAgents.id),
-  agentName: text('agent_name').notNull(),
-  analysisRole: text('analysis_role').notNull(),
-  content: text('content').notNull().default(''),
-  ragContextUsed: boolean('rag_context_used').notNull().default(false),
-  tokensUsed: integer('tokens_used'),
-  durationMs: integer('duration_ms'),
-  status: text('status').notNull().default('completed'),
-  errorMessage: text('error_message'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+export const analyses = pgTable(
+  'analyses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    documentId: uuid('document_id')
+      .notNull()
+      .references(() => documents.id),
+    /** @deprecated Use livingAnalysisVersionId instead */
+    completeAnalysisId: uuid('complete_analysis_id').references(
+      () => completeAnalyses.id,
+    ),
+    livingAnalysisVersionId: uuid('living_analysis_version_id').references(
+      () => livingAnalysisVersions.id,
+    ),
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => healthAgents.id),
+    agentName: text('agent_name').notNull(),
+    analysisRole: text('analysis_role').notNull(),
+    content: text('content').notNull().default(''),
+    ragContextUsed: boolean('rag_context_used').notNull().default(false),
+    tokensUsed: integer('tokens_used'),
+    durationMs: integer('duration_ms'),
+    status: text('status').notNull().default('completed'),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('analyses_user_id_idx').on(table.userId),
+    index('analyses_living_analysis_version_id_idx').on(table.livingAnalysisVersionId),
+  ],
+)
 
 export type LivingAnalysis = typeof livingAnalyses.$inferSelect
 export type NewLivingAnalysis = typeof livingAnalyses.$inferInsert
