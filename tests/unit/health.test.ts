@@ -49,10 +49,8 @@ describe('GET /api/health', () => {
   })
 
   it('retorna status 503 quando o DB excede timeout de 5s', async () => {
-    // #given — simula timeout
-    mockDb.execute.mockImplementation(
-      () => new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10)),
-    )
+    // #given — DB nunca resolve, forçando o branch de timeout do Promise.race
+    mockDb.execute.mockImplementation(() => new Promise(() => {}))
     vi.useFakeTimers()
 
     // #when

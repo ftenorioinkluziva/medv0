@@ -11,7 +11,7 @@ export const registerSchema = z.object({
     .string()
     .min(8, 'Senha deve ter no mínimo 8 caracteres')
     .refine(
-      (val) => /[\d\W]/.test(val),
+      (val) => /[\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(val),
       'Senha deve conter pelo menos 1 número ou caractere especial',
     ),
 })
@@ -26,7 +26,7 @@ export const resetPasswordSchema = z.object({
     .string()
     .min(8, 'Senha deve ter no mínimo 8 caracteres')
     .refine(
-      (val) => /[\d\W]/.test(val),
+      (val) => /[\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(val),
       'Senha deve conter pelo menos 1 número ou caractere especial',
     ),
 })
