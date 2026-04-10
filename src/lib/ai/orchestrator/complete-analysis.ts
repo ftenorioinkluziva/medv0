@@ -4,13 +4,13 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import {
   snapshots,
-  medicalProfiles,
   analyses,
   completeAnalyses,
 } from '@/lib/db/schema'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 import { analyzeWithAgent, type AgentAnalysisResult } from '@/lib/ai/agents/analyze'
 import { validateReportSections } from '@/lib/ai/utils/validate-report-sections'
+import { readTimeoutMs, buildMedicalProfileContext, type AgentOutput } from './pipeline'
 
 const ANALYSIS_PROMPT = `Realize uma análise funcional e integrativa dos dados fornecidos.
 
@@ -65,24 +65,6 @@ REGRAS OBRIGATÓRIAS:
 4. Elimine redundâncias entre especialidades e priorize achados mais relevantes
 5. NÃO inclua seção de disclaimer — será adicionado automaticamente pelo sistema`
 
-interface AgentOutput {
-  agentId: string
-  agentName: string
-  role: string
-  content: string
-  status: 'completed' | 'timeout' | 'error'
-}
-
-function readTimeoutMs(envName: string, fallbackMs: number): number {
-  const rawValue = process.env[envName]
-  if (!rawValue) return fallbackMs
-
-  const parsed = Number.parseInt(rawValue, 10)
-  if (Number.isNaN(parsed) || parsed <= 0) return fallbackMs
-
-  return parsed
-}
-
 export async function runCompleteAnalysis(
   userId: string,
   documentId: string,
@@ -110,25 +92,7 @@ export async function runCompleteAnalysis(
       ? JSON.stringify(snapshotRow.structuredData)
       : '{}'
 
-    const [profile] = await db
-      .select()
-      .from(medicalProfiles)
-      .where(eq(medicalProfiles.userId, userId))
-      .limit(1)
-
-    const medicalProfileContext = profile
-      ? JSON.stringify({
-          age: profile.age,
-          gender: profile.gender,
-          height: profile.height,
-          weight: profile.weight,
-          systolicPressure: profile.systolicPressure,
-          diastolicPressure: profile.diastolicPressure,
-          restingHeartRate: profile.restingHeartRate,
-          healthObjectives: profile.healthObjectives,
-          medicalConditions: profile.medicalConditions,
-        })
-      : '{}'
+    const medicalProfileContext = await buildMedicalProfileContext(userId)
 
     const foundationAgents = await getActiveAgentsByRole('foundation')
     const specializedAgents = await getActiveAgentsByRole('specialized')

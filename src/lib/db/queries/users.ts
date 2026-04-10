@@ -13,32 +13,45 @@ export type UserForAdmin = {
   analysesCount: number
 }
 
-export async function getAllUsersForAdmin(): Promise<UserForAdmin[]> {
-  const rows = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      role: users.role,
-      isActive: users.isActive,
-      onboardingCompleted: users.onboardingCompleted,
-      createdAt: users.createdAt,
-      documentsCount: count(documents.id),
-      analysesCount: count(livingAnalyses.id),
-    })
-    .from(users)
-    .leftJoin(documents, eq(documents.userId, users.id))
-    .leftJoin(livingAnalyses, eq(livingAnalyses.userId, users.id))
-    .groupBy(
-      users.id,
-      users.email,
-      users.role,
-      users.isActive,
-      users.onboardingCompleted,
-      users.createdAt,
-    )
-    .orderBy(desc(users.createdAt))
+export interface PaginatedResult<T> {
+  data: T[]
+  total: number
+}
 
-  return rows
+export async function getAllUsersForAdmin(
+  limit: number = 50,
+  offset: number = 0,
+): Promise<PaginatedResult<UserForAdmin>> {
+  const [rows, totalResult] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        role: users.role,
+        isActive: users.isActive,
+        onboardingCompleted: users.onboardingCompleted,
+        createdAt: users.createdAt,
+        documentsCount: count(documents.id),
+        analysesCount: count(livingAnalyses.id),
+      })
+      .from(users)
+      .leftJoin(documents, eq(documents.userId, users.id))
+      .leftJoin(livingAnalyses, eq(livingAnalyses.userId, users.id))
+      .groupBy(
+        users.id,
+        users.email,
+        users.role,
+        users.isActive,
+        users.onboardingCompleted,
+        users.createdAt,
+      )
+      .orderBy(desc(users.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ count: count() }).from(users),
+  ])
+
+  return { data: rows, total: totalResult[0]?.count ?? 0 }
 }
 
 export async function getUserById(id: string): Promise<User | undefined> {

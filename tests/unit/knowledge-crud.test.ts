@@ -83,25 +83,27 @@ describe('getAllArticlesForAdmin', () => {
   it('returns all articles ordered by createdAt desc', async () => {
     // #given
     const articles = [mockArticle, { ...mockArticle, id: 'article-2', title: 'Outro Artigo' }]
-    vi.mocked(getAllArticlesForAdmin).mockResolvedValue(articles)
+    vi.mocked(getAllArticlesForAdmin).mockResolvedValue({ data: articles, total: 2 })
 
     // #when
     const result = await getAllArticlesForAdmin()
 
     // #then
-    expect(result).toHaveLength(2)
-    expect(result[0].id).toBe('article-1')
+    expect(result.data).toHaveLength(2)
+    expect(result.data[0].id).toBe('article-1')
+    expect(result.total).toBe(2)
   })
 
   it('returns empty array when no articles exist', async () => {
     // #given
-    vi.mocked(getAllArticlesForAdmin).mockResolvedValue([])
+    vi.mocked(getAllArticlesForAdmin).mockResolvedValue({ data: [], total: 0 })
 
     // #when
     const result = await getAllArticlesForAdmin()
 
     // #then
-    expect(result).toEqual([])
+    expect(result.data).toEqual([])
+    expect(result.total).toBe(0)
   })
 })
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 
-type Role = 'admin' | 'patient' | 'doctor'
+type Role = 'admin' | 'patient'
 
 interface ProxySession {
   user: { role: Role; onboardingCompleted: boolean }

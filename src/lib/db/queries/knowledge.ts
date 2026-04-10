@@ -1,9 +1,18 @@
-import { ilike, or, desc, eq } from 'drizzle-orm'
+import { count, ilike, or, desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { knowledgeBase, type KnowledgeBase } from '@/lib/db/schema'
+import type { PaginatedResult } from './users'
 
-export async function getAllArticlesForAdmin(): Promise<KnowledgeBase[]> {
-  return db.select().from(knowledgeBase).orderBy(desc(knowledgeBase.createdAt))
+export async function getAllArticlesForAdmin(
+  limit: number = 50,
+  offset: number = 0,
+): Promise<PaginatedResult<KnowledgeBase>> {
+  const [rows, totalResult] = await Promise.all([
+    db.select().from(knowledgeBase).orderBy(desc(knowledgeBase.createdAt)).limit(limit).offset(offset),
+    db.select({ count: count() }).from(knowledgeBase),
+  ])
+
+  return { data: rows, total: totalResult[0]?.count ?? 0 }
 }
 
 function escapeLikePattern(str: string): string {

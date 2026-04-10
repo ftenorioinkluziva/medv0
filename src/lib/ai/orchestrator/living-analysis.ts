@@ -2,7 +2,6 @@ import { and, desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import {
   snapshots,
-  medicalProfiles,
   analyses,
   livingAnalyses,
   livingAnalysisVersions,
@@ -10,6 +9,7 @@ import {
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 import { analyzeWithAgent, type AgentAnalysisResult } from '@/lib/ai/agents/analyze'
 import { searchKnowledge } from '@/lib/ai/rag/vector-search'
+import { readTimeoutMs, buildMedicalProfileContext, type AgentOutput } from './pipeline'
 
 const LIVING_ANALYSIS_PROMPT = `Realize uma análise funcional e integrativa **focada e concisa** dos dados fornecidos.
 
@@ -49,27 +49,9 @@ Biomarcadores fora do ideal funcional, agrupados por sistema (Metabólico/Cardio
 const DISCLAIMER_TEXT =
   'Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional. Consulte sempre um médico qualificado.'
 
-interface AgentOutput {
-  agentId: string
-  agentName: string
-  role: string
-  content: string
-  status: 'completed' | 'timeout' | 'error'
-}
-
 function truncateText(value: string, maxChars: number): string {
   if (value.length <= maxChars) return value
   return `${value.slice(0, maxChars)}\n\n[conteudo truncado para manter consistencia da analise]`
-}
-
-function readTimeoutMs(envName: string, fallbackMs: number): number {
-  const rawValue = process.env[envName]
-  if (!rawValue) return fallbackMs
-
-  const parsed = Number.parseInt(rawValue, 10)
-  if (Number.isNaN(parsed) || parsed <= 0) return fallbackMs
-
-  return parsed
 }
 
 export async function runLivingAnalysis(
@@ -130,25 +112,7 @@ export async function runLivingAnalysis(
       ? truncateText(previousVersion.reportMarkdown, 5000)
       : ''
 
-    const [profile] = await db
-      .select()
-      .from(medicalProfiles)
-      .where(eq(medicalProfiles.userId, userId))
-      .limit(1)
-
-    const medicalProfileContext = profile
-      ? JSON.stringify({
-          age: profile.age,
-          gender: profile.gender,
-          height: profile.height,
-          weight: profile.weight,
-          systolicPressure: profile.systolicPressure,
-          diastolicPressure: profile.diastolicPressure,
-          restingHeartRate: profile.restingHeartRate,
-          healthObjectives: profile.healthObjectives,
-          medicalConditions: profile.medicalConditions,
-        })
-      : '{}'
+    const medicalProfileContext = await buildMedicalProfileContext(userId)
 
     const foundationAgents = await getActiveAgentsByRole('foundation')
     const specializedAgents = await getActiveAgentsByRole('specialized')
