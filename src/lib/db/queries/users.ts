@@ -1,4 +1,4 @@
-import { count, eq, desc } from 'drizzle-orm'
+import { count, eq, desc, asc, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { users, documents, livingAnalyses, type User } from '@/lib/db/schema'
 
@@ -13,32 +13,49 @@ export type UserForAdmin = {
   analysesCount: number
 }
 
-export async function getAllUsersForAdmin(): Promise<UserForAdmin[]> {
-  const rows = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      role: users.role,
-      isActive: users.isActive,
-      onboardingCompleted: users.onboardingCompleted,
-      createdAt: users.createdAt,
-      documentsCount: count(documents.id),
-      analysesCount: count(livingAnalyses.id),
-    })
-    .from(users)
-    .leftJoin(documents, eq(documents.userId, users.id))
-    .leftJoin(livingAnalyses, eq(livingAnalyses.userId, users.id))
-    .groupBy(
-      users.id,
-      users.email,
-      users.role,
-      users.isActive,
-      users.onboardingCompleted,
-      users.createdAt,
-    )
-    .orderBy(desc(users.createdAt))
+export interface PaginatedResult<T> {
+  data: T[]
+  total: number
+}
 
-  return rows
+export async function getAllUsersForAdmin(
+  limit: number = 50,
+  offset: number = 0,
+): Promise<PaginatedResult<UserForAdmin>> {
+  const docsCount = db
+    .select({ userId: documents.userId, cnt: count().as('cnt') })
+    .from(documents)
+    .groupBy(documents.userId)
+    .as('docs_count')
+
+  const analysesCount = db
+    .select({ userId: livingAnalyses.userId, cnt: count().as('cnt') })
+    .from(livingAnalyses)
+    .groupBy(livingAnalyses.userId)
+    .as('analyses_count')
+
+  const [rows, totalResult] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        role: users.role,
+        isActive: users.isActive,
+        onboardingCompleted: users.onboardingCompleted,
+        createdAt: users.createdAt,
+        documentsCount: sql<number>`coalesce(${docsCount.cnt}, 0)`,
+        analysesCount: sql<number>`coalesce(${analysesCount.cnt}, 0)`,
+      })
+      .from(users)
+      .leftJoin(docsCount, eq(docsCount.userId, users.id))
+      .leftJoin(analysesCount, eq(analysesCount.userId, users.id))
+      .orderBy(desc(users.createdAt), asc(users.id))
+      .limit(limit)
+      .offset(offset),
+    db.select({ count: count() }).from(users),
+  ])
+
+  return { data: rows, total: totalResult[0]?.count ?? 0 }
 }
 
 export async function getUserById(id: string): Promise<User | undefined> {

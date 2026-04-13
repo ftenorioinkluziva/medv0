@@ -2,9 +2,24 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getAllAgentsForAdmin } from '@/lib/db/queries/health-agents'
 import { AgentsTable } from './_components/agents-table'
+import { Pagination } from '@/components/ui/pagination'
 
-export default async function AdminAgentsPage() {
-  const agents = await getAllAgentsForAdmin()
+const PAGE_SIZE = 20
+
+export default async function AdminAgentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; size?: string }>
+}) {
+  const params = await searchParams
+  const rawPage = Math.trunc(Number(params.page))
+  const rawSize = Math.trunc(Number(params.size))
+  const page = Math.max(1, Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1)
+  const size = Math.max(1, Math.min(100, Number.isFinite(rawSize) && rawSize > 0 ? rawSize : PAGE_SIZE))
+  const offset = (page - 1) * size
+
+  const { data: agents, total } = await getAllAgentsForAdmin(size, offset)
+  const totalPages = Math.ceil(total / size)
 
   return (
     <div>
@@ -20,6 +35,9 @@ export default async function AdminAgentsPage() {
         </Button>
       </div>
       <AgentsTable agents={agents} />
+      {totalPages > 1 && (
+        <Pagination currentPage={page} totalPages={totalPages} />
+      )}
     </div>
   )
 }

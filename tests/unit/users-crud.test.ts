@@ -102,26 +102,28 @@ describe('toggleUserActiveAction', () => {
 describe('getAllUsersForAdmin', () => {
   it('returns all users with counts', async () => {
     // #given
-    vi.mocked(getAllUsersForAdmin).mockResolvedValue([mockUserForAdmin])
+    vi.mocked(getAllUsersForAdmin).mockResolvedValue({ data: [mockUserForAdmin], total: 1 })
 
     // #when
     const result = await getAllUsersForAdmin()
 
     // #then
-    expect(result).toHaveLength(1)
-    expect(result[0].documentsCount).toBe(3)
-    expect(result[0].analysesCount).toBe(2)
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0].documentsCount).toBe(3)
+    expect(result.data[0].analysesCount).toBe(2)
+    expect(result.total).toBe(1)
   })
 
   it('returns empty array when no users exist', async () => {
     // #given
-    vi.mocked(getAllUsersForAdmin).mockResolvedValue([])
+    vi.mocked(getAllUsersForAdmin).mockResolvedValue({ data: [], total: 0 })
 
     // #when
     const result = await getAllUsersForAdmin()
 
     // #then
-    expect(result).toEqual([])
+    expect(result.data).toEqual([])
+    expect(result.total).toBe(0)
   })
 })
 

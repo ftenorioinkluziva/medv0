@@ -2,14 +2,20 @@ import { and, desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import {
   snapshots,
-  medicalProfiles,
   analyses,
   livingAnalyses,
   livingAnalysisVersions,
 } from '@/lib/db/schema'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
-import { analyzeWithAgent, type AgentAnalysisResult } from '@/lib/ai/agents/analyze'
+import { analyzeWithAgent } from '@/lib/ai/agents/analyze'
 import { searchKnowledge } from '@/lib/ai/rag/vector-search'
+import {
+  readTimeoutMs,
+  buildMedicalProfileContext,
+  runFoundationPhase,
+  runSpecializedPhase,
+  type AgentOutput,
+} from './pipeline'
 
 const LIVING_ANALYSIS_PROMPT = `Realize uma análise funcional e integrativa **focada e concisa** dos dados fornecidos.
 
@@ -49,27 +55,9 @@ Biomarcadores fora do ideal funcional, agrupados por sistema (Metabólico/Cardio
 const DISCLAIMER_TEXT =
   'Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional. Consulte sempre um médico qualificado.'
 
-interface AgentOutput {
-  agentId: string
-  agentName: string
-  role: string
-  content: string
-  status: 'completed' | 'timeout' | 'error'
-}
-
 function truncateText(value: string, maxChars: number): string {
   if (value.length <= maxChars) return value
   return `${value.slice(0, maxChars)}\n\n[conteudo truncado para manter consistencia da analise]`
-}
-
-function readTimeoutMs(envName: string, fallbackMs: number): number {
-  const rawValue = process.env[envName]
-  if (!rawValue) return fallbackMs
-
-  const parsed = Number.parseInt(rawValue, 10)
-  if (Number.isNaN(parsed) || parsed <= 0) return fallbackMs
-
-  return parsed
 }
 
 export async function runLivingAnalysis(
@@ -130,25 +118,7 @@ export async function runLivingAnalysis(
       ? truncateText(previousVersion.reportMarkdown, 5000)
       : ''
 
-    const [profile] = await db
-      .select()
-      .from(medicalProfiles)
-      .where(eq(medicalProfiles.userId, userId))
-      .limit(1)
-
-    const medicalProfileContext = profile
-      ? JSON.stringify({
-          age: profile.age,
-          gender: profile.gender,
-          height: profile.height,
-          weight: profile.weight,
-          systolicPressure: profile.systolicPressure,
-          diastolicPressure: profile.diastolicPressure,
-          restingHeartRate: profile.restingHeartRate,
-          healthObjectives: profile.healthObjectives,
-          medicalConditions: profile.medicalConditions,
-        })
-      : '{}'
+    const medicalProfileContext = await buildMedicalProfileContext(userId)
 
     const foundationAgents = await getActiveAgentsByRole('foundation')
     const specializedAgents = await getActiveAgentsByRole('specialized')
@@ -190,15 +160,12 @@ export async function runLivingAnalysis(
       }
     })()
 
-    const agentOutputs: AgentOutput[] = []
-    const foundationOutputs: AgentOutput[] = []
     const globalDeadline = startMs + hardTimeoutMs
-
-    for (const agent of foundationAgents) {
-      if (!agent.isActive) continue
-      if (Date.now() >= globalDeadline) break
-
-      const foundationContexts = [
+    const foundationPhase = await runFoundationPhase({
+      agents: foundationAgents,
+      globalDeadline,
+      timeoutMs: foundationTimeoutMs,
+      buildContexts: () => [
         {
           snapshotContext,
           medicalProfileContext,
@@ -211,140 +178,77 @@ export async function runLivingAnalysis(
           previousAnalysisContext: truncateText(previousAnalysisContext, 1800),
           knowledgeContext: prebuiltKnowledgeContext,
         },
-      ]
+      ],
+      analyze: (agent, context, signal) =>
+        analyzeWithAgent(agent, LIVING_ANALYSIS_PROMPT, context, signal),
+      persist: (agent, result) =>
+        db.insert(analyses).values({
+          userId,
+          documentId: triggerDocumentId,
+          livingAnalysisVersionId: versionId,
+          agentId: agent.id,
+          agentName: agent.name,
+          analysisRole: agent.analysisRole,
+          content: result.content,
+          ragContextUsed: result.ragContextUsed,
+          tokensUsed: result.tokensUsed,
+          durationMs: result.durationMs,
+          status: result.status,
+          errorMessage: result.errorMessage ?? null,
+        }),
+      shouldSkipAgent: (agent) => !agent.isActive,
+    })
 
-      let result: AgentAnalysisResult = {
-        content: '',
-        ragContextUsed: false,
-        tokensUsed: null,
-        durationMs: null,
-        status: 'timeout',
-      }
+    const agentOutputs: AgentOutput[] = [...foundationPhase.allOutputs]
 
-      for (const context of foundationContexts) {
-        if (Date.now() >= globalDeadline) break
-
-        const remainingMs = globalDeadline - Date.now()
-        const timeoutMs = Math.min(foundationTimeoutMs, remainingMs)
-        if (timeoutMs <= 0) break
-
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
-        try {
-          result = await analyzeWithAgent(
-            agent,
-            LIVING_ANALYSIS_PROMPT,
-            context,
-            controller.signal,
-          )
-        } finally {
-          clearTimeout(timeoutId)
-        }
-
-        if (result.status === 'completed') break
-      }
-
-      await db.insert(analyses).values({
-        userId,
-        documentId: triggerDocumentId,
-        livingAnalysisVersionId: versionId,
-        agentId: agent.id,
-        agentName: agent.name,
-        analysisRole: agent.analysisRole,
-        content: result.content,
-        ragContextUsed: result.ragContextUsed,
-        tokensUsed: result.tokensUsed,
-        durationMs: result.durationMs,
-        status: result.status,
-        errorMessage: result.errorMessage ?? null,
-      })
-
-      const output: AgentOutput = {
-        agentId: agent.id,
-        agentName: agent.name,
-        role: agent.analysisRole,
-        content: result.content,
-        status: result.status,
-      }
-      agentOutputs.push(output)
-      if (result.status === 'completed') foundationOutputs.push(output)
-    }
-
-    const foundationContext = foundationOutputs
+    const foundationContext = foundationPhase.completedOutputs
       .map((o) => `### ${o.agentName}\n${o.content}`)
       .join('\n\n')
 
-    const specializedTasks = specializedAgents.map(async (agent) => {
-      if (!agent.isActive) return
-      if (Date.now() >= globalDeadline) return
-
-      const remainingMs = globalDeadline - Date.now()
-      const timeoutMs = Math.min(specializedTimeoutMs, remainingMs)
-
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
-      let result: AgentAnalysisResult
-      try {
-        result = await analyzeWithAgent(
-          agent,
-          LIVING_ANALYSIS_PROMPT,
-          {
-            snapshotContext,
-            medicalProfileContext,
-            foundationContext,
-            previousAnalysisContext,
-            knowledgeContext: prebuiltKnowledgeContext,
-          },
-          controller.signal,
-        )
-      } finally {
-        clearTimeout(timeoutId)
-      }
-
-      await db.insert(analyses).values({
-        userId,
-        documentId: triggerDocumentId,
-        livingAnalysisVersionId: versionId,
-        agentId: agent.id,
-        agentName: agent.name,
-        analysisRole: agent.analysisRole,
-        content: result.content,
-        ragContextUsed: result.ragContextUsed,
-        tokensUsed: result.tokensUsed,
-        durationMs: result.durationMs,
-        status: result.status,
-        errorMessage: result.errorMessage ?? null,
-      })
-
-      return {
-        agentId: agent.id,
-        agentName: agent.name,
-        role: agent.analysisRole,
-        content: result.content,
-        status: result.status,
-      } as AgentOutput
+    const specializedPhase = await runSpecializedPhase({
+      agents: specializedAgents,
+      globalDeadline,
+      timeoutMs: specializedTimeoutMs,
+      buildContexts: () => [
+        {
+          snapshotContext,
+          medicalProfileContext,
+          foundationContext,
+          previousAnalysisContext,
+          knowledgeContext: prebuiltKnowledgeContext,
+        },
+      ],
+      analyze: (agent, context, signal) =>
+        analyzeWithAgent(agent, LIVING_ANALYSIS_PROMPT, context, signal),
+      persist: (agent, result) =>
+        db.insert(analyses).values({
+          userId,
+          documentId: triggerDocumentId,
+          livingAnalysisVersionId: versionId,
+          agentId: agent.id,
+          agentName: agent.name,
+          analysisRole: agent.analysisRole,
+          content: result.content,
+          ragContextUsed: result.ragContextUsed,
+          tokensUsed: result.tokensUsed,
+          durationMs: result.durationMs,
+          status: result.status,
+          errorMessage: result.errorMessage ?? null,
+        }),
+      shouldSkipAgent: (agent) => !agent.isActive,
     })
 
-    const specializedResults = await Promise.allSettled(specializedTasks)
-    const specializedOutputs: AgentOutput[] = []
-    for (const settled of specializedResults) {
-      if (settled.status === 'fulfilled' && settled.value) {
-        agentOutputs.push(settled.value)
-        if (settled.value.status === 'completed') specializedOutputs.push(settled.value)
-      }
-    }
+    agentOutputs.push(...specializedPhase.allOutputs)
 
-    if (foundationOutputs.length === 0) {
+    if (foundationPhase.completedOutputs.length === 0) {
       throw new Error('No completed foundation output to build user-facing report')
     }
 
-    const primaryFoundationReport = foundationOutputs[0].content.trim()
+    const primaryFoundationReport = foundationPhase.completedOutputs[0].content.trim()
     const reportMarkdown = `${primaryFoundationReport}\n\n---\n\n> ${DISCLAIMER_TEXT}`
 
-    const foundationCompleted = foundationOutputs.filter((o) => o.status === 'completed').length
-    const specializedCompleted = specializedOutputs.filter((o) => o.status === 'completed').length
+    const foundationCompleted = foundationPhase.completedOutputs.length
+    const specializedCompleted = specializedPhase.completedOutputs.length
 
     await db
       .update(livingAnalysisVersions)
