@@ -1,6 +1,6 @@
 'use client'
 
-import { MessageResponse } from '@/components/ai-elements/message'
+import { ReportAccordion } from './report-accordion'
 
 interface ReportViewProps {
   reportMarkdown: string
@@ -58,9 +58,7 @@ export function ReportView({
         <span className="text-amber-500"> • timeout {specializedTimeout}</span>
         <span className="text-destructive"> • erro {specializedError}</span>
       </div>
-      <div className="rounded-lg border bg-card px-6 py-5">
-        <MessageResponse content={reportMarkdown} />
-      </div>
+      <ReportAccordion markdown={reportMarkdown} />
     </div>
   )
 }
