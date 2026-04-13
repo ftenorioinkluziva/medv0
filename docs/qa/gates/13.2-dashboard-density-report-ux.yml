@@ -1,0 +1,51 @@
+schema: 1
+story: '13.2'
+story_title: 'Dashboard Density & Report UX'
+gate: PASS
+status_reason: 'Todos os 4 ACs implementados. Lint e typecheck limpos. 5 testes Playwright cobrindo overflow, skeleton, TOC e âncoras. Nenhum issue CRITICAL ou HIGH identificado na revisão manual.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-04-13T00:00:00Z'
+
+top_issues: []
+waiver:
+  active: false
+
+quality_score: 100
+expires: '2026-04-27T00:00:00Z'
+
+evidence:
+  tests_reviewed:
+    count: 5
+    files:
+      - tests/e2e/dashboard-density.spec.ts
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4]
+    ac_gaps: []
+  coderabbit:
+    status: SKIPPED
+    reason: 'CLI não encontrado em ~/.local/bin/coderabbit no WSL — revisão manual completa realizada'
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Sem nova surface de segurança. Dados de biomarcadores chegam via SanitizedMedicalDocument já validado.'
+  performance:
+    status: PASS
+    notes: 'extractAlteredMarkers limita a 8 itens. parseSections é O(n) adequado para relatórios. Nenhuma chamada de rede adicional.'
+  reliability:
+    status: PASS
+    notes: 'CompactMarkerList retorna null quando sem marcadores. ReportToc retorna null com < 2 entradas. Suspense boundaries com fallback skeleton em todas as telas adicionadas.'
+  maintainability:
+    status: PASS
+    notes: 'Componentes pequenos e focados. parseSectionsForToc reutiliza parseSections sem duplicação. Zero comentários redundantes.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Corrigir array de dependências do useEffect em dashboard-content.tsx:123 — handleTriggerAnalysis ausente (issue pré-existente ao branch)'
+      refs: ['src/app/app/dashboard/dashboard-content.tsx']
+    - action: 'Melhorar T-DD-02 para verificar o skeleton diretamente via data-testid em vez de checar <main>'
+      refs: ['tests/e2e/dashboard-density.spec.ts']
+    - action: 'Instalar CodeRabbit CLI no WSL para habilitar scan automático nos próximos ciclos de QA'
+      refs: []
