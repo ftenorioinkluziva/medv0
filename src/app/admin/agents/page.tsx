@@ -12,8 +12,10 @@ export default async function AdminAgentsPage({
   searchParams: Promise<{ page?: string; size?: string }>
 }) {
   const params = await searchParams
-  const page = Math.max(1, Number(params.page) || 1)
-  const size = Math.max(1, Math.min(100, Number(params.size) || PAGE_SIZE))
+  const rawPage = Math.trunc(Number(params.page))
+  const rawSize = Math.trunc(Number(params.size))
+  const page = Math.max(1, Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1)
+  const size = Math.max(1, Math.min(100, Number.isFinite(rawSize) && rawSize > 0 ? rawSize : PAGE_SIZE))
   const offset = (page - 1) * size
 
   const { data: agents, total } = await getAllAgentsForAdmin(size, offset)

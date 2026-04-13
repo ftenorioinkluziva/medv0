@@ -110,6 +110,8 @@ async function runAgentWithContexts<ContextType>(
 
     try {
       result = await params.analyze(agent, context, controller.signal)
+    } catch {
+      result = fallbackTimeoutResult()
     } finally {
       clearTimeout(timeoutId)
     }
@@ -163,7 +165,9 @@ export async function runSpecializedPhase<ContextType>(
 }
 
 export async function runSynthesisPhase(params: SynthesisParams): Promise<string> {
-  if (params.outputs.length === 0) return ''
+  if (params.outputs.length === 0) {
+    throw new Error('runSynthesisPhase: no agent outputs available for synthesis')
+  }
 
   const synthesisInput = params.outputs
     .map((output) => `## Análise: ${output.agentName}\n${output.content}`)

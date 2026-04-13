@@ -1,4 +1,4 @@
-import { count, ilike, or, desc, eq } from 'drizzle-orm'
+import { count, ilike, or, desc, eq, asc } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { knowledgeBase, type KnowledgeBase } from '@/lib/db/schema'
 import type { PaginatedResult } from './users'
@@ -8,7 +8,7 @@ export async function getAllArticlesForAdmin(
   offset: number = 0,
 ): Promise<PaginatedResult<KnowledgeBase>> {
   const [rows, totalResult] = await Promise.all([
-    db.select().from(knowledgeBase).orderBy(desc(knowledgeBase.createdAt)).limit(limit).offset(offset),
+    db.select().from(knowledgeBase).orderBy(desc(knowledgeBase.createdAt), asc(knowledgeBase.id)).limit(limit).offset(offset),
     db.select({ count: count() }).from(knowledgeBase),
   ])
 
