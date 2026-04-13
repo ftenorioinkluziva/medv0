@@ -12,14 +12,10 @@ const STORAGE = {
 // ---------------------------------------------------------------------------
 
 test.describe('Mobile Layout — 390px viewport', () => {
-  test.beforeAll(() => {
-    if (!fs.existsSync(STORAGE.done)) {
-      test.skip(
-        true,
-        'Auth state missing — run: pnpm test:e2e:seed && playwright test --project=auth-setup',
-      )
-    }
-  })
+  test.skip(
+    !fs.existsSync(STORAGE.done),
+    'Auth state missing — run: pnpm test:e2e:seed && playwright test --project=auth-setup',
+  )
 
   test.use({
     storageState: STORAGE.done,
@@ -101,6 +97,21 @@ test.describe('Mobile Layout — 390px viewport', () => {
   test('T-ML-06 — profile page has no horizontal overflow at 390px', async ({ page }) => {
     // #given
     await page.goto('/app/profile')
+    await page.waitForLoadState('networkidle')
+
+    // #when
+    const hasOverflow = await page.evaluate(() => {
+      return document.documentElement.scrollWidth > document.documentElement.clientWidth
+    })
+
+    // #then
+    expect(hasOverflow).toBe(false)
+  })
+
+  // AC6 — No horizontal overflow on history page
+  test('T-ML-07 — history page has no horizontal overflow at 390px', async ({ page }) => {
+    // #given
+    await page.goto('/app/history')
     await page.waitForLoadState('networkidle')
 
     // #when
