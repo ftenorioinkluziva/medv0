@@ -45,6 +45,10 @@ function parseSections(markdown: string): ReportSection[] {
   return sections
 }
 
+export function parseSectionsForToc(markdown: string): Array<{ id: string; title: string }> {
+  return parseSections(markdown).map(({ id, title }) => ({ id, title }))
+}
+
 export function ReportAccordion({ markdown }: { markdown: string }) {
   const sections = parseSections(markdown)
 
@@ -68,7 +72,8 @@ export function ReportAccordion({ markdown }: { markdown: string }) {
         <AccordionItem
           key={section.id}
           value={section.id}
-          className="rounded-lg border bg-card px-4 data-[state=open]:pb-2"
+          id={section.id}
+          className="rounded-lg border bg-card px-4 data-[state=open]:pb-2 scroll-mt-20"
         >
           <AccordionTrigger className="py-3 text-sm font-medium hover:no-underline">
             {section.title}
