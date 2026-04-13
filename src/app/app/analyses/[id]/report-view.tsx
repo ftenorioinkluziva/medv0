@@ -1,6 +1,7 @@
 'use client'
 
-import { ReportAccordion } from './report-accordion'
+import { ReportAccordion, parseSectionsForToc } from './report-accordion'
+import { ReportToc } from './report-toc'
 
 interface ReportViewProps {
   reportMarkdown: string
@@ -58,6 +59,7 @@ export function ReportView({
         <span className="text-amber-500"> • timeout {specializedTimeout}</span>
         <span className="text-destructive"> • erro {specializedError}</span>
       </div>
+      <ReportToc entries={parseSectionsForToc(reportMarkdown)} />
       <ReportAccordion markdown={reportMarkdown} />
     </div>
   )

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Upload, ClipboardList, ArrowRight, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { CompactMarkerList } from './components/compact-marker-list'
 import type { DashboardData } from './page'
 import type { DocumentWithHistory } from '@/lib/db/queries/history'
 import type { ParameterEvolution } from '@/lib/history/evolution'
@@ -206,6 +207,9 @@ export function DashboardContent({ data }: DashboardContentProps) {
                     </Link>
                   </div>
                 </div>
+              )}
+              {historyEntries[0]?.doc.snapshot?.structuredData && (
+                <CompactMarkerList structuredData={historyEntries[0].doc.snapshot.structuredData} />
               )}
               <div className="space-y-2">
                 {historyEntries.map(({ doc, evolution }) => (

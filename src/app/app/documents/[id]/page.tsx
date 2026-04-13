@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/lib/auth/config'
@@ -6,6 +7,7 @@ import { documents, snapshots } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { ArrowLeft, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
 
@@ -123,6 +125,16 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
 
   const { id } = await params
 
+  return (
+    <main className="min-h-screen bg-background">
+      <Suspense fallback={<DocumentSkeleton />}>
+        <DocumentContent id={id} userId={session.user.id} />
+      </Suspense>
+    </main>
+  )
+}
+
+async function DocumentContent({ id, userId }: { id: string; userId: string }) {
   const [row] = await db
     .select({
       docId: documents.id,
@@ -135,7 +147,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
     })
     .from(documents)
     .leftJoin(snapshots, eq(snapshots.documentId, documents.id))
-    .where(and(eq(documents.id, id), eq(documents.userId, session.user.id)))
+    .where(and(eq(documents.id, id), eq(documents.userId, userId)))
     .limit(1)
 
   if (!row) notFound()
@@ -152,8 +164,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   ) ?? 0
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="space-y-5 p-4 md:p-6">
+    <div className="space-y-5 p-4 md:p-6">
         {/* Header */}
         <div className="space-y-3">
           <Link
@@ -209,7 +220,29 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
             ))}
           </div>
         )}
+    </div>
+  )
+}
+
+function DocumentSkeleton() {
+  return (
+    <div className="space-y-5 p-4 md:p-6" aria-label="Carregando exame..." role="status">
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-24" />
+        <div className="rounded-2xl border border-foreground/10 bg-card p-5 space-y-3">
+          <Skeleton className="h-6 w-3/4" />
+          <Skeleton className="h-4 w-48" />
+          <div className="flex gap-2">
+            <Skeleton className="h-6 w-28 rounded-full" />
+            <Skeleton className="h-6 w-24 rounded-full" />
+          </div>
+        </div>
       </div>
-    </main>
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-xl" />
+        ))}
+      </div>
+    </div>
   )
 }
