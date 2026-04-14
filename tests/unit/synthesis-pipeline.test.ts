@@ -104,7 +104,7 @@ describe('runSynthesisPhase — output formatting', () => {
     // #then
     expect(result).toContain('Síntese final.')
     expect(result).toContain('Não substitui consulta médica.')
-    expect(result).toMatch(/Síntese final\..*---.*Não substitui/s)
+    expect(result).toMatch(/Síntese final\.[\s\S]*---[\s\S]*Não substitui/)
   })
 
   it('chama validate com o relatório gerado', async () => {
