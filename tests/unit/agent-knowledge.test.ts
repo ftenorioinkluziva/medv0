@@ -83,7 +83,8 @@ function buildSelectChain(rows: unknown[]) {
 
 function buildInsertChain() {
   const chain = {
-    values: vi.fn().mockResolvedValue(undefined),
+    values: vi.fn().mockReturnThis(),
+    onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
   }
   vi.mocked(db.insert).mockReturnValue(chain as never)
   return chain
@@ -173,7 +174,7 @@ describe('getArticlesByAgent', () => {
 })
 
 describe('associateArticleToAgent', () => {
-  it('deve inserir associação na tabela agent_knowledge', async () => {
+  it('deve inserir associação na tabela agent_knowledge com onConflictDoNothing', async () => {
     // #given
     const chain = buildInsertChain()
 
@@ -186,6 +187,7 @@ describe('associateArticleToAgent', () => {
       agentId: 'agent-nutricao-uuid',
       articleId: 'article-dieta-uuid',
     })
+    expect(chain.onConflictDoNothing).toHaveBeenCalledOnce()
   })
 })
 
@@ -230,18 +232,13 @@ describe('getAgentsByArticle', () => {
 // ─── Schema — AC1: unique constraint (behavioral via insert mock) ──────────
 
 describe('agent_knowledge unique constraint', () => {
-  it('deve rejeitar inserção duplicada (agentId + articleId)', async () => {
-    // #given — simula erro de constraint do Postgres
-    const chain = {
-      values: vi.fn().mockRejectedValue(
-        Object.assign(new Error('duplicate key value violates unique constraint'), { code: '23505' }),
-      ),
-    }
-    vi.mocked(db.insert).mockReturnValue(chain as never)
+  it('deve ignorar inserção duplicada silenciosamente via onConflictDoNothing', async () => {
+    // #given — onConflictDoNothing absorbs the duplicate; no error propagated
+    buildInsertChain()
 
-    // #when / #then
+    // #when / #then — resolves without throwing (Story 8.2: onConflictDoNothing added)
     await expect(
       associateArticleToAgent('agent-nutricao-uuid', 'article-dieta-uuid'),
-    ).rejects.toThrow('duplicate key value violates unique constraint')
+    ).resolves.toBeUndefined()
   })
 })
