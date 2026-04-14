@@ -96,16 +96,15 @@ test.describe('Admin Knowledge Association — 390px viewport', () => {
     await expect(section.getByRole('button', { name: 'Associar' }).first()).toBeVisible({ timeout: 5_000 })
   })
 
-  test('bulk select — Selecionar todos e Adicionar selecionados', async ({ page }) => {
+  test('bulk select UI — Selecionar todos e Desmarcar todos', async ({ page }) => {
     // #given
     const editUrl = await getFirstAgentEditUrl(page)
     await page.goto(editUrl)
     const section = page.getByRole('region', { name: 'Base de Conhecimento' })
     await expect(section).toBeVisible({ timeout: 10_000 })
 
-    const hasArticles = await section.locator('input[type="checkbox"]').count() > 0
-
-    if (!hasArticles) {
+    const checkboxCount = await section.locator('input[type="checkbox"]').count()
+    if (checkboxCount === 0) {
       test.skip()
       return
     }
@@ -115,20 +114,53 @@ test.describe('Admin Knowledge Association — 390px viewport', () => {
     await expect(selectAllButton).toBeVisible()
     await selectAllButton.click()
 
-    // #then — checkboxes get checked
+    // #then — checkboxes get checked and bulk button appears
     const firstCheckbox = section.locator('input[type="checkbox"]').first()
     await expect(firstCheckbox).toBeChecked()
-
-    // #then — Adicionar selecionados or Remover selecionados button appears
-    const bulkButton = section.getByRole('button', { name: /selecionados/i }).first()
-    await expect(bulkButton).toBeVisible()
+    await expect(section.getByRole('button', { name: /selecionados/i }).first()).toBeVisible()
 
     // #when — click Desmarcar todos
-    const desmarcarButton = section.getByRole('button', { name: 'Desmarcar todos' })
-    await desmarcarButton.click()
+    await section.getByRole('button', { name: 'Desmarcar todos' }).click()
 
     // #then — checkboxes unchecked
     await expect(firstCheckbox).not.toBeChecked()
+  })
+
+  test('bulk associate — Adicionar selecionados executa action e artigo fica Associado', async ({ page }) => {
+    // #given
+    const editUrl = await getFirstAgentEditUrl(page)
+    await page.goto(editUrl)
+    const section = page.getByRole('region', { name: 'Base de Conhecimento' })
+    await expect(section).toBeVisible({ timeout: 10_000 })
+
+    // "Associar" button is a direct child of the article row div — use it to locate the row
+    const firstAssociarButton = section.getByRole('button', { name: 'Associar' }).first()
+    const hasNonAssoc = await firstAssociarButton.isVisible({ timeout: 2_000 }).catch(() => false)
+    if (!hasNonAssoc) {
+      test.skip()
+      return
+    }
+
+    // The Associar button is a direct child of the article row <div>
+    const articleRow = firstAssociarButton.locator('..')
+    const rowCheckbox = articleRow.locator('input[type="checkbox"]')
+
+    // #when — select one non-associated article
+    await rowCheckbox.check()
+
+    // #then — Adicionar selecionados (1) button appears
+    const addButton = section.getByRole('button', { name: /Adicionar selecionados/ })
+    await expect(addButton).toBeVisible()
+
+    // #when — execute bulk associate
+    await addButton.click()
+
+    // #then — that article row now shows Associado badge
+    await expect(articleRow.getByText('Associado')).toBeVisible({ timeout: 5_000 })
+
+    // cleanup — disassociate via individual Remover button
+    await articleRow.getByRole('button', { name: 'Remover' }).click()
+    await expect(articleRow.getByRole('button', { name: 'Associar' })).toBeVisible({ timeout: 5_000 })
   })
 })
 
