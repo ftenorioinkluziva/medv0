@@ -212,6 +212,64 @@ describe('searchKnowledge', () => {
       expect(results).toEqual([])
     })
   })
+
+  describe('searchKnowledge com agentId (filtro por agente)', () => {
+    it('Cenário B: com agentId retorna chunks de artigo associado ao agente', async () => {
+      // #given
+      const chain = buildSelectChain([mockRows[0]])
+      const agentId = 'agent-nutricao-uuid'
+
+      // #when
+      const results = await searchKnowledge('dieta', 5, agentId)
+
+      // #then — agentScopeFilter aplicado em ambas as queries (vector + BM25), never undefined
+      expect(chain.where).toHaveBeenCalled()
+      expect(chain.where).not.toHaveBeenCalledWith(undefined)
+      expect(results).toHaveLength(1)
+      expect(results[0].articleId).toBe('article-1')
+    })
+
+    it('Cenário C: com agentId retorna chunks de artigo global (isGlobal=true) mesmo sem associação explícita', async () => {
+      // #given — DB retorna artigo global (simulando UNION is_global=true)
+      const chain = buildSelectChain([mockRows[1]])
+      const agentId = 'agent-nutricao-uuid'
+
+      // #when
+      const results = await searchKnowledge('integrativa', 5, agentId)
+
+      // #then — artigo global acessível por qualquer agente
+      expect(chain.where).toHaveBeenCalled()
+      expect(chain.where).not.toHaveBeenCalledWith(undefined)
+      expect(results).toHaveLength(1)
+      expect(results[0].articleId).toBe('article-2')
+    })
+
+    it('Cenário D: com agentId NÃO retorna chunks de artigo de outro agente (isGlobal=false)', async () => {
+      // #given — DB retorna vazio pois filtro exclui artigo de outro agente
+      const chain = buildSelectChain([])
+      const agentId = 'agent-nutricao-uuid'
+
+      // #when
+      const results = await searchKnowledge('exercício', 5, agentId)
+
+      // #then — isolamento de escopo garantido
+      expect(chain.where).toHaveBeenCalled()
+      expect(chain.where).not.toHaveBeenCalledWith(undefined)
+      expect(results).toHaveLength(0)
+    })
+
+    it('sem agentId não aplica filtro (backward compat — Cenário A)', async () => {
+      // #given
+      const chain = buildSelectChain(mockRows)
+
+      // #when
+      const results = await searchKnowledge('vitamina D')
+
+      // #then — vector query chama where(undefined) = sem filtro de escopo
+      expect(chain.where).toHaveBeenCalledWith(undefined)
+      expect(results).toHaveLength(3)
+    })
+  })
 })
 
 describe('incrementUsageCount', () => {

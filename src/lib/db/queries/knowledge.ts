@@ -1,6 +1,6 @@
-import { count, ilike, or, desc, eq, asc } from 'drizzle-orm'
+import { and, count, ilike, or, desc, eq, asc } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { knowledgeBase, type KnowledgeBase } from '@/lib/db/schema'
+import { agentKnowledge, healthAgents, knowledgeBase, type HealthAgent, type KnowledgeBase } from '@/lib/db/schema'
 import type { PaginatedResult } from './users'
 
 export async function getAllArticlesForAdmin(
@@ -40,4 +40,32 @@ export async function getArticleById(id: string): Promise<KnowledgeBase | undefi
     .where(eq(knowledgeBase.id, id))
     .limit(1)
   return results[0]
+}
+
+export async function getArticlesByAgent(agentId: string): Promise<KnowledgeBase[]> {
+  const rows = await db
+    .select({ article: knowledgeBase })
+    .from(agentKnowledge)
+    .innerJoin(knowledgeBase, eq(agentKnowledge.articleId, knowledgeBase.id))
+    .where(eq(agentKnowledge.agentId, agentId))
+  return rows.map((r) => r.article)
+}
+
+export async function associateArticleToAgent(agentId: string, articleId: string): Promise<void> {
+  await db.insert(agentKnowledge).values({ agentId, articleId })
+}
+
+export async function disassociateArticleFromAgent(agentId: string, articleId: string): Promise<void> {
+  await db
+    .delete(agentKnowledge)
+    .where(and(eq(agentKnowledge.agentId, agentId), eq(agentKnowledge.articleId, articleId)))
+}
+
+export async function getAgentsByArticle(articleId: string): Promise<HealthAgent[]> {
+  const rows = await db
+    .select({ agent: healthAgents })
+    .from(agentKnowledge)
+    .innerJoin(healthAgents, eq(agentKnowledge.agentId, healthAgents.id))
+    .where(eq(agentKnowledge.articleId, articleId))
+  return rows.map((r) => r.agent)
 }

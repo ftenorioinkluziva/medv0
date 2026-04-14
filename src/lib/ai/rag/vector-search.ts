@@ -1,5 +1,5 @@
 import { embed } from 'ai'
-import { cosineDistance, desc, eq, sql } from 'drizzle-orm'
+import { and, cosineDistance, desc, eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { knowledgeBase, knowledgeEmbeddings } from '@/lib/db/schema'
 import {
@@ -140,6 +140,7 @@ function toTsQuery(query: string): string {
 export async function searchKnowledge(
   query: string,
   topK: number = 5,
+  agentId?: string,
 ): Promise<KnowledgeChunk[]> {
   const candidateLimit = Math.max(topK * 5, 25)
 
@@ -149,6 +150,14 @@ export async function searchKnowledge(
   ])
 
   const similarity = sql<number>`1 - (${cosineDistance(knowledgeEmbeddings.embedding, queryEmbedding)})`
+
+  const agentScopeFilter = agentId
+    ? sql`${knowledgeEmbeddings.articleId} IN (
+        SELECT ak.article_id FROM agent_knowledge ak WHERE ak.agent_id = ${agentId}
+        UNION
+        SELECT kb.id FROM knowledge_base kb WHERE kb.is_global = true
+      )`
+    : undefined
 
   const vectorRowsPromise = db
     .select({
@@ -164,6 +173,7 @@ export async function searchKnowledge(
     })
     .from(knowledgeEmbeddings)
     .innerJoin(knowledgeBase, eq(knowledgeEmbeddings.articleId, knowledgeBase.id))
+    .where(agentScopeFilter)
     .orderBy(desc(similarity))
     .limit(candidateLimit)
 
@@ -184,7 +194,10 @@ export async function searchKnowledge(
         .from(knowledgeEmbeddings)
         .innerJoin(knowledgeBase, eq(knowledgeEmbeddings.articleId, knowledgeBase.id))
         .where(
-          sql`${knowledgeEmbeddings.contentTsv} @@ to_tsquery('portuguese', ${tsQuery})`,
+          and(
+            sql`${knowledgeEmbeddings.contentTsv} @@ to_tsquery('portuguese', ${tsQuery})`,
+            agentScopeFilter,
+          ),
         )
         .orderBy(
           desc(
