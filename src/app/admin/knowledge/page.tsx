@@ -1,4 +1,4 @@
-import { getAllArticlesForAdmin } from '@/lib/db/queries/knowledge'
+import { getAllArticlesForAdmin, getAgentsByArticleIds } from '@/lib/db/queries/knowledge'
 import { KnowledgeTable } from './_components/knowledge-table'
 import { Pagination } from '@/components/ui/pagination'
 
@@ -19,6 +19,9 @@ export default async function AdminKnowledgePage({
   const { data: articles, total } = await getAllArticlesForAdmin(size, offset)
   const totalPages = Math.ceil(total / size)
 
+  const articleIds = articles.map((a) => a.id)
+  const agentsByArticle = await getAgentsByArticleIds(articleIds)
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -29,7 +32,7 @@ export default async function AdminKnowledgePage({
           </p>
         </div>
       </div>
-      <KnowledgeTable articles={articles} />
+      <KnowledgeTable articles={articles} agentsByArticle={agentsByArticle} />
       {totalPages > 1 && (
         <Pagination currentPage={page} totalPages={totalPages} />
       )}

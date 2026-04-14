@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { deleteArticleAction } from '../_actions/knowledge'
+import { toggleArticleGlobalAction } from '@/lib/actions/admin-knowledge'
 import type { KnowledgeBase } from '@/lib/db/schema'
 
 const VERIFIED_BADGE: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
@@ -40,6 +42,7 @@ const VERIFIED_BADGE: Record<string, { label: string; variant: 'default' | 'seco
 
 interface KnowledgeTableProps {
   articles: KnowledgeBase[]
+  agentsByArticle: Record<string, { id: string; name: string }[]>
 }
 
 type VerifiedFilter = 'all' | 'verified' | 'unverified'
@@ -60,7 +63,7 @@ function getArticleSnippet(article: KnowledgeBase): string {
   return `${normalized.slice(0, 180).trimEnd()}...`
 }
 
-export function KnowledgeTable({ articles }: KnowledgeTableProps) {
+export function KnowledgeTable({ articles, agentsByArticle }: KnowledgeTableProps) {
   const [, startTransition] = useTransition()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES)
@@ -69,6 +72,10 @@ export function KnowledgeTable({ articles }: KnowledgeTableProps) {
   const [page, setPage] = useState(1)
   const [pendingDelete, setPendingDelete] = useState<KnowledgeBase | null>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
+  const [globalState, setGlobalState] = useState<Map<string, boolean>>(
+    () => new Map(articles.map((a) => [a.id, a.isGlobal])),
+  )
+  const [togglingGlobalIds, setTogglingGlobalIds] = useState<Set<string>>(new Set())
 
   const normalizedSearch = search.trim().toLowerCase()
 
@@ -101,6 +108,25 @@ export function KnowledgeTable({ articles }: KnowledgeTableProps) {
   const pageStartIndex = (currentPage - 1) * PAGE_SIZE
   const pageEndIndex = pageStartIndex + PAGE_SIZE
   const paginated = filtered.slice(pageStartIndex, pageEndIndex)
+
+  function handleToggleGlobal(articleId: string) {
+    const currentIsGlobal = globalState.get(articleId) ?? false
+    setTogglingGlobalIds((prev) => new Set(prev).add(articleId))
+    startTransition(async () => {
+      const result = await toggleArticleGlobalAction(articleId, !currentIsGlobal)
+      setTogglingGlobalIds((prev) => {
+        const next = new Set(prev)
+        next.delete(articleId)
+        return next
+      })
+      if ('error' in result) {
+        toast.error(result.error)
+      } else {
+        setGlobalState((prev) => new Map(prev).set(articleId, !currentIsGlobal))
+        toast.success(!currentIsGlobal ? 'Artigo marcado como global' : 'Artigo desmarcado como global')
+      }
+    })
+  }
 
   function confirmDelete() {
     if (!pendingDelete) return
@@ -206,6 +232,8 @@ export function KnowledgeTable({ articles }: KnowledgeTableProps) {
             <TableRow>
               <TableHead>Artigo</TableHead>
               <TableHead>Categoria</TableHead>
+              <TableHead>Global</TableHead>
+              <TableHead>Agentes</TableHead>
               <TableHead>Usos</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Criado em</TableHead>
@@ -215,6 +243,8 @@ export function KnowledgeTable({ articles }: KnowledgeTableProps) {
           <TableBody>
             {paginated.map((article) => {
               const badge = verifiedBadge(article.isVerified)
+              const isGlobal = globalState.get(article.id) ?? article.isGlobal
+              const agents = agentsByArticle[article.id] ?? []
               return (
                 <TableRow key={article.id}>
                   <TableCell className="max-w-105 align-top">
@@ -231,6 +261,36 @@ export function KnowledgeTable({ articles }: KnowledgeTableProps) {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {article.category ?? '—'}
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={isGlobal}
+                      disabled={togglingGlobalIds.has(article.id)}
+                      onClick={() => handleToggleGlobal(article.id)}
+                      aria-label={`${isGlobal ? 'Desativar' : 'Ativar'} global para ${article.title}`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {isGlobal ? (
+                      <Badge variant="secondary" className="whitespace-nowrap">Global</Badge>
+                    ) : agents.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {agents.slice(0, 2).map((a) => (
+                          <Badge key={a.id} variant="outline" className="text-xs whitespace-nowrap">
+                            {a.name}
+                          </Badge>
+                        ))}
+                        {agents.length > 2 && (
+                          <span className="text-xs text-muted-foreground self-center">
+                            +{agents.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground whitespace-nowrap">
+                        Sem agente
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>{article.usageCount}</TableCell>
                   <TableCell>
