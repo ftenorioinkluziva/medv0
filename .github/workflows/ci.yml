@@ -146,8 +146,10 @@ jobs:
 
             docker network create sami 2>/dev/null || true
 
-            docker stop sami-app 2>/dev/null || true
-            docker rm   sami-app 2>/dev/null || true
+            # Para qualquer container usando a porta 3000, não só pelo nome
+            docker ps -q --filter publish=3000 | xargs -r docker stop -t 0
+            docker stop -t 0 sami-app 2>/dev/null || true
+            docker rm sami-app 2>/dev/null || true
 
             docker run -d \
               --name sami-app \
