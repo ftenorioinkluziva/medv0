@@ -32,10 +32,13 @@ export function AgentForm({ agent }: AgentFormProps) {
     agent?.analysisRole ?? 'specialized',
   )
 
+  const SUPPORTED_PROVIDERS = new Set(['google', 'openai', 'anthropic'])
   const initialModel = agent?.model ?? 'google/gemini-2.5-flash'
   const initialSlashIndex = initialModel.indexOf('/')
+  const parsedProvider =
+    initialSlashIndex !== -1 ? initialModel.slice(0, initialSlashIndex).toLowerCase() : 'google'
   const [provider, setProvider] = useState<string>(
-    initialSlashIndex !== -1 ? initialModel.slice(0, initialSlashIndex) : 'google',
+    SUPPORTED_PROVIDERS.has(parsedProvider) ? parsedProvider : 'google',
   )
   const [modelSlug, setModelSlug] = useState<string>(
     initialSlashIndex !== -1 ? initialModel.slice(initialSlashIndex + 1) : initialModel,

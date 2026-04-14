@@ -22,13 +22,15 @@ const agentOutput = {
   status: 'completed' as const,
 }
 
-const baseParams = {
-  outputs: [agentOutput],
-  snapshotContext: '{"glucose": 99}',
-  globalDeadline: Date.now() + 60_000,
-  synthesisTimeoutMs: 30_000,
-  synthesisPrompt: 'Consolide as análises.',
-  disclaimerText: 'Não substitui consulta médica.',
+function makeBaseParams() {
+  return {
+    outputs: [agentOutput],
+    snapshotContext: '{"glucose": 99}',
+    globalDeadline: Date.now() + 60_000,
+    synthesisTimeoutMs: 30_000,
+    synthesisPrompt: 'Consolide as análises.',
+    disclaimerText: 'Não substitui consulta médica.',
+  }
 }
 
 beforeEach(() => {
@@ -45,7 +47,7 @@ describe('runSynthesisPhase — resolveModel wiring', () => {
     vi.mocked(generateText).mockResolvedValue({ text: 'Relatório consolidado.' } as never)
 
     // #when
-    await runSynthesisPhase(baseParams)
+    await runSynthesisPhase(makeBaseParams())
 
     // #then — wiring: resolveModel must be called, and generateText must receive its return value
     expect(resolveModel).toHaveBeenCalledWith('google/gemini-2.5-flash')
@@ -59,7 +61,7 @@ describe('runSynthesisPhase — resolveModel wiring', () => {
     vi.mocked(generateText).mockResolvedValue({ text: 'Relatório.' } as never)
 
     // #when
-    await runSynthesisPhase({ ...baseParams, synthesisModel: 'google/gemini-2.5-pro' })
+    await runSynthesisPhase({ ...makeBaseParams(), synthesisModel: 'google/gemini-2.5-pro' })
 
     // #then
     expect(resolveModel).toHaveBeenCalledWith('google/gemini-2.5-pro')
@@ -74,7 +76,7 @@ describe('runSynthesisPhase — resolveModel wiring', () => {
     vi.mocked(generateText).mockResolvedValue({ text: 'Relatório.' } as never)
 
     // #when
-    await runSynthesisPhase(baseParams)
+    await runSynthesisPhase(makeBaseParams())
 
     // #then
     expect(resolveModel).toHaveBeenCalledWith('google/gemini-2.5-pro')
@@ -86,7 +88,7 @@ describe('runSynthesisPhase — resolveModel wiring', () => {
     vi.mocked(generateText).mockResolvedValue({ text: 'Relatório.' } as never)
 
     // #when
-    await runSynthesisPhase({ ...baseParams, synthesisModel: 'google/gemini-2.0-flash' })
+    await runSynthesisPhase({ ...makeBaseParams(), synthesisModel: 'google/gemini-2.0-flash' })
 
     // #then
     expect(resolveModel).toHaveBeenCalledWith('google/gemini-2.0-flash')
@@ -99,7 +101,7 @@ describe('runSynthesisPhase — output formatting', () => {
     vi.mocked(generateText).mockResolvedValue({ text: 'Síntese final.' } as never)
 
     // #when
-    const result = await runSynthesisPhase(baseParams)
+    const result = await runSynthesisPhase(makeBaseParams())
 
     // #then
     expect(result).toContain('Síntese final.')
@@ -113,7 +115,7 @@ describe('runSynthesisPhase — output formatting', () => {
     const validate = vi.fn()
 
     // #when
-    await runSynthesisPhase({ ...baseParams, validate })
+    await runSynthesisPhase({ ...makeBaseParams(), validate })
 
     // #then
     expect(validate).toHaveBeenCalledOnce()
@@ -125,7 +127,7 @@ describe('runSynthesisPhase — output formatting', () => {
     vi.mocked(generateText).mockResolvedValue({ text: 'Síntese.' } as never)
 
     // #when
-    await runSynthesisPhase(baseParams)
+    await runSynthesisPhase(makeBaseParams())
 
     // #then
     const call = vi.mocked(generateText).mock.calls[0][0] as { prompt: string }
@@ -138,13 +140,13 @@ describe('runSynthesisPhase — fallback behavior', () => {
   it('lança erro quando outputs está vazio', async () => {
     // #given / #when / #then
     await expect(
-      runSynthesisPhase({ ...baseParams, outputs: [] }),
+      runSynthesisPhase({ ...makeBaseParams(), outputs: [] }),
     ).rejects.toThrow('runSynthesisPhase: no agent outputs available for synthesis')
   })
 
   it('retorna fallback report quando deadline é iminente (<=5s)', async () => {
     // #given — deadline 3 seconds away
-    const params = { ...baseParams, globalDeadline: Date.now() + 3_000 }
+    const params = { ...makeBaseParams(), globalDeadline: Date.now() + 3_000 }
 
     // #when
     const result = await runSynthesisPhase(params)
@@ -161,7 +163,7 @@ describe('runSynthesisPhase — fallback behavior', () => {
     vi.mocked(generateText).mockRejectedValue(new Error('provider unavailable'))
 
     // #when
-    const result = await runSynthesisPhase(baseParams)
+    const result = await runSynthesisPhase(makeBaseParams())
 
     // #then — swallows error and returns raw agent content + disclaimer
     expect(result).toContain('Análise nutricional completa.')
@@ -174,7 +176,7 @@ describe('runSynthesisPhase — fallback behavior', () => {
     const validate = vi.fn()
 
     // #when
-    await runSynthesisPhase({ ...baseParams, validate })
+    await runSynthesisPhase({ ...makeBaseParams(), validate })
 
     // #then
     expect(validate).not.toHaveBeenCalled()

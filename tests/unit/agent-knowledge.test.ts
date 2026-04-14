@@ -23,7 +23,6 @@ vi.mock('@/lib/ai/core/resolve-model', () => ({
 }))
 
 import { db } from '@/lib/db/client'
-import { embed } from 'ai'
 import { searchKnowledge } from '@/lib/ai/rag/vector-search'
 import { analyzeWithAgent } from '@/lib/ai/agents/analyze'
 import {

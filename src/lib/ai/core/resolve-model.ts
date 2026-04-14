@@ -9,15 +9,16 @@ const DEFAULT_MODEL_SLUG = 'gemini-2.5-flash'
 export type SupportedProvider = keyof typeof PROVIDERS
 
 export function resolveModel(modelString: string) {
-  const slashIndex = modelString.indexOf('/')
+  const normalizedModel = modelString.trim()
+  const slashIndex = normalizedModel.indexOf('/')
 
-  if (slashIndex === -1) {
+  if (slashIndex <= 0 || slashIndex === normalizedModel.length - 1) {
     console.warn(`[resolveModel] Invalid model format "${modelString}", falling back to ${DEFAULT_MODEL}`)
     return google(DEFAULT_MODEL_SLUG)
   }
 
-  const providerName = modelString.slice(0, slashIndex) as SupportedProvider
-  const modelSlug = modelString.slice(slashIndex + 1)
+  const providerName = normalizedModel.slice(0, slashIndex) as SupportedProvider
+  const modelSlug = normalizedModel.slice(slashIndex + 1)
 
   if (providerName === 'anthropic' && !process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY not configured')
