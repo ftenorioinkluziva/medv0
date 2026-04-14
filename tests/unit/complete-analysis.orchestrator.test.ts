@@ -24,8 +24,8 @@ vi.mock('ai', () => ({
   generateText: vi.fn(),
 }))
 
-vi.mock('@ai-sdk/google', () => ({
-  google: vi.fn(() => 'mock-model'),
+vi.mock('@/lib/ai/core/resolve-model', () => ({
+  resolveModel: vi.fn(() => 'mock-resolved-model'),
 }))
 
 import { db } from '@/lib/db/client'
@@ -33,6 +33,7 @@ import { generateText } from 'ai'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 import { analyzeWithAgent } from '@/lib/ai/agents/analyze'
 import { validateReportSections } from '@/lib/ai/utils/validate-report-sections'
+import { resolveModel } from '@/lib/ai/core/resolve-model'
 import { runCompleteAnalysis } from '@/lib/ai/orchestrator/complete-analysis'
 
 const foundationAgent = {
@@ -141,5 +142,9 @@ describe('runCompleteAnalysis', () => {
       }),
     )
     expect(validateReportSections).toHaveBeenCalledWith(expect.stringContaining('Synthesis output'))
+    expect(resolveModel).toHaveBeenCalledWith('google/gemini-2.5-flash')
+    expect(generateText).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'mock-resolved-model' }),
+    )
   })
 })
