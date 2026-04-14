@@ -144,18 +144,30 @@ jobs:
 
             docker pull "$IMAGE"
 
-            export GITHUB_REPOSITORY="${{ github.repository }}"
-            export IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}"
-            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
-            export GOOGLE_GENERATIVE_AI_API_KEY="${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}"
-            export AUTH_SECRET="${{ secrets.AUTH_SECRET }}"
-            export NEXTAUTH_URL="${{ secrets.NEXTAUTH_URL }}"
-            export RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
-            export RESEND_FROM_EMAIL="${{ secrets.RESEND_FROM_EMAIL }}"
+            docker network create sami 2>/dev/null || true
 
-            docker compose pull app
-            docker compose up -d app
+            docker stop sami-app 2>/dev/null || true
+            docker rm   sami-app 2>/dev/null || true
+
+            docker run -d \
+              --name sami-app \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              --network sami \
+              --network-alias app \
+              -e NODE_ENV=production \
+              -e PORT=3000 \
+              -e HOSTNAME=0.0.0.0 \
+              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              -e GOOGLE_GENERATIVE_AI_API_KEY="${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}" \
+              -e AUTH_SECRET="${{ secrets.AUTH_SECRET }}" \
+              -e NEXTAUTH_URL="${{ secrets.NEXTAUTH_URL }}" \
+              -e RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" \
+              -e RESEND_FROM_EMAIL="${{ secrets.RESEND_FROM_EMAIL }}" \
+              "$IMAGE"
+
+            docker network connect shared-network sami-app 2>/dev/null || true
 
             sleep 10
-            docker compose ps app
+            docker ps --filter name=sami-app
             docker image prune -f
