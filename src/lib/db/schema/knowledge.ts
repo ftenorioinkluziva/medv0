@@ -1,5 +1,6 @@
-import { pgTable, uuid, text, integer, timestamp, date, index, customType } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, timestamp, date, index, customType, boolean, unique } from 'drizzle-orm/pg-core'
 import { vector } from 'drizzle-orm/pg-core'
+import { healthAgents } from './health-agents'
 
 const tsvector = customType<{ data: string }>({
   dataType() {
@@ -22,6 +23,7 @@ export const knowledgeBase = pgTable(
     tags: text('tags').array(),
     language: text('language').notNull().default('pt-BR'),
     isVerified: text('is_verified').notNull().default('unverified'),
+    isGlobal: boolean('is_global').notNull().default(true),
     usageCount: integer('usage_count').notNull().default(0),
     lastAnalyzedAt: timestamp('last_analyzed_at'),
     analysisVersion: text('analysis_version'),
@@ -53,7 +55,28 @@ export const knowledgeEmbeddings = pgTable(
   ],
 )
 
+export const agentKnowledge = pgTable(
+  'agent_knowledge',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => healthAgents.id, { onDelete: 'cascade' }),
+    articleId: uuid('article_id')
+      .notNull()
+      .references(() => knowledgeBase.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    unique('agent_knowledge_agent_article_unique').on(table.agentId, table.articleId),
+    index('agent_knowledge_agent_id_idx').on(table.agentId),
+    index('agent_knowledge_article_id_idx').on(table.articleId),
+  ],
+)
+
 export type KnowledgeBase = typeof knowledgeBase.$inferSelect
 export type NewKnowledgeBase = typeof knowledgeBase.$inferInsert
 export type KnowledgeEmbedding = typeof knowledgeEmbeddings.$inferSelect
 export type NewKnowledgeEmbedding = typeof knowledgeEmbeddings.$inferInsert
+export type AgentKnowledge = typeof agentKnowledge.$inferSelect
+export type NewAgentKnowledge = typeof agentKnowledge.$inferInsert

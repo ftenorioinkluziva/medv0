@@ -1,6 +1,6 @@
 import { generateText } from 'ai'
-import { google } from '@ai-sdk/google'
 import { eq } from 'drizzle-orm'
+import { resolveModel } from '@/lib/ai/core/resolve-model'
 import { db } from '@/lib/db/client'
 import type { AgentAnalysisResult } from '@/lib/ai/agents/analyze'
 import type { HealthAgent } from '@/lib/db/schema'
@@ -54,7 +54,7 @@ interface SynthesisParams {
   synthesisTimeoutMs: number
   synthesisPrompt: string
   disclaimerText: string
-  modelSlug?: string
+  synthesisModel?: string
   validate?: (reportMarkdown: string) => void
 }
 
@@ -186,7 +186,7 @@ export async function runSynthesisPhase(params: SynthesisParams): Promise<string
 
   try {
     const { text } = await generateText({
-      model: google(params.modelSlug ?? 'gemini-2.5-flash'),
+      model: resolveModel(params.synthesisModel ?? process.env.SYNTHESIS_MODEL ?? 'google/gemini-2.5-flash'),
       system: params.synthesisPrompt,
       prompt: `Snapshot de biomarcadores (use para indicadores ↑↓⚠):\n${params.snapshotContext}\n\nConsolide as seguintes análises especializadas em um relatório integrado:\n\n${synthesisInput}`,
       abortSignal: controller.signal,

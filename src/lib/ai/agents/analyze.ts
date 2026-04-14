@@ -1,7 +1,7 @@
 import { generateText } from 'ai'
-import { google } from '@ai-sdk/google'
 import type { HealthAgent } from '@/lib/db/schema'
 import { searchKnowledge } from '@/lib/ai/rag/vector-search'
+import { resolveModel } from '@/lib/ai/core/resolve-model'
 
 export interface AgentAnalysisResult {
   content: string
@@ -40,7 +40,7 @@ export async function analyzeWithAgent(
       } catch {
         // profile parse failure is non-blocking
       }
-      const ragChunks = await searchKnowledge(ragQueryParts.join('. '), 8)
+      const ragChunks = await searchKnowledge(ragQueryParts.join('. '), 8, agent.id)
       if (ragChunks.length > 0) {
         knowledgeContext = ragChunks.map((c) => c.content).join('\n\n')
         ragContextUsed = true
@@ -71,11 +71,9 @@ export async function analyzeWithAgent(
 
   const fullPrompt = `${analysisPrompt}\n\n---\n\n${contextParts.join('\n\n')}`
 
-  const modelSlug = agent.model.replace('google/', '')
-
   try {
     const { text, usage } = await generateText({
-      model: google(modelSlug),
+      model: resolveModel(agent.model),
       system: agent.systemPrompt,
       prompt: fullPrompt,
       temperature: Number(agent.temperature),

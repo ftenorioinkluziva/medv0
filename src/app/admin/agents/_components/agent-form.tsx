@@ -32,6 +32,15 @@ export function AgentForm({ agent }: AgentFormProps) {
     agent?.analysisRole ?? 'specialized',
   )
 
+  const initialModel = agent?.model ?? 'google/gemini-2.5-flash'
+  const initialSlashIndex = initialModel.indexOf('/')
+  const [provider, setProvider] = useState<string>(
+    initialSlashIndex !== -1 ? initialModel.slice(0, initialSlashIndex) : 'google',
+  )
+  const [modelSlug, setModelSlug] = useState<string>(
+    initialSlashIndex !== -1 ? initialModel.slice(initialSlashIndex + 1) : initialModel,
+  )
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
@@ -123,13 +132,30 @@ export function AgentForm({ agent }: AgentFormProps) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="model">Modelo *</Label>
-          <Input
-            id="model"
-            name="model"
-            defaultValue={agent?.model ?? 'google/gemini-2.5-flash'}
-            required
-          />
+          <Label>Modelo *</Label>
+          <div className="flex gap-2">
+            <Select value={provider} onValueChange={(v: string | null) => { if (v !== null) setProvider(v) }}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="google">Google</SelectItem>
+                <SelectItem value="openai">OpenAI</SelectItem>
+                <SelectItem value="anthropic">Anthropic</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={modelSlug}
+              onChange={(e) => setModelSlug(e.target.value)}
+              placeholder="ex: gemini-2.5-flash"
+              required
+              className="flex-1"
+            />
+          </div>
+          {provider && modelSlug && (
+            <p className="text-xs text-muted-foreground font-mono">{provider}/{modelSlug}</p>
+          )}
+          <input type="hidden" name="model" value={`${provider}/${modelSlug}`} />
         </div>
       </div>
 

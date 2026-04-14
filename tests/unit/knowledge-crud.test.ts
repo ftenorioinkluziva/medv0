@@ -39,6 +39,7 @@ const mockArticle: KnowledgeBase = {
   tags: null,
   language: 'pt-BR',
   isVerified: 'unverified',
+  isGlobal: true,
   usageCount: 3,
   lastAnalyzedAt: null,
   analysisVersion: null,
