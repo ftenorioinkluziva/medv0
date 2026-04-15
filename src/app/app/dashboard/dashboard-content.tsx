@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { Upload, ClipboardList, ArrowRight, TrendingUp, TrendingDown, Minus, Loader2, LogOut } from 'lucide-react'
+import { Upload, ClipboardList, ArrowRight, TrendingUp, TrendingDown, Minus, Loader2, LogOut, Activity } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { CompactMarkerList } from './components/compact-marker-list'
-import type { DashboardData } from './page'
+import type { DashboardData, BodyCompositionSummary } from './page'
 import type { DocumentWithHistory } from '@/lib/db/queries/history'
 import type { ParameterEvolution } from '@/lib/history/evolution'
 
@@ -78,9 +78,74 @@ function ExamRow({ doc, evolution }: { doc: DocumentWithHistory; evolution: Para
   )
 }
 
+function BodyCompositionCard({ bc }: { bc: BodyCompositionSummary }) {
+  const weight = bc.weight ? parseFloat(bc.weight).toFixed(1) : null
+  const bodyFat = bc.bodyFat ? parseFloat(bc.bodyFat).toFixed(1) : null
+
+  const measuredDate = new Date(bc.measuredAt + 'T00:00:00').toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+
+  const deltaColor = (delta: string | null) => {
+    if (!delta) return 'text-muted-foreground'
+    if (delta.startsWith('↑')) return 'text-red-500'
+    if (delta.startsWith('↓')) return 'text-green-500'
+    return 'text-muted-foreground'
+  }
+
+  return (
+    <section aria-labelledby="bc-heading" data-testid="body-composition-card">
+      <div className="rounded-xl border border-foreground/10 bg-card p-4 shadow-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="size-4 text-muted-foreground" aria-hidden="true" />
+            <h2 id="bc-heading" className="font-semibold text-foreground">Composição Corporal</h2>
+          </div>
+          <span className="text-[11px] text-muted-foreground">{measuredDate}</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {weight && (
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">Peso</p>
+              <p className="text-sm font-semibold text-foreground">{weight} kg</p>
+              {bc.weightDelta && (
+                <p className={`text-[11px] ${deltaColor(bc.weightDelta)}`}>
+                  {bc.weightDelta} vs anterior
+                </p>
+              )}
+            </div>
+          )}
+          {bodyFat && (
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">Gordura Corporal</p>
+              <p className="text-sm font-semibold text-foreground">{bodyFat}%</p>
+              {bc.bodyFatDelta && (
+                <p className={`text-[11px] ${deltaColor(bc.bodyFatDelta)}`}>
+                  {bc.bodyFatDelta} vs anterior
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <Link
+          href="/app/profile"
+          className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
+        >
+          Ver perfil completo
+          <ArrowRight className="size-3" aria-hidden="true" />
+        </Link>
+      </div>
+    </section>
+  )
+}
+
 export function DashboardContent({ data }: DashboardContentProps) {
   const router = useRouter()
-  const { userName, historyEntries, latestDocumentId } = data
+  const { userName, historyEntries, latestDocumentId, bodyComposition } = data
   const hasAnyDoc = historyEntries.length > 0
   const livingAnalysis = historyEntries[0]?.doc.livingAnalysis ?? null
   const hasAnalysis = livingAnalysis !== null
@@ -169,6 +234,9 @@ export function DashboardContent({ data }: DashboardContentProps) {
           </div>
         </div>
       </section>
+
+      {/* Composição Corporal — só renderiza se há dados */}
+      {bodyComposition && <BodyCompositionCard bc={bodyComposition} />}
 
       {/* Meus Exames */}
       <section aria-labelledby="exams-heading">
