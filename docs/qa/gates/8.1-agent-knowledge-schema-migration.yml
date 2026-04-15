@@ -1,0 +1,43 @@
+schema: 1
+story: '8.1'
+gate: PASS
+status_reason: 'Todos os fixes aplicados. 4 cenários AC3 (A/B/C/D) adicionados em vector-search.test.ts. Story file atualizado. 261/261 testes passando sem regressões.'
+reviewer: 'Quinn'
+updated: '2026-04-14T14:54:00Z'
+
+top_issues: []
+waiver: { active: false }
+
+resolved_issues:
+  - id: 'TEST-001'
+    severity: high
+    finding: '3 cenários P0 de searchKnowledge com agentId ausentes (Cenários B/C/D AC3)'
+    resolution: 'Adicionados 4 testes em vector-search.test.ts — Cenários A/B/C/D todos passando'
+    resolved_at: '2026-04-14'
+
+  - id: 'DOC-001'
+    severity: medium
+    finding: 'Story file desatualizado — Status "Ready", tasks desmarcadas, File List vazio'
+    resolution: 'Status → Ready for Review, tasks 1-8 marcadas [x], File List preenchido, Change Log atualizado'
+    resolved_at: '2026-04-14'
+
+coverage_summary:
+  ac1_schema: full          # implementação correta + migration confirmada
+  ac2_is_global: full       # campo existe com DEFAULT TRUE
+  ac3_search_filter: full   # Cenários A/B/C/D cobertos em vector-search.test.ts
+  ac4_queries: full         # 5/5 cenários em agent-knowledge.test.ts
+  ac5_analyze_agent: full   # 2/2 cenários em agent-knowledge.test.ts
+  ac6_migration: full       # migration 0012 gerada e aplicada
+  ac7_tests: full           # 261/261 passando
+
+test_run:
+  files:
+    - tests/unit/vector-search.test.ts
+    - tests/unit/agent-knowledge.test.ts
+    - tests/unit/synthesis-pipeline.test.ts
+  result: '261/261 passing (suite completa)'
+  date: '2026-04-14'
+  delta: '+15 testes desde gate anterior (246 → 261)'
+
+bonus:
+  - 'synthesis-pipeline.test.ts (11 testes) — também resolve gap AC3 de Story 9.1'

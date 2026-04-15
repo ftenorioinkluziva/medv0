@@ -1,0 +1,44 @@
+schema: 1
+story: '9.1'
+gate: PASS
+status_reason: 'Todos os ACs cobertos. synthesis-pipeline.test.ts fecha os gaps de AC3 (resolveModel wiring + SYNTHESIS_MODEL env). 261/261 testes passando sem regressões.'
+reviewer: 'Quinn'
+updated: '2026-04-14T14:57:00Z'
+
+top_issues: []
+waiver: { active: false }
+
+coverage_summary:
+  ac1_factory: full         # 5/5 cenários em resolve-model.test.ts
+  ac2_analyze_with_agent: full  # 3/3 cenários em analyze-with-agent.test.ts
+  ac3_orchestrators: full   # 4 testes em synthesis-pipeline.test.ts — wiring + env var + precedência
+  ac4_admin_form: none      # E2E — fora do gate vitest; documentado como tech debt
+  ac5_env_vars: full        # 2/2 cenários em resolve-model.test.ts
+  ac6_regression: full      # 261/261 passing
+
+resolved_gaps:
+  - id: '9.1-INT-004'
+    description: 'resolveModel não assertado no orchestrator de síntese'
+    resolution: 'synthesis-pipeline.test.ts: "chama resolveModel com o modelo padrão e passa o resultado ao generateText"'
+
+  - id: '9.1-INT-005'
+    description: 'SYNTHESIS_MODEL env var default não testado'
+    resolution: 'synthesis-pipeline.test.ts: "usa SYNTHESIS_MODEL env var quando synthesisModel não está nos params"'
+
+accepted_gaps:
+  - id: '9.1-E2E-001..003'
+    ac: 'AC4'
+    description: 'Admin form UI — provider dropdown, preview, validação'
+    reason: 'quality_gate_tools: [lint, typecheck, vitest] — E2E fora do escopo desta story'
+    action: 'Registrar como tech debt para E2E suite (tests/e2e/agents.spec.ts)'
+
+test_run:
+  files:
+    - tests/unit/resolve-model.test.ts
+    - tests/unit/analyze-with-agent.test.ts
+    - tests/unit/synthesis-pipeline.test.ts
+  result: '21/21 passing (story-specific) | 261/261 (suite completa)'
+  date: '2026-04-14'
+
+trace_ref: 'docs/qa/assessments/9.1-trace-20260414.md'
+test_design_ref: 'docs/qa/assessments/9.1-test-design-20260414.md'

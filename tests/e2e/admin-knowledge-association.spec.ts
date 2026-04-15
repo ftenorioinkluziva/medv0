@@ -192,15 +192,27 @@ test.describe('Admin Knowledge — toggle isGlobal', () => {
   })
 
   test('coluna Agentes mostra badge Global para artigos globais', async ({ page }) => {
-    // #given — table rendered
+    // #given — table rendered with at least one row
     await expect(page.locator('table')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByRole('columnheader', { name: 'Agentes' })).toBeVisible()
+    const firstSwitch = page.getByRole('switch').first()
+    await expect(firstSwitch).toBeVisible({ timeout: 10_000 })
 
-    // #then — at least one Global badge or Sem agente badge exists
-    const hasBadge =
-      (await page.getByText('Global').count()) > 0 ||
-      (await page.getByText('Sem agente').count()) > 0
+    // #when — ensure the first row is in global state
+    const wasGlobal = (await firstSwitch.getAttribute('aria-checked')) === 'true'
+    if (!wasGlobal) {
+      await firstSwitch.click()
+      await expect(firstSwitch).toHaveAttribute('aria-checked', 'true', { timeout: 5_000 })
+    }
 
-    expect(hasBadge).toBe(true)
+    // #then — the row containing this switch shows the Global badge in Agentes column
+    const row = page.locator('tr').filter({ has: firstSwitch })
+    await expect(row.getByText('Global')).toBeVisible({ timeout: 5_000 })
+
+    // cleanup — restore original state
+    if (!wasGlobal) {
+      await firstSwitch.click()
+      await expect(firstSwitch).toHaveAttribute('aria-checked', 'false', { timeout: 5_000 })
+    }
   })
 })

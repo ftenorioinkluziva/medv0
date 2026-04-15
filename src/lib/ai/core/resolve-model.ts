@@ -17,7 +17,7 @@ export function resolveModel(modelString: string) {
     return google(DEFAULT_MODEL_SLUG)
   }
 
-  const providerName = normalizedModel.slice(0, slashIndex) as SupportedProvider
+  const providerName = normalizedModel.slice(0, slashIndex).toLowerCase() as SupportedProvider
   const modelSlug = normalizedModel.slice(slashIndex + 1)
 
   if (providerName === 'anthropic' && !process.env.ANTHROPIC_API_KEY) {

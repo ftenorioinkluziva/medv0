@@ -113,17 +113,22 @@ export function KnowledgeTable({ articles, agentsByArticle }: KnowledgeTableProp
     const currentIsGlobal = globalState.get(articleId) ?? false
     setTogglingGlobalIds((prev) => new Set(prev).add(articleId))
     startTransition(async () => {
-      const result = await toggleArticleGlobalAction(articleId, !currentIsGlobal)
-      setTogglingGlobalIds((prev) => {
-        const next = new Set(prev)
-        next.delete(articleId)
-        return next
-      })
-      if ('error' in result) {
-        toast.error(result.error)
-      } else {
-        setGlobalState((prev) => new Map(prev).set(articleId, !currentIsGlobal))
-        toast.success(!currentIsGlobal ? 'Artigo marcado como global' : 'Artigo desmarcado como global')
+      try {
+        const result = await toggleArticleGlobalAction(articleId, !currentIsGlobal)
+        if ('error' in result) {
+          toast.error(result.error)
+        } else {
+          setGlobalState((prev) => new Map(prev).set(articleId, !currentIsGlobal))
+          toast.success(!currentIsGlobal ? 'Artigo marcado como global' : 'Artigo desmarcado como global')
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : String(err))
+      } finally {
+        setTogglingGlobalIds((prev) => {
+          const next = new Set(prev)
+          next.delete(articleId)
+          return next
+        })
       }
     })
   }

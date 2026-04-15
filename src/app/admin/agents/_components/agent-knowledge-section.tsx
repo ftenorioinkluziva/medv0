@@ -46,29 +46,41 @@ export function AgentKnowledgeSection({
 
   function toggleSelectAll() {
     if (allFilteredSelected) {
-      setSelectedIds(new Set())
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        filtered.forEach((a) => next.delete(a.id))
+        return next
+      })
     } else {
-      setSelectedIds(new Set(filtered.map((a) => a.id)))
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        filtered.forEach((a) => next.add(a.id))
+        return next
+      })
     }
   }
 
   function singleToggle(articleId: string, isAssociated: boolean) {
     startTransition(async () => {
-      const result = isAssociated
-        ? await disassociateArticlesAction(agentId, [articleId])
-        : await associateArticlesAction(agentId, [articleId])
+      try {
+        const result = isAssociated
+          ? await disassociateArticlesAction(agentId, [articleId])
+          : await associateArticlesAction(agentId, [articleId])
 
-      if ('error' in result) {
-        toast.error(result.error)
-        return
+        if ('error' in result) {
+          toast.error(result.error)
+          return
+        }
+
+        setAssociatedIds((prev) => {
+          const next = new Set(prev)
+          if (isAssociated) next.delete(articleId)
+          else next.add(articleId)
+          return next
+        })
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : String(err))
       }
-
-      setAssociatedIds((prev) => {
-        const next = new Set(prev)
-        if (isAssociated) next.delete(articleId)
-        else next.add(articleId)
-        return next
-      })
     })
   }
 
@@ -78,36 +90,44 @@ export function AgentKnowledgeSection({
   function bulkAssociate() {
     if (selectedNonAssoc.length === 0) return
     startTransition(async () => {
-      const result = await associateArticlesAction(agentId, selectedNonAssoc)
-      if ('error' in result) {
-        toast.error(result.error)
-        return
+      try {
+        const result = await associateArticlesAction(agentId, selectedNonAssoc)
+        if ('error' in result) {
+          toast.error(result.error)
+          return
+        }
+        setAssociatedIds((prev) => {
+          const next = new Set(prev)
+          selectedNonAssoc.forEach((id) => next.add(id))
+          return next
+        })
+        setSelectedIds(new Set())
+        toast.success(`${selectedNonAssoc.length} artigo(s) associado(s)`)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : String(err))
       }
-      setAssociatedIds((prev) => {
-        const next = new Set(prev)
-        selectedNonAssoc.forEach((id) => next.add(id))
-        return next
-      })
-      setSelectedIds(new Set())
-      toast.success(`${selectedNonAssoc.length} artigo(s) associado(s)`)
     })
   }
 
   function bulkRemove() {
     if (selectedAssoc.length === 0) return
     startTransition(async () => {
-      const result = await disassociateArticlesAction(agentId, selectedAssoc)
-      if ('error' in result) {
-        toast.error(result.error)
-        return
+      try {
+        const result = await disassociateArticlesAction(agentId, selectedAssoc)
+        if ('error' in result) {
+          toast.error(result.error)
+          return
+        }
+        setAssociatedIds((prev) => {
+          const next = new Set(prev)
+          selectedAssoc.forEach((id) => next.delete(id))
+          return next
+        })
+        setSelectedIds(new Set())
+        toast.success(`${selectedAssoc.length} artigo(s) desassociado(s)`)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : String(err))
       }
-      setAssociatedIds((prev) => {
-        const next = new Set(prev)
-        selectedAssoc.forEach((id) => next.delete(id))
-        return next
-      })
-      setSelectedIds(new Set())
-      toast.success(`${selectedAssoc.length} artigo(s) desassociado(s)`)
     })
   }
 

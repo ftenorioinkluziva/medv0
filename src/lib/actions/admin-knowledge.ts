@@ -67,10 +67,16 @@ export async function toggleArticleGlobalAction(
     throw error
   }
 
-  await db
+  const updated = await db
     .update(knowledgeBase)
     .set({ isGlobal, updatedAt: new Date() })
     .where(eq(knowledgeBase.id, articleId))
+    .returning({ id: knowledgeBase.id })
+
+  if (updated.length === 0) {
+    console.warn(`toggleArticleGlobalAction: article ${articleId} not found`)
+    return { error: 'Article not found' }
+  }
 
   revalidatePath('/admin/knowledge')
   return { success: true }
