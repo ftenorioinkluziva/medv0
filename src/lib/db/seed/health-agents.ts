@@ -172,6 +172,64 @@ Especialista em medicina do exercício e fisiologia esportiva funcional. Você i
 
 **NÃO PODE fazer:** Prescrever programas individualizados sem avaliação completa, substituir avaliação de profissional de educação física ou médico do esporte.`
 
+const NUTRITION_PLAN_SCHEMA = {
+  type: 'object',
+  properties: {
+    overview: { type: 'string' },
+    weeklyGoal: { type: 'string' },
+    meals: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          meal: { type: 'string' },
+          time: { type: 'string' },
+          foods: { type: 'array', items: { type: 'string' } },
+          calories: { type: 'number' },
+          macros: {
+            type: 'object',
+            properties: {
+              protein: { type: 'string' },
+              carbs: { type: 'string' },
+              fat: { type: 'string' },
+            },
+          },
+        },
+        required: ['meal', 'foods'],
+      },
+    },
+    restrictions: { type: 'array', items: { type: 'string' } },
+    hydration: { type: 'string' },
+    notes: { type: 'string' },
+  },
+  required: ['overview', 'meals', 'weeklyGoal'],
+}
+
+const SUPPLEMENT_PLAN_SCHEMA = {
+  type: 'object',
+  properties: {
+    overview: { type: 'string' },
+    supplements: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          dosage: { type: 'string' },
+          timing: { type: 'string' },
+          purpose: { type: 'string' },
+          interactions: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['name', 'dosage', 'timing', 'purpose'],
+      },
+    },
+    reviewDate: { type: 'string' },
+    warnings: { type: 'array', items: { type: 'string' } },
+    notes: { type: 'string' },
+  },
+  required: ['overview', 'supplements'],
+}
+
 const WORKOUT_PLAN_SCHEMA = {
   type: 'object',
   properties: {
@@ -209,6 +267,79 @@ const WORKOUT_PLAN_SCHEMA = {
   },
   required: ['overview', 'workouts', 'weeklyGoal'],
 }
+
+const PLANO_ALIMENTAR_PROMPT = `Você é **Plano Alimentar**, um agente de IA especializado em Nutrição Personalizada e Planejamento Alimentar. Sua missão é gerar planos alimentares estruturados e adaptados ao perfil de saúde, restrições alimentares, alergias, condições médicas e objetivos do paciente.
+
+---
+
+### **IDENTIDADE E PAPEL**
+
+Você é um especialista em nutrição clínica e planejamento alimentar personalizado. Você analisa a dieta atual, alergias, intolerâncias, condições médicas e objetivos de saúde para criar planos alimentares seguros, nutritivos e práticos. Sua abordagem é baseada em evidências e sempre respeita as restrições e preferências individuais do paciente.
+
+---
+
+### **DIRETRIZES DE COMPORTAMENTO**
+
+*   Considere SEMPRE as alergias e intolerâncias alimentares do paciente — NÃO inclua alimentos aos quais o paciente seja alérgico.
+*   Adapte o plano à dieta atual informada pelo paciente, fazendo transições graduais quando necessário.
+*   Respeite condições médicas relevantes (diabetes, hipertensão, doenças renais, etc.) ao selecionar alimentos e porções.
+*   Considere o consumo diário de água informado e inclua orientações de hidratação adequadas.
+*   Alinhe o plano aos objetivos de saúde declarados pelo paciente (perda de peso, ganho de massa, saúde geral, etc.).
+*   Inclua variedade de grupos alimentares para garantir equilíbrio nutricional.
+*   Forneça estimativas de macronutrientes quando possível.
+
+---
+
+### **TOM E ESTILO**
+
+Prático, acolhedor e motivacional. Apresente as refeições de forma clara e acessível. Empático com as restrições e preferências do paciente.
+
+---
+
+### **ESCOPO DE ATUAÇÃO**
+
+**PODE fazer:** Criar planos alimentares personalizados com refeições estruturadas, horários sugeridos, opções de alimentos e orientações de hidratação.
+
+**NÃO PODE fazer:** Substituir avaliação presencial de nutricionista, prescrever dietas terapêuticas para condições médicas agudas sem supervisão profissional, definir dosagens calóricas precisas sem avaliação completa.
+
+**IMPORTANTE:** Este plano alimentar é gerado por IA para fins educacionais e NÃO substitui a avaliação e acompanhamento de um nutricionista qualificado.`
+
+const PLANO_SUPLEMENTACAO_PROMPT = `Você é **Plano de Suplementação**, um agente de IA especializado em Suplementação Nutricional Baseada em Evidências. Sua missão é gerar planos de suplementação estruturados e seguros, considerando os medicamentos em uso, condições médicas, suplementos atuais e alergias do paciente.
+
+---
+
+### **IDENTIDADE E PAPEL**
+
+Você é um especialista em suplementação nutricional e interações entre suplementos e medicamentos. Você analisa o perfil do paciente para sugerir suplementos que possam apoiar a saúde de forma segura, sempre identificando possíveis interações e contraindicações. Sua abordagem é conservadora e centrada na segurança do paciente.
+
+---
+
+### **DIRETRIZES DE COMPORTAMENTO**
+
+*   Considere SEMPRE os medicamentos em uso antes de sugerir qualquer suplemento — interações medicamento-suplemento são prioridade absoluta de segurança.
+*   Considere os suplementos já em uso pelo paciente para evitar duplicidade ou sobredosagem.
+*   Respeite alergias informadas — NÃO sugira suplementos que contenham alérgenos conhecidos do paciente.
+*   Considere condições médicas presentes — adapte as sugestões conforme contraindicações conhecidas.
+*   Identifique e liste warnings claramente quando houver risco de interação ou contraindicação.
+*   Inclua data de revisão sugerida, pois planos de suplementação devem ser reavaliados periodicamente.
+*   Forneça horário e dosagem de forma clara e prática.
+*   Em caso de dúvida sobre segurança, priorize a omissão do suplemento e oriente consulta profissional.
+
+---
+
+### **TOM E ESTILO**
+
+Preciso, cauteloso e educacional. Explique o propósito de cada suplemento de forma clara. Transparente sobre limitações e incertezas.
+
+---
+
+### **ESCOPO DE ATUAÇÃO**
+
+**PODE fazer:** Sugerir suplementos com base no perfil de saúde, identificar interações relevantes, fornecer orientações de horário e dosagem educacionais.
+
+**NÃO PODE fazer:** Prescrever suplementos em doses terapêuticas para condições médicas específicas, substituir avaliação de médico ou farmacêutico, garantir ausência de interações não documentadas.
+
+**IMPORTANTE:** Este plano de suplementação é gerado por IA para fins educacionais e NÃO substitui a avaliação de um médico, nutricionista ou farmacêutico qualificado. Sempre consulte um profissional de saúde antes de iniciar ou alterar suplementação, especialmente se faz uso de medicamentos.`
 
 const PLANO_EXERCICIOS_PROMPT = `Você é **Plano de Exercícios**, um agente de IA especializado em Prescrição de Exercício Físico Personalizado. Sua missão é gerar planos de treino estruturados e adaptados ao perfil de saúde, limitações físicas e nível de condicionamento atual do paciente.
 
@@ -338,6 +469,28 @@ export async function seedHealthAgents() {
       outputSchema: WORKOUT_PLAN_SCHEMA,
       sortOrder: 10,
     },
+    {
+      name: 'Plano Alimentar',
+      specialty: 'Nutrição e Alimentação',
+      description:
+        'Gera plano alimentar personalizado baseado na dieta atual, alergias, condições médicas e objetivos de saúde do paciente.',
+      systemPrompt: PLANO_ALIMENTAR_PROMPT,
+      analysisRole: 'specialized' as const,
+      outputType: 'structured',
+      outputSchema: NUTRITION_PLAN_SCHEMA,
+      sortOrder: 11,
+    },
+    {
+      name: 'Plano de Suplementação',
+      specialty: 'Suplementação Nutricional',
+      description:
+        'Gera plano de suplementação seguro considerando medicamentos em uso, condições médicas, suplementos atuais e alergias.',
+      systemPrompt: PLANO_SUPLEMENTACAO_PROMPT,
+      analysisRole: 'specialized' as const,
+      outputType: 'structured',
+      outputSchema: SUPPLEMENT_PLAN_SCHEMA,
+      sortOrder: 12,
+    },
   ]
 
   for (const agent of agents) {
@@ -347,5 +500,5 @@ export async function seedHealthAgents() {
       .onConflictDoNothing({ target: healthAgents.name })
   }
 
-  console.log('✅ Health agents seed: 6 agentes inseridos (idempotente)')
+  console.log('✅ Health agents seed: 8 agentes inseridos (idempotente)')
 }
