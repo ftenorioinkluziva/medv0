@@ -98,7 +98,7 @@ export function WorkoutPlanView({ data }: { data: unknown }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground leading-relaxed">{plan.overview}</p>
+      <p className="text-sm text-muted-foreground leading-relaxed">{plan.overview ?? ''}</p>
 
       {plan.weeklyGoal && (
         <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2">

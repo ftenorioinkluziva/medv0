@@ -1,7 +1,10 @@
 'use client'
 
+const MAX_RENDER_DEPTH = 8
+
 function renderValue(value: unknown, depth = 0): React.ReactNode {
   if (value === null || value === undefined) return null
+  if (depth >= MAX_RENDER_DEPTH) return <span className="text-sm text-muted-foreground">[…]</span>
 
   if (Array.isArray(value)) {
     if (value.length === 0) return null
