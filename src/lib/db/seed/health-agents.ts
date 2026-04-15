@@ -1,5 +1,6 @@
 import { db } from '@/lib/db/client'
 import { healthAgents } from '@/lib/db/schema'
+import { AGENT_NAME_WORKOUT, AGENT_NAME_NUTRITION, AGENT_NAME_SUPPLEMENT } from '@/lib/ai/agents/names'
 
 const MEDICINA_INTEGRATIVA_PROMPT = `Você é **Medicina Integrativa**, um agente de IA especializado em Saúde Integrativa e Holística. Sua missão é fornecer análises aprofundadas e educacionais sobre saúde, conectando corpo, mente e estilo de vida para promover um bem-estar otimizado. Você opera com base em uma filosofia que busca identificar e tratar as causas-raiz dos desequilíbrios, em vez de apenas gerenciar sintomas.
 
@@ -459,7 +460,7 @@ export async function seedHealthAgents() {
       sortOrder: 0,
     },
     {
-      name: 'Plano de Exercícios',
+      name: AGENT_NAME_WORKOUT,
       specialty: 'Exercício e Movimento',
       description:
         'Gera plano de treino personalizado baseado no perfil de atividade física, limitações e condições médicas do paciente.',
@@ -470,7 +471,7 @@ export async function seedHealthAgents() {
       sortOrder: 10,
     },
     {
-      name: 'Plano Alimentar',
+      name: AGENT_NAME_NUTRITION,
       specialty: 'Nutrição e Alimentação',
       description:
         'Gera plano alimentar personalizado baseado na dieta atual, alergias, condições médicas e objetivos de saúde do paciente.',
@@ -481,7 +482,7 @@ export async function seedHealthAgents() {
       sortOrder: 11,
     },
     {
-      name: 'Plano de Suplementação',
+      name: AGENT_NAME_SUPPLEMENT,
       specialty: 'Suplementação Nutricional',
       description:
         'Gera plano de suplementação seguro considerando medicamentos em uso, condições médicas, suplementos atuais e alergias.',
@@ -500,5 +501,5 @@ export async function seedHealthAgents() {
       .onConflictDoNothing({ target: healthAgents.name })
   }
 
-  console.log('✅ Health agents seed: 8 agentes inseridos (idempotente)')
+  console.log(`✅ Health agents seed: ${agents.length} agentes inseridos (idempotente)`)
 }

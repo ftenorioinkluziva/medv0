@@ -45,13 +45,14 @@ async function insertDocument(input: InsertDocumentInput): Promise<string> {
 
 export async function persistSnapshot(input: PersistSnapshotInput): Promise<PersistSnapshotResult> {
   const { userId, fileName, structuredData, classifiedDocumentType } = input
+  const persistedStructuredData = classifiedDocumentType
+    ? { ...structuredData, documentType: classifiedDocumentType }
+    : structuredData
 
   const documentId = await insertDocument({
     userId,
     fileName,
-    structuredData: classifiedDocumentType
-      ? { ...structuredData, documentType: classifiedDocumentType }
-      : structuredData,
+    structuredData: persistedStructuredData,
     processingStatus: 'completed',
   })
 
@@ -59,7 +60,7 @@ export async function persistSnapshot(input: PersistSnapshotInput): Promise<Pers
     await db.insert(snapshots).values({
       documentId,
       userId,
-      structuredData,
+      structuredData: persistedStructuredData,
     })
   } catch (error) {
     await db.delete(documents).where(eq(documents.id, documentId))

@@ -157,6 +157,7 @@ describe('POST /api/documents/upload', () => {
     // #then
     expect(response.status).toBe(200)
     expect(json.type).toBe('body_composition')
+    expect(json.success).toBe(true)
     expect(json.documentId).toBe('doc-bio-1')
     expect(json.message).toBe('Dados de composição corporal detectados')
     expect(mockPersistSnapshot).toHaveBeenCalledWith(

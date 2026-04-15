@@ -143,6 +143,7 @@ export function DashboardContent({ data }: DashboardContentProps) {
               </p>
             </div>
             <button
+              type="button"
               onClick={() => signOut({ callbackUrl: '/auth/login' })}
               aria-label="Sair"
               className="shrink-0 inline-flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg border border-foreground/15 bg-background/60 px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"

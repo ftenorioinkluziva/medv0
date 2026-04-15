@@ -21,8 +21,17 @@ const BODY_COMPOSITION_KEYWORDS = [
 
 const THRESHOLD = 3
 
+function normalizeText(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+}
+
+const NORMALIZED_KEYWORDS = BODY_COMPOSITION_KEYWORDS.map(normalizeText)
+
 export function classifyDocument(structuredData: SanitizedMedicalDocument): DocumentClassification {
-  const searchText = JSON.stringify(structuredData).toLowerCase()
-  const matchCount = BODY_COMPOSITION_KEYWORDS.filter((kw) => searchText.includes(kw)).length
+  const searchText = normalizeText(JSON.stringify(structuredData))
+  const matchCount = NORMALIZED_KEYWORDS.filter((kw) => searchText.includes(kw)).length
   return matchCount >= THRESHOLD ? 'body_composition' : 'lab_test'
 }

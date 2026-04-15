@@ -98,6 +98,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (classification === 'body_composition') {
       return NextResponse.json({
         type: 'body_composition',
+        success: true,
         documentId,
         fileName: file.name,
         message: 'Dados de composição corporal detectados',
