@@ -6,6 +6,7 @@ import { documents } from '@/lib/db/schema'
 import { extractMedicalDocument, hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
 import { persistFailedDocument, persistSnapshot } from '@/lib/documents/persistence'
 import { classifyDocument } from '@/lib/documents/classifier'
+import { updateBodyComposition } from '@/lib/documents/body-composition'
 import { triggerLivingAnalysis } from '@/lib/ai/orchestrator/trigger-living-analysis'
 import {
   DOCUMENT_UPLOAD_ACCEPTED_TYPES,
@@ -96,6 +97,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     })
 
     if (classification === 'body_composition') {
+      const userId = session.user.id
+      after(async () => {
+        try {
+          await updateBodyComposition(userId, documentId, structuredData)
+        } catch (error) {
+          console.error('[documents/upload] update body composition failed:', error)
+        }
+      })
+
       return NextResponse.json({
         type: 'body_composition',
         success: true,

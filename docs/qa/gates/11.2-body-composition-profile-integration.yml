@@ -1,0 +1,16 @@
+schema: 1
+story: '11.2'
+gate: PASS
+status_reason: 'Todos os 6 ACs implementados: schema+migration, extração de métricas, pipeline integrado, UI diferenciada. Lint, typecheck e 341 testes passando.'
+reviewer: 'Quinn'
+updated: '2026-04-15T19:00:00Z'
+top_issues:
+  - id: 'ARCH-001'
+    severity: low
+    finding: 'FK body_composition_history.document_id usa ON DELETE NO ACTION — documento deletado gera referência pendente'
+    suggested_action: 'Adicionar ON DELETE SET NULL na próxima migration de schema cleanup'
+  - id: 'MNT-001'
+    severity: low
+    finding: 'updateBodyComposition sempre insere registro em body_composition_history mesmo quando nenhum parâmetro de bioimpedância é encontrado (todas as colunas NULL)'
+    suggested_action: 'Considerar skip do insert quando métricas estiverem completamente vazias'
+waiver: { active: false }
