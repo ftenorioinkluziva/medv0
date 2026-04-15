@@ -66,6 +66,9 @@ function MealCard({ meal }: { meal: Meal }) {
 }
 
 export function NutritionPlanView({ data }: { data: unknown }) {
+  if (!data || typeof data !== 'object') {
+    return <p className="text-sm text-muted-foreground">Dados inválidos</p>
+  }
   const plan = data as NutritionPlan
 
   return (

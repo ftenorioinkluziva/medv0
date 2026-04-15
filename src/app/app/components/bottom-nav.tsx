@@ -29,7 +29,7 @@ export function BottomNav() {
             href={href}
             aria-label={label}
             className={cn(
-              'flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-4 text-xs transition-colors',
+              'flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 px-4 text-xs transition-colors',
               active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
             )}
           >

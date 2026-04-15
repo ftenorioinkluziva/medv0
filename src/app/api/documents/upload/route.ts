@@ -5,6 +5,7 @@ import { db } from '@/lib/db/client'
 import { documents } from '@/lib/db/schema'
 import { extractMedicalDocument, hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
 import { persistFailedDocument, persistSnapshot } from '@/lib/documents/persistence'
+import { classifyDocument } from '@/lib/documents/classifier'
 import { triggerLivingAnalysis } from '@/lib/ai/orchestrator/trigger-living-analysis'
 import {
   DOCUMENT_UPLOAD_ACCEPTED_TYPES,
@@ -85,11 +86,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       )
     }
 
+    const classification = classifyDocument(structuredData)
+
     const { documentId } = await persistSnapshot({
       userId: session.user.id,
       fileName: file.name,
       structuredData,
+      classifiedDocumentType: classification,
     })
+
+    if (classification === 'body_composition') {
+      return NextResponse.json({
+        type: 'body_composition',
+        success: true,
+        documentId,
+        fileName: file.name,
+        message: 'Dados de composição corporal detectados',
+      })
+    }
 
     const userId = session.user.id
     after(async () => {
@@ -100,7 +114,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     })
 
-    return NextResponse.json({ success: true, documentId, fileName: file.name })
+    return NextResponse.json({ type: 'lab_test', success: true, documentId, fileName: file.name })
   } catch (error) {
     console.error('[documents/upload] failed:', error)
     return NextResponse.json({ error: 'Erro interno ao salvar o exame.' }, { status: 500 })

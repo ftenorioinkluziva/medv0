@@ -56,6 +56,9 @@ function SupplementCard({ supplement }: { supplement: Supplement }) {
 }
 
 export function SupplementPlanView({ data }: { data: unknown }) {
+  if (!data || typeof data !== 'object') {
+    return <p className="text-sm text-muted-foreground">Dados inválidos</p>
+  }
   const plan = data as SupplementPlan
 
   return (

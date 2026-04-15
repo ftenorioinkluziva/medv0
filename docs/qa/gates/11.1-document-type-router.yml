@@ -1,0 +1,16 @@
+schema: 1
+story: '11.1'
+gate: PASS
+status_reason: 'Todos os 6 ACs implementados e cobertos por testes. Lint, typecheck e suite completa (331 testes) passando sem erros.'
+reviewer: 'Quinn'
+updated: '2026-04-15T16:20:00Z'
+top_issues:
+  - id: 'MNT-001'
+    severity: low
+    finding: '`classifiedDocumentType` em PersistSnapshotInput tipado como `string` em vez de `DocumentClassification`'
+    suggested_action: 'Tipar como DocumentClassification na próxima oportunidade de refactor'
+  - id: 'MNT-002'
+    severity: low
+    finding: 'users.ts modificado (alias renomeados) fora do escopo da story'
+    suggested_action: 'Mover para uma story de manutenção ou documentar como drive-by fix no Change Log'
+waiver: { active: false }
