@@ -13,9 +13,14 @@ vi.mock('ai', () => ({
     text: 'mock analysis result',
     usage: { totalTokens: 100 },
   }),
+  generateObject: vi.fn().mockResolvedValue({
+    object: { summary: 'structured result' },
+    usage: { totalTokens: 150 },
+  }),
+  jsonSchema: vi.fn((schema: unknown) => schema),
 }))
 
-import { generateText } from 'ai'
+import { generateText, generateObject } from 'ai'
 import { resolveModel } from '@/lib/ai/core/resolve-model'
 import { analyzeWithAgent } from '@/lib/ai/agents/analyze'
 import type { HealthAgent } from '@/lib/db/schema'
@@ -30,6 +35,9 @@ const baseAgent: HealthAgent = {
   model: 'google/gemini-2.5-flash',
   temperature: '0.7',
   maxTokens: null,
+  modelConfig: null,
+  outputSchema: null,
+  outputType: 'text',
   isActive: true,
   sortOrder: 0,
   createdAt: new Date(),
@@ -83,6 +91,113 @@ describe('analyzeWithAgent', () => {
       expect(result.status).toBe('completed')
       expect(result.content).toBe('mock analysis result')
       expect(result.tokensUsed).toBe(100)
+    })
+  })
+
+  describe('AC2 — outputType bifurcation', () => {
+    it('uses generateText when outputType is text', async () => {
+      // #given
+      const agent = { ...baseAgent, outputType: 'text' }
+
+      // #when
+      const result = await analyzeWithAgent(agent, 'analyze this', baseContext)
+
+      // #then
+      expect(generateText).toHaveBeenCalledOnce()
+      expect(generateObject).not.toHaveBeenCalled()
+      expect(result.status).toBe('completed')
+      expect(result.content).toBe('mock analysis result')
+      expect(result.structuredOutput).toBeUndefined()
+    })
+
+    it('uses generateObject when outputType is structured with schema', async () => {
+      // #given
+      const schema = { type: 'object', properties: { summary: { type: 'string' } } }
+      const agent = { ...baseAgent, outputType: 'structured', outputSchema: schema }
+
+      // #when
+      const result = await analyzeWithAgent(agent, 'analyze this', baseContext)
+
+      // #then
+      expect(generateObject).toHaveBeenCalledOnce()
+      expect(generateText).not.toHaveBeenCalled()
+      expect(result.status).toBe('completed')
+      expect(result.content).toBe(JSON.stringify({ summary: 'structured result' }))
+      expect(result.structuredOutput).toEqual({ summary: 'structured result' })
+      expect(result.tokensUsed).toBe(150)
+    })
+
+    it('falls back to generateText when outputType is structured but outputSchema is null', async () => {
+      // #given
+      const agent = { ...baseAgent, outputType: 'structured', outputSchema: null }
+
+      // #when
+      const result = await analyzeWithAgent(agent, 'analyze this', baseContext)
+
+      // #then
+      expect(generateText).toHaveBeenCalledOnce()
+      expect(generateObject).not.toHaveBeenCalled()
+      expect(result.status).toBe('completed')
+    })
+  })
+
+  describe('AC3 — modelConfig spread', () => {
+    it('passes modelConfig options to generateText', async () => {
+      // #given
+      const agent = { ...baseAgent, modelConfig: { topP: 0.9, seed: 42 } }
+
+      // #when
+      await analyzeWithAgent(agent, 'analyze this', baseContext)
+
+      // #then
+      expect(generateText).toHaveBeenCalledWith(
+        expect.objectContaining({ topP: 0.9, seed: 42 }),
+      )
+    })
+
+    it('passes modelConfig options to generateObject', async () => {
+      // #given
+      const schema = { type: 'object', properties: {} }
+      const agent = {
+        ...baseAgent,
+        outputType: 'structured',
+        outputSchema: schema,
+        modelConfig: { topK: 10, seed: 99 },
+      }
+
+      // #when
+      await analyzeWithAgent(agent, 'analyze this', baseContext)
+
+      // #then
+      expect(generateObject).toHaveBeenCalledWith(
+        expect.objectContaining({ topK: 10, seed: 99 }),
+      )
+    })
+
+    it('passes no extra options when modelConfig is null', async () => {
+      // #given
+      const agent = { ...baseAgent, modelConfig: null }
+
+      // #when
+      await analyzeWithAgent(agent, 'analyze this', baseContext)
+
+      // #then
+      expect(generateText).toHaveBeenCalledWith(
+        expect.not.objectContaining({ topP: expect.anything() }),
+      )
+    })
+
+    it('always respects temperature regardless of modelConfig', async () => {
+      // #given
+      const agent = { ...baseAgent, temperature: '0.3', modelConfig: { topP: 0.9 } }
+
+      // #when
+      await analyzeWithAgent(agent, 'analyze this', baseContext)
+
+      // #then
+      expect(generateText).toHaveBeenCalledWith(
+        expect.objectContaining({ temperature: 0.3, topP: 0.9 }),
+      )
     })
   })
 })

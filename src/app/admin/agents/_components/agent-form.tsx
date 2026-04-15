@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { createAgentAction, updateAgentAction } from '../_actions/agents'
 import type { HealthAgent } from '@/lib/db/schema'
+import type { ModelConfig } from '@/lib/db/schema'
 
 interface AgentFormProps {
   agent?: HealthAgent
@@ -30,6 +31,16 @@ export function AgentForm({ agent }: AgentFormProps) {
   )
   const [analysisRole, setAnalysisRole] = useState<string>(
     agent?.analysisRole ?? 'specialized',
+  )
+  const [outputType, setOutputType] = useState<string>(agent?.outputType ?? 'text')
+  const [outputSchemaError, setOutputSchemaError] = useState<string>('')
+
+  const initialModelConfig = agent?.modelConfig
+    ? JSON.stringify(agent.modelConfig as ModelConfig, null, 2)
+    : ''
+  const [modelConfigJson, setModelConfigJson] = useState(initialModelConfig)
+  const [outputSchemaJson, setOutputSchemaJson] = useState(
+    agent?.outputSchema ? JSON.stringify(agent.outputSchema, null, 2) : '',
   )
 
   const SUPPORTED_PROVIDERS = new Set(['google', 'openai', 'anthropic'])
@@ -46,9 +57,27 @@ export function AgentForm({ agent }: AgentFormProps) {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+
+    if (outputType === 'structured') {
+      if (!outputSchemaJson.trim()) {
+        setOutputSchemaError('Output Schema obrigatório para agentes estruturados')
+        return
+      }
+      try {
+        JSON.parse(outputSchemaJson)
+        setOutputSchemaError('')
+      } catch {
+        setOutputSchemaError('Output Schema deve ser JSON válido')
+        return
+      }
+    }
+
     const formData = new FormData(e.currentTarget)
     formData.set('temperature', String(temperature))
     formData.set('analysisRole', analysisRole)
+    formData.set('outputType', outputType)
+    formData.set('modelConfig', modelConfigJson)
+    formData.set('outputSchema', outputSchemaJson)
 
     startTransition(async () => {
       const result = agent
@@ -217,6 +246,155 @@ export function AgentForm({ agent }: AgentFormProps) {
           className="h-4 w-4"
         />
         <Label htmlFor="isActive">Ativo</Label>
+      </div>
+
+      <div className="space-y-4 border rounded-lg p-4">
+        <h3 className="text-sm font-semibold">Configuração Avançada</h3>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="topP">Top P</Label>
+            <Input
+              id="topP"
+              type="number"
+              step="0.01"
+              min="0"
+              max="1"
+              placeholder="(padrão)"
+              defaultValue={(agent?.modelConfig as ModelConfig | null)?.topP ?? ''}
+              onChange={(e) => {
+                const config: ModelConfig = modelConfigJson
+                  ? (JSON.parse(modelConfigJson) as ModelConfig)
+                  : {}
+                if (e.target.value) config.topP = parseFloat(e.target.value)
+                else delete config.topP
+                setModelConfigJson(Object.keys(config).length > 0 ? JSON.stringify(config) : '')
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="topK">Top K</Label>
+            <Input
+              id="topK"
+              type="number"
+              step="1"
+              min="0"
+              placeholder="(padrão)"
+              defaultValue={(agent?.modelConfig as ModelConfig | null)?.topK ?? ''}
+              onChange={(e) => {
+                const config: ModelConfig = modelConfigJson
+                  ? (JSON.parse(modelConfigJson) as ModelConfig)
+                  : {}
+                if (e.target.value) config.topK = parseInt(e.target.value, 10)
+                else delete config.topK
+                setModelConfigJson(Object.keys(config).length > 0 ? JSON.stringify(config) : '')
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="seed">Seed</Label>
+            <Input
+              id="seed"
+              type="number"
+              step="1"
+              placeholder="(aleatório)"
+              defaultValue={(agent?.modelConfig as ModelConfig | null)?.seed ?? ''}
+              onChange={(e) => {
+                const config: ModelConfig = modelConfigJson
+                  ? (JSON.parse(modelConfigJson) as ModelConfig)
+                  : {}
+                if (e.target.value) config.seed = parseInt(e.target.value, 10)
+                else delete config.seed
+                setModelConfigJson(Object.keys(config).length > 0 ? JSON.stringify(config) : '')
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="frequencyPenalty">Frequency Penalty</Label>
+            <Input
+              id="frequencyPenalty"
+              type="number"
+              step="0.01"
+              min="-2"
+              max="2"
+              placeholder="(padrão)"
+              defaultValue={(agent?.modelConfig as ModelConfig | null)?.frequencyPenalty ?? ''}
+              onChange={(e) => {
+                const config: ModelConfig = modelConfigJson
+                  ? (JSON.parse(modelConfigJson) as ModelConfig)
+                  : {}
+                if (e.target.value) config.frequencyPenalty = parseFloat(e.target.value)
+                else delete config.frequencyPenalty
+                setModelConfigJson(Object.keys(config).length > 0 ? JSON.stringify(config) : '')
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="presencePenalty">Presence Penalty</Label>
+            <Input
+              id="presencePenalty"
+              type="number"
+              step="0.01"
+              min="-2"
+              max="2"
+              placeholder="(padrão)"
+              defaultValue={(agent?.modelConfig as ModelConfig | null)?.presencePenalty ?? ''}
+              onChange={(e) => {
+                const config: ModelConfig = modelConfigJson
+                  ? (JSON.parse(modelConfigJson) as ModelConfig)
+                  : {}
+                if (e.target.value) config.presencePenalty = parseFloat(e.target.value)
+                else delete config.presencePenalty
+                setModelConfigJson(Object.keys(config).length > 0 ? JSON.stringify(config) : '')
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Tipo de Output</Label>
+          <Select value={outputType} onValueChange={(v: string | null) => { if (v) setOutputType(v) }}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="text">Texto (Markdown)</SelectItem>
+              <SelectItem value="structured">Estruturado (JSON)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {outputType === 'structured' && (
+          <div className="space-y-2">
+            <Label htmlFor="outputSchemaField">
+              Output Schema (JSON Schema) *
+            </Label>
+            <Textarea
+              id="outputSchemaField"
+              value={outputSchemaJson}
+              onChange={(e) => {
+                setOutputSchemaJson(e.target.value)
+                if (outputSchemaError) setOutputSchemaError('')
+              }}
+              placeholder={'{\n  "type": "object",\n  "properties": {}\n}'}
+              rows={8}
+              className="font-mono text-sm"
+            />
+            {outputSchemaError && (
+              <p className="text-sm text-destructive">{outputSchemaError}</p>
+            )}
+            {outputSchemaJson && !outputSchemaError && (
+              (() => {
+                try {
+                  JSON.parse(outputSchemaJson)
+                  return <p className="text-xs text-green-600">✓ JSON válido</p>
+                } catch {
+                  return <p className="text-xs text-destructive">JSON inválido</p>
+                }
+              })()
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex gap-3 pt-2">
