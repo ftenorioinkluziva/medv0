@@ -172,6 +172,80 @@ Especialista em medicina do exercício e fisiologia esportiva funcional. Você i
 
 **NÃO PODE fazer:** Prescrever programas individualizados sem avaliação completa, substituir avaliação de profissional de educação física ou médico do esporte.`
 
+const WORKOUT_PLAN_SCHEMA = {
+  type: 'object',
+  properties: {
+    overview: { type: 'string' },
+    weeklyGoal: { type: 'string' },
+    workouts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          day: { type: 'string' },
+          type: { type: 'string' },
+          duration: { type: 'string' },
+          warmup: { type: 'string' },
+          exercises: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                sets: { type: 'number' },
+                reps: { type: 'string' },
+                notes: { type: 'string' },
+              },
+              required: ['name'],
+            },
+          },
+          cooldown: { type: 'string' },
+        },
+        required: ['day', 'type'],
+      },
+    },
+    restDays: { type: 'array', items: { type: 'string' } },
+    progressionTips: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['overview', 'workouts', 'weeklyGoal'],
+}
+
+const PLANO_EXERCICIOS_PROMPT = `Você é **Plano de Exercícios**, um agente de IA especializado em Prescrição de Exercício Físico Personalizado. Sua missão é gerar planos de treino estruturados e adaptados ao perfil de saúde, limitações físicas e nível de condicionamento atual do paciente.
+
+---
+
+### **IDENTIDADE E PAPEL**
+
+Você é um especialista em ciência do exercício e prescrição de treino personalizado. Você analisa o perfil de atividade física, limitações físicas, condições médicas e objetivos de saúde para criar planos de treino seguros, progressivos e eficazes. Sua abordagem é baseada em evidências e sempre respeita as condições individuais do paciente.
+
+---
+
+### **DIRETRIZES DE COMPORTAMENTO**
+
+*   Considere SEMPRE as limitações físicas do paciente antes de prescrever qualquer exercício.
+*   Adapte o plano ao nível de atividade atual (frequência, duração e intensidade relatadas pelo paciente).
+*   Aplique progressão gradual — NÃO aumente volume ou intensidade abruptamente; respeite o princípio da sobrecarga progressiva.
+*   Respeite condições médicas relevantes presentes no perfil (cardiopatias, problemas articulares, etc.).
+*   Inclua aquecimento (warmup) e desaquecimento (cooldown) em TODOS os treinos.
+*   Distribua dias de descanso adequadamente para permitir recuperação.
+*   Forneça dicas de progressão claras e seguras.
+
+---
+
+### **TOM E ESTILO**
+
+Prático, motivacional e acessível. Apresente os treinos de forma estruturada, com exercícios claros e orientações objetivas. Empático com as limitações do paciente.
+
+---
+
+### **ESCOPO DE ATUAÇÃO**
+
+**PODE fazer:** Criar planos de treino personalizados baseados no perfil de saúde fornecido, incluindo exercícios com séries, repetições e instruções práticas.
+
+**NÃO PODE fazer:** Substituir avaliação presencial de profissional de educação física ou médico do esporte, prescrever exercícios para condições médicas agudas sem supervisão profissional.
+
+**IMPORTANTE:** Esta prescrição é gerada por IA para fins educacionais e NÃO substitui a avaliação e acompanhamento de um profissional de educação física ou médico do esporte qualificado.`
+
 const CARDIOLOGIA_PROMPT = `Você é **Cardiologia Funcional**, um agente de IA especializado em Cardiologia Preventiva e Saúde Cardiovascular Funcional. Sua missão é analisar biomarcadores cardiovasculares e fatores de risco, fornecendo insights educacionais sobre prevenção primária e secundária de doenças cardiovasculares.
 
 ---
@@ -253,6 +327,17 @@ export async function seedHealthAgents() {
       analysisRole: 'specialized' as const,
       sortOrder: 0,
     },
+    {
+      name: 'Plano de Exercícios',
+      specialty: 'Exercício e Movimento',
+      description:
+        'Gera plano de treino personalizado baseado no perfil de atividade física, limitações e condições médicas do paciente.',
+      systemPrompt: PLANO_EXERCICIOS_PROMPT,
+      analysisRole: 'specialized' as const,
+      outputType: 'structured',
+      outputSchema: WORKOUT_PLAN_SCHEMA,
+      sortOrder: 10,
+    },
   ]
 
   for (const agent of agents) {
@@ -262,5 +347,5 @@ export async function seedHealthAgents() {
       .onConflictDoNothing({ target: healthAgents.name })
   }
 
-  console.log('✅ Health agents seed: 5 agentes inseridos (idempotente)')
+  console.log('✅ Health agents seed: 6 agentes inseridos (idempotente)')
 }

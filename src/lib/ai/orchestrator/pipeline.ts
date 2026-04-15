@@ -221,5 +221,10 @@ export async function buildMedicalProfileContext(userId: string): Promise<string
     restingHeartRate: profile.restingHeartRate,
     healthObjectives: profile.healthObjectives,
     medicalConditions: profile.medicalConditions,
+    exerciseActivities: profile.exerciseActivities,
+    exerciseFrequency: profile.exerciseFrequency,
+    exerciseDuration: profile.exerciseDuration,
+    exerciseIntensity: profile.exerciseIntensity,
+    physicalLimitations: profile.physicalLimitations,
   })
 }
