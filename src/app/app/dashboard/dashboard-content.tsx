@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { Upload, ClipboardList, ArrowRight, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react'
+import { Upload, ClipboardList, ArrowRight, TrendingUp, TrendingDown, Minus, Loader2, LogOut } from 'lucide-react'
+import { signOut } from 'next-auth/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { CompactMarkerList } from './components/compact-marker-list'
@@ -134,11 +135,21 @@ export function DashboardContent({ data }: DashboardContentProps) {
           aria-hidden="true"
         />
         <div className="relative space-y-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Olá, {displayName(userName)}</h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Aqui está um resumo da sua saúde e atividades recentes
-            </p>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Olá, {displayName(userName)}</h1>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Aqui está um resumo da sua saúde e atividades recentes
+              </p>
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: '/auth/login' })}
+              aria-label="Sair"
+              className="shrink-0 inline-flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg border border-foreground/15 bg-background/60 px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <LogOut className="size-4" aria-hidden="true" />
+              <span className="sr-only">Sair</span>
+            </button>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
