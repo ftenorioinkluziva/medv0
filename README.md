@@ -2,7 +2,7 @@
 
 > Plataforma de análise de saúde baseada em IA que processa documentos médicos e gera insights personalizados por meio de agentes especializados.
 
-![Version](https://img.shields.io/badge/version-0.5.0-blue)
+![Version](https://img.shields.io/badge/version-0.6.0-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![License](https://img.shields.io/badge/license-private-red)
 
@@ -32,6 +32,9 @@ O SAMI permite que pacientes submetam exames médicos (PDFs e imagens) para extr
 | **Medical Profile** | Dados demográficos, condições, medicamentos, estilo de vida e mais |
 | **Relatório Estruturado** | Markdown com resumo executivo, eixos funcionais, recomendações |
 | **Auth & RBAC** | Roles: `patient`, `doctor`, `admin` via NextAuth v5 |
+| **Multi-Provider AI** | Suporte a Google Gemini, OpenAI e Anthropic via factory `resolveModel` |
+| **Model Config por Agente** | topP, topK, seed, frequencyPenalty, presencePenalty configuráveis por agente via admin |
+| **Output Estruturado** | Agentes podem gerar JSON tipado via `generateObject` + JSON Schema dinâmico |
 
 ---
 
@@ -81,6 +84,12 @@ RAG Knowledge Base ────────────────────�
 ```
 
 Todos os agentes são configurados via banco de dados (`health_agents` table) — sem hardcode de system prompts no código.
+
+Cada agente suporta:
+- **`modelConfig`** — parâmetros avançados do provider (topP, topK, seed, frequencyPenalty, presencePenalty)
+- **`outputType`** — `'text'` (Markdown padrão) ou `'structured'` (JSON via `generateObject`)
+- **`outputSchema`** — JSON Schema dinâmico para output estruturado
+- **`provider`** + **`modelId`** — roteamento para Google, OpenAI ou Anthropic via `resolveModel`
 
 ---
 
@@ -245,6 +254,12 @@ docs/
 ---
 
 ## Changelog
+
+### v0.6.0 — 2026-04-14
+- Story 9.2: Model Config & Output Schema por agente (modelConfig, outputSchema, outputType)
+- Story 9.1: Multi-provider support (resolveModel factory — Google, OpenAI, Anthropic)
+- Story 8.2: Admin UI — associação de agentes a artigos da knowledge base
+- Story 8.1: Living Analysis (análise contínua com versionamento)
 
 ### v0.5.0 — 2026-03-31
 - Story 4.3: Relatório Estruturado em Markdown
