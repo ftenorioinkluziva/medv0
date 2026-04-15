@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Camera, FileText, Upload, X } from 'lucide-react'
@@ -41,6 +42,7 @@ interface FilePreview {
 
 interface UploadSuccessInfo {
   fileName: string
+  type?: 'lab_test' | 'body_composition'
 }
 
 export function UploadForm() {
@@ -129,6 +131,7 @@ export function UploadForm() {
       setStep('done')
       setSuccessInfo({
         fileName: payload.fileName ?? preview.file.name,
+        type: payload.type,
       })
       toast.success('Exame processado!')
     } catch (err) {
@@ -269,9 +272,23 @@ export function UploadForm() {
 
             {step === 'done' && successInfo && (
               <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300">
-                <p className="font-medium">Upload concluído com sucesso.</p>
-                <p className="mt-1 break-all">Documento: {successInfo.fileName}</p>
-                <p className="mt-1">A análise será iniciada automaticamente pelo servidor usando este exame.</p>
+                {successInfo.type === 'body_composition' ? (
+                  <>
+                    <p className="font-medium">Dados de composição corporal atualizados no seu perfil.</p>
+                    <p className="mt-1 break-all">Documento: {successInfo.fileName}</p>
+                    <p className="mt-1">
+                      <Link href="/app/profile" className="underline underline-offset-2">
+                        Visualizar perfil atualizado
+                      </Link>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium">Upload concluído com sucesso.</p>
+                    <p className="mt-1 break-all">Documento: {successInfo.fileName}</p>
+                    <p className="mt-1">A análise será iniciada automaticamente pelo servidor usando este exame.</p>
+                  </>
+                )}
               </div>
             )}
           </CardContent>

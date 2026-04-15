@@ -43,6 +43,13 @@ export const medicalProfiles = pgTable('medical_profiles', {
   latestBiomarkers: jsonb('latest_biomarkers'),
   biomarkersUpdatedAt: timestamp('biomarkers_updated_at'),
 
+  // Bioimpedância (AC1 — Story 11.2)
+  muscleMass: numeric('muscle_mass', { precision: 5, scale: 2 }),
+  visceralFatLevel: numeric('visceral_fat_level', { precision: 5, scale: 2 }),
+  boneMass: numeric('bone_mass', { precision: 5, scale: 2 }),
+  basalMetabolicRate: integer('basal_metabolic_rate'),
+  bodyWaterPercentage: numeric('body_water_percentage', { precision: 5, scale: 2 }),
+
   // AC1 — Dados avançados: Sono
   sleepHours: numeric('sleep_hours', { precision: 4, scale: 1 }),
   sleepQuality: integer('sleep_quality'), // 1-10
