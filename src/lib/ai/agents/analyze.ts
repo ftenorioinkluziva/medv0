@@ -1,5 +1,6 @@
-import { generateText } from 'ai'
+import { generateText, generateObject, jsonSchema } from 'ai'
 import type { HealthAgent } from '@/lib/db/schema'
+import type { ModelConfig } from '@/lib/db/schema'
 import { searchKnowledge } from '@/lib/ai/rag/vector-search'
 import { resolveModel } from '@/lib/ai/core/resolve-model'
 
@@ -10,6 +11,7 @@ export interface AgentAnalysisResult {
   durationMs: number | null
   status: 'completed' | 'timeout' | 'error'
   errorMessage?: string
+  structuredOutput?: unknown
 }
 
 export async function analyzeWithAgent(
@@ -71,12 +73,36 @@ export async function analyzeWithAgent(
 
   const fullPrompt = `${analysisPrompt}\n\n---\n\n${contextParts.join('\n\n')}`
 
+  const modelConfigOptions = spreadModelConfig(agent.modelConfig as ModelConfig | null)
+
   try {
+    if (agent.outputType === 'structured' && agent.outputSchema) {
+      const { object, usage } = await generateObject({
+        model: resolveModel(agent.model),
+        system: agent.systemPrompt,
+        prompt: fullPrompt,
+        schema: jsonSchema(agent.outputSchema as Record<string, unknown>),
+        temperature: Number(agent.temperature),
+        ...modelConfigOptions,
+        abortSignal: signal,
+      })
+
+      return {
+        content: JSON.stringify(object),
+        structuredOutput: object,
+        ragContextUsed,
+        tokensUsed: usage?.totalTokens ?? null,
+        durationMs: Date.now() - startMs,
+        status: 'completed',
+      }
+    }
+
     const { text, usage } = await generateText({
       model: resolveModel(agent.model),
       system: agent.systemPrompt,
       prompt: fullPrompt,
       temperature: Number(agent.temperature),
+      ...modelConfigOptions,
       abortSignal: signal,
     })
 
@@ -106,4 +132,15 @@ export async function analyzeWithAgent(
       errorMessage: error instanceof Error ? error.message : String(error),
     }
   }
+}
+
+function spreadModelConfig(config: ModelConfig | null): Record<string, unknown> {
+  if (!config) return {}
+  const result: Record<string, unknown> = {}
+  if (config.topP != null) result.topP = config.topP
+  if (config.topK != null) result.topK = config.topK
+  if (config.seed != null) result.seed = config.seed
+  if (config.frequencyPenalty != null) result.frequencyPenalty = config.frequencyPenalty
+  if (config.presencePenalty != null) result.presencePenalty = config.presencePenalty
+  return result
 }
