@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { analyses, livingAnalyses, livingAnalysisVersions } from '@/lib/db/schema'
+import { analyses, healthAgents, livingAnalyses, livingAnalysisVersions } from '@/lib/db/schema'
 import { and, asc, eq } from 'drizzle-orm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnalysisStatusCard } from './analysis-status-card'
@@ -109,6 +109,7 @@ async function AnalysisContent({ id }: { id: string }) {
   let specializedCompleted = 0
   let specializedTimeout = 0
   let specializedError = 0
+  let structuredAnalyses: Array<{ agentName: string; specialty: string; data: unknown }> = []
 
   if (currentVersionRow) {
     const [foundationRow] = await db
@@ -144,6 +145,30 @@ async function AnalysisContent({ id }: { id: string }) {
     specializedCompleted = specializedRows.filter((row) => row.status === 'completed').length
     specializedTimeout = specializedRows.filter((row) => row.status === 'timeout').length
     specializedError = specializedRows.filter((row) => row.status === 'error').length
+
+    const rawStructured = await db
+      .select({
+        agentName: analyses.agentName,
+        specialty: healthAgents.specialty,
+        content: analyses.content,
+      })
+      .from(analyses)
+      .innerJoin(healthAgents, eq(analyses.agentId, healthAgents.id))
+      .where(
+        and(
+          eq(analyses.livingAnalysisVersionId, currentVersionRow.id),
+          eq(analyses.status, 'completed'),
+          eq(healthAgents.outputType, 'structured'),
+        ),
+      )
+
+    structuredAnalyses = rawStructured.flatMap((r) => {
+      try {
+        return [{ agentName: r.agentName, specialty: r.specialty, data: JSON.parse(r.content) }]
+      } catch {
+        return []
+      }
+    })
   }
 
   return (
@@ -157,6 +182,7 @@ async function AnalysisContent({ id }: { id: string }) {
       specializedCompleted={specializedCompleted}
       specializedTimeout={specializedTimeout}
       specializedError={specializedError}
+      structuredAnalyses={structuredAnalyses}
     />
   )
 }

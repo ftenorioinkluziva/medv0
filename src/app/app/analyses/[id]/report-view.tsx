@@ -2,6 +2,13 @@
 
 import { ReportAccordion, parseSectionsForToc } from './report-accordion'
 import { ReportToc } from './report-toc'
+import { getStructuredComponent } from '@/components/structured-outputs/registry'
+
+interface StructuredAnalysis {
+  agentName: string
+  specialty: string
+  data: unknown
+}
 
 interface ReportViewProps {
   reportMarkdown: string
@@ -13,6 +20,7 @@ interface ReportViewProps {
   specializedCompleted: number
   specializedTimeout: number
   specializedError: number
+  structuredAnalyses?: StructuredAnalysis[]
 }
 
 export function ReportView({
@@ -25,6 +33,7 @@ export function ReportView({
   specializedCompleted,
   specializedTimeout,
   specializedError,
+  structuredAnalyses = [],
 }: ReportViewProps) {
   const formattedDate = new Date(createdAt).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -61,6 +70,26 @@ export function ReportView({
       </div>
       <ReportToc entries={parseSectionsForToc(reportMarkdown)} />
       <ReportAccordion markdown={reportMarkdown} />
+
+      {structuredAnalyses.length > 0 && (
+        <div className="space-y-4 pt-2">
+          {structuredAnalyses.map((item) => {
+            const Component = getStructuredComponent(item.agentName)
+            return (
+              <div key={item.agentName} className="rounded-lg border bg-card px-4 py-4 space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold">{item.agentName}</h3>
+                  <p className="text-xs text-muted-foreground">{item.specialty}</p>
+                </div>
+                <Component data={item.data} />
+                <p className="text-xs text-muted-foreground italic border-t pt-2">
+                  Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional.
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
