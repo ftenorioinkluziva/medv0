@@ -23,13 +23,13 @@ export async function getAllUsersForAdmin(
   offset: number = 0,
 ): Promise<PaginatedResult<UserForAdmin>> {
   const docsCount = db
-    .select({ userId: documents.userId, cnt: count().as('cnt') })
+    .select({ userId: documents.userId, cnt: count().as('docs_cnt') })
     .from(documents)
     .groupBy(documents.userId)
     .as('docs_count')
 
   const analysesCount = db
-    .select({ userId: livingAnalyses.userId, cnt: count().as('cnt') })
+    .select({ userId: livingAnalyses.userId, cnt: count().as('analyses_cnt') })
     .from(livingAnalyses)
     .groupBy(livingAnalyses.userId)
     .as('analyses_count')
