@@ -1,0 +1,12 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^git add docker-compose\\.yml \\.github/workflows/ci\\.yml; git commit -m \"chore: use shared-network in compose and deploy via docker compose\"; git push$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^gh pr view 30 --json title,body,state,headRefName$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

@@ -41,7 +41,7 @@ export function AgentForm({ agent }: AgentFormProps) {
     SUPPORTED_PROVIDERS.has(parsedProvider) ? parsedProvider : 'google',
   )
   const [modelSlug, setModelSlug] = useState<string>(
-    initialSlashIndex !== -1 ? initialModel.slice(initialSlashIndex + 1) : initialModel,
+    initialSlashIndex !== -1 ? initialModel.slice(initialSlashIndex + 1) : 'gemini-2.5-flash',
   )
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

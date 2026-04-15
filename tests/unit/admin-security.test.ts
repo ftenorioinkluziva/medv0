@@ -43,6 +43,7 @@ import { auth } from '@/lib/auth/config'
 import { toggleAgentAction, deleteAgentAction } from '@/app/admin/agents/_actions/agents'
 import { deleteArticleAction } from '@/app/admin/knowledge/_actions/knowledge'
 import { toggleUserActiveAction } from '@/app/admin/users/_actions/users'
+import { associateArticlesAction, disassociateArticlesAction, toggleArticleGlobalAction } from '@/lib/actions/admin-knowledge'
 import { GET, POST } from '@/app/api/admin/knowledge/auto-upload/route'
 import { NextRequest } from 'next/server'
 
@@ -99,6 +100,33 @@ describe('AC4 — Server Actions: patient não pode executar mutações admin', 
     // #given
     // #when
     const result = await toggleUserActiveAction('user-1', false)
+
+    // #then
+    expect(result).toEqual({ error: 'Unauthorized' })
+  })
+
+  it('associateArticlesAction retorna Unauthorized para não-admin', async () => {
+    // #given
+    // #when
+    const result = await associateArticlesAction('agent-1', ['article-1', 'article-2'])
+
+    // #then
+    expect(result).toEqual({ error: 'Unauthorized' })
+  })
+
+  it('disassociateArticlesAction retorna Unauthorized para não-admin', async () => {
+    // #given
+    // #when
+    const result = await disassociateArticlesAction('agent-1', ['article-1'])
+
+    // #then
+    expect(result).toEqual({ error: 'Unauthorized' })
+  })
+
+  it('toggleArticleGlobalAction retorna Unauthorized para não-admin', async () => {
+    // #given
+    // #when
+    const result = await toggleArticleGlobalAction('article-1', true)
 
     // #then
     expect(result).toEqual({ error: 'Unauthorized' })
