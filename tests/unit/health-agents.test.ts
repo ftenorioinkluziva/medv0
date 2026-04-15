@@ -196,7 +196,7 @@ describe('getAllActiveAgents', () => {
 })
 
 describe('seedHealthAgents', () => {
-  it('deve inserir 6 agentes via db.insert', async () => {
+  it('deve inserir 8 agentes via db.insert', async () => {
     // #given
     buildInsertChain()
 
@@ -204,7 +204,7 @@ describe('seedHealthAgents', () => {
     await seedHealthAgents()
 
     // #then
-    expect(db.insert).toHaveBeenCalledTimes(6)
+    expect(db.insert).toHaveBeenCalledTimes(8)
   })
 
   it('deve usar onConflictDoNothing para idempotência', async () => {
@@ -215,7 +215,7 @@ describe('seedHealthAgents', () => {
     await seedHealthAgents()
 
     // #then
-    expect(chain.onConflictDoNothing).toHaveBeenCalledTimes(6)
+    expect(chain.onConflictDoNothing).toHaveBeenCalledTimes(8)
   })
 
   it('deve incluir agentes foundation e specialized', async () => {
@@ -227,6 +227,6 @@ describe('seedHealthAgents', () => {
 
     // #then
     const insertCalls = vi.mocked(db.insert).mock.calls
-    expect(insertCalls).toHaveLength(6)
+    expect(insertCalls).toHaveLength(8)
   })
 })
