@@ -138,6 +138,88 @@ describe('extractBodyCompositionMetrics', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// calculateDelta — pure function, no mocks needed
+// ---------------------------------------------------------------------------
+
+// Import separately to avoid DB module side-effects from the mock above
+const { calculateDelta } = await import('@/lib/db/queries/body-composition')
+
+describe('calculateDelta', () => {
+  it('retorna null quando current é null', () => {
+    // #given / #when / #then
+    expect(calculateDelta(null, 70)).toBeNull()
+  })
+
+  it('retorna null quando previous é null', () => {
+    // #given / #when / #then
+    expect(calculateDelta(70, null)).toBeNull()
+  })
+
+  it('retorna null quando ambos são null', () => {
+    // #given / #when / #then
+    expect(calculateDelta(null, null)).toBeNull()
+  })
+
+  it('retorna "estável" quando diff absoluta < 1', () => {
+    // #given
+    const current = 70.5
+    const previous = 70.0 // diff = 0.5 < 1
+
+    // #when
+    const result = calculateDelta(current, previous)
+
+    // #then
+    expect(result).toBe('estável')
+  })
+
+  it('retorna "estável" para diff exatamente 0', () => {
+    // #given / #when / #then
+    expect(calculateDelta(72.5, 72.5)).toBe('estável')
+  })
+
+  it('retorna "estável" para diff negativa < 1 em módulo', () => {
+    // #given / #when / #then
+    expect(calculateDelta(69.5, 70.0)).toBe('estável') // diff = -0.5
+  })
+
+  it('retorna ↑ quando current > previous por >= 1', () => {
+    // #given
+    const current = 75.0
+    const previous = 73.0 // diff = +2.0
+
+    // #when
+    const result = calculateDelta(current, previous)
+
+    // #then
+    expect(result).toBe('↑ 2.0')
+  })
+
+  it('retorna ↓ quando current < previous por >= 1', () => {
+    // #given
+    const current = 22.0
+    const previous = 24.3 // diff = -2.3
+
+    // #when
+    const result = calculateDelta(current, previous)
+
+    // #then
+    expect(result).toBe('↓ 2.3')
+  })
+
+  it('formata diff com 1 casa decimal', () => {
+    // #given
+    const current = 55.35
+    const previous = 53.0 // diff = 2.35
+
+    // #when
+    const result = calculateDelta(current, previous)
+
+    // #then
+    expect(result).toMatch(/↑ \d+\.\d$/)
+  })
+})
+
 describe('updateBodyComposition', () => {
   beforeEach(() => {
     vi.clearAllMocks()
