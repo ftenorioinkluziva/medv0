@@ -158,18 +158,25 @@ export async function POST(request: NextRequest): Promise<Response> {
     messages,
     temperature: Number(agent.temperature),
     onFinish: async ({ text, usage }) => {
-      await Promise.all([
-        db.insert(chatMessages).values({
+      try {
+        await Promise.all([
+          db.insert(chatMessages).values({
+            sessionId: activeSessionId,
+            role: 'assistant',
+            content: text,
+            tokensUsed: usage?.totalTokens ?? null,
+          }),
+          db
+            .update(chatSessions)
+            .set({ updatedAt: new Date() })
+            .where(eq(chatSessions.id, activeSessionId)),
+        ])
+      } catch (error) {
+        console.error('[chat/onFinish] failed to persist assistant message', {
           sessionId: activeSessionId,
-          role: 'assistant',
-          content: text,
-          tokensUsed: usage?.totalTokens ?? null,
-        }),
-        db
-          .update(chatSessions)
-          .set({ updatedAt: new Date() })
-          .where(eq(chatSessions.id, activeSessionId)),
-      ])
+          error,
+        })
+      }
     },
   })
 
