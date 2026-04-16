@@ -31,6 +31,7 @@ export async function getChatSessionsWithAgent(userId: string): Promise<ChatSess
     .innerJoin(healthAgents, eq(chatSessions.agentId, healthAgents.id))
     .where(eq(chatSessions.userId, userId))
     .orderBy(desc(chatSessions.updatedAt))
+    .limit(20)
 
   return rows.map((r) => ({
     id: r.id,

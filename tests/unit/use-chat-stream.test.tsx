@@ -254,6 +254,6 @@ describe('useChatStream — erro', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
     // cleanup
-    resolveFirst(makeResponse(['ok']))
+    await act(async () => { resolveFirst(makeResponse(['ok'])) })
   })
 })
