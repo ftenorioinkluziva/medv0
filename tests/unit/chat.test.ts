@@ -47,7 +47,8 @@ vi.mock('@/lib/db/queries/chat', () => ({
   getChatMessages: mockGetChatMessages,
 }))
 
-const { POST, buildChatSystemPrompt } = await import('@/app/api/chat/route')
+const { POST } = await import('@/app/api/chat/route')
+const { buildChatSystemPrompt } = await import('@/app/api/chat/helpers')
 
 const AGENT_ID = 'a1b2c3d4-e5f6-4789-8abc-def012345678'
 const SESSION_ID = 'b2c3d4e5-f6a7-4890-9bcd-ef0123456789'
