@@ -1,0 +1,63 @@
+schema: 1
+story: '12.2'
+story_title: 'Chat UI'
+gate: PASS
+status_reason: 'Todos os 8 ACs implementados e verificados. Lint, typecheck e 381 testes passando. Sem issues CRITICAL ou HIGH. 1 tech debt MEDIUM (paginação sessões) documentado para follow-up.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-04-16T14:08:00Z'
+
+top_issues:
+  - id: TD-001
+    severity: medium
+    category: performance
+    description: 'getChatSessionsWithAgent carrega todas as sessões sem paginação (src/lib/db/queries/chat.ts:17)'
+    recommendation: 'Adicionar LIMIT + offset ou cursor pagination antes de produção'
+    suggested_owner: dev
+
+  - id: TD-003
+    severity: low
+    category: tests
+    description: 'React act() warning no teste "não envia nova mensagem enquanto já está processando" (tests/unit/use-chat-stream.test.tsx:238)'
+    recommendation: 'Envolver resolveFirst() em await act(async () => {...}) no cleanup do teste'
+    suggested_owner: dev
+
+waiver:
+  active: false
+
+quality_score: 90
+expires: '2026-04-30T00:00:00Z'
+
+evidence:
+  tests_reviewed:
+    count: 22
+    unit: 11
+    e2e: 11
+  lint: PASS
+  typecheck: PASS
+  total_tests_passing: 381
+  risks_identified: 1
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Auth em todos os entry points; session ownership check (userId !== session.user.id → notFound); sem IDOR, sem open redirects, sem XSS vectors'
+  performance:
+    status: CONCERNS
+    notes: 'getChatSessionsWithAgent sem paginação — aceitável agora, tech debt para escala'
+  reliability:
+    status: PASS
+    notes: 'Error state exibido ao usuário; AbortController para stop; rate limit handled gracefully; streaming errors removem a mensagem assistant parcial'
+  maintainability:
+    status: PASS
+    notes: 'Componentes bem separados Server/Client; useChatStream hook isolado e testável; tipos explícitos em toda a cadeia'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Adicionar paginação em getChatSessionsWithAgent'
+      refs: ['src/lib/db/queries/chat.ts']
+    - action: 'Corrigir act() warning no teste de concorrência'
+      refs: ['tests/unit/use-chat-stream.test.tsx']
