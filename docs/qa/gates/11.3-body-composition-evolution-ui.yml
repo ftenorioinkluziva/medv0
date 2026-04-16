@@ -1,0 +1,42 @@
+schema: 1
+story: '11.3'
+gate: CONCERNS
+status_reason: >
+  Implementation is solid and all quality checks pass. Two non-blocking gaps:
+  AC3 navigation to individual measurements is absent, and the calculateDelta
+  pure function has no direct unit test coverage.
+reviewer: Quinn
+updated: '2026-04-15T19:22:00Z'
+top_issues:
+  - id: REQ-001
+    severity: medium
+    finding: >
+      AC3 requires "navegação para detalhes de cada medição" — HistoryRow renders
+      date + main values but contains no link or href. No detail route exists for
+      individual body composition records.
+    suggested_action: >
+      Either add a Link to a dedicated detail route (e.g., /app/profile/body-composition/{id})
+      or explicitly downgrade the AC to "display only" and update the story scope before merge.
+
+  - id: TEST-001
+    severity: low
+    finding: >
+      T-BC-09 in the Playwright spec is a confirmed no-op (expect(true).toBe(true)).
+      The calculateDelta function is exported and testable in Vitest but has no dedicated
+      unit test — only indirect coverage through UI Playwright tests.
+    suggested_action: >
+      Add calculateDelta unit tests to tests/unit/body-composition.test.ts covering:
+      diff < 0.5 → 'estável', positive diff → '↑ X.X', negative diff → '↓ X.X', null inputs → null.
+
+  - id: REQ-002
+    severity: low
+    finding: >
+      AC2 specifies "Variação < 1% = estável" but Dev Notes and implementation use
+      Math.abs(diff) < 0.5 as the stable threshold. The 0.5 threshold is pre-agreed
+      in the Dev Notes but the AC text was not updated to reflect it.
+    suggested_action: >
+      Update AC2 text to read "Variação < 0.5 = estável" for accuracy, or confirm
+      the 0.5 threshold is the intended interpretation of "< 1%".
+
+waiver:
+  active: false

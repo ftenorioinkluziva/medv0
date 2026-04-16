@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth/config'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardContent } from './dashboard-content'
 import { getDocumentsWithHistory } from '@/lib/db/queries/history'
+import { getLatestBodyComposition } from '@/lib/db/queries/body-composition'
 import { computeEvolution } from '@/lib/history/evolution'
 import type { DocumentWithHistory } from '@/lib/db/queries/history'
 import type { ParameterEvolution } from '@/lib/history/evolution'
@@ -13,10 +14,19 @@ export type HistoryEntry = {
   evolution: ParameterEvolution[]
 }
 
+export type BodyCompositionSummary = {
+  weight: string | null
+  bodyFat: string | null
+  measuredAt: string
+  weightDelta: string | null
+  bodyFatDelta: string | null
+}
+
 export type DashboardData = {
   userName: string
   historyEntries: HistoryEntry[]
   latestDocumentId: string | null
+  bodyComposition: BodyCompositionSummary | null
 }
 
 export default async function DashboardPage() {
@@ -37,7 +47,10 @@ export default async function DashboardPage() {
 }
 
 async function DashboardDataLoader({ userId, userName }: { userId: string; userName: string }) {
-  const allDocs = await getDocumentsWithHistory(userId)
+  const [allDocs, bodyCompResult] = await Promise.all([
+    getDocumentsWithHistory(userId),
+    getLatestBodyComposition(userId),
+  ])
 
   const historyEntries: HistoryEntry[] = allDocs.slice(0, 5).map((doc, i) => {
     const samePrevious = allDocs.slice(i + 1).find((d) => d.documentType === doc.documentType)
@@ -46,7 +59,19 @@ async function DashboardDataLoader({ userId, userName }: { userId: string; userN
 
   const latestDocumentId = allDocs[0]?.id ?? null
 
-  return <DashboardContent data={{ userName, historyEntries, latestDocumentId }} />
+  const bodyComposition: BodyCompositionSummary | null = bodyCompResult.latest
+    ? {
+        weight: bodyCompResult.latest.weight,
+        bodyFat: bodyCompResult.latest.bodyFat,
+        measuredAt: bodyCompResult.latest.measuredAt,
+        weightDelta: bodyCompResult.delta?.weight ?? null,
+        bodyFatDelta: bodyCompResult.delta?.bodyFat ?? null,
+      }
+    : null
+
+  return (
+    <DashboardContent data={{ userName, historyEntries, latestDocumentId, bodyComposition }} />
+  )
 }
 
 function DashboardSkeleton() {
