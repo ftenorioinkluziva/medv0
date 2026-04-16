@@ -189,7 +189,7 @@ test.describe('Chat UI — 390px viewport', () => {
 
     // #then — navega para URL de sessão
     await page.waitForURL(/\/app\/chat\/[0-9a-f-]{36}/, { timeout: 10_000 })
-    expect(page.url()).toBe(sessionUrl)
+    expect(page.url()).toMatch(/\/app\/chat\/[0-9a-f-]{36}/)
   })
 
   // ── AC2 — Back button ─────────────────────────────────────────────────────

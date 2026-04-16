@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { db } from '@/lib/db/client'
 import { chatSessions } from '@/lib/db/schema'
 import { auth } from '@/lib/auth/config'
-import { getLatestSessionByAgent } from '@/lib/db/queries/chat'
+import { sql } from 'drizzle-orm'
 
 export async function startChat(agentId: string): Promise<never> {
   const session = await auth()
@@ -12,15 +12,14 @@ export async function startChat(agentId: string): Promise<never> {
 
   const userId = session.user.id
 
-  const existing = await getLatestSessionByAgent(userId, agentId)
-  if (existing) {
-    redirect(`/app/chat/${existing.id}`)
-  }
-
-  const [newSession] = await db
+  const [chatSession] = await db
     .insert(chatSessions)
     .values({ userId, agentId, title: 'Nova conversa' })
+    .onConflictDoUpdate({
+      target: [chatSessions.userId, chatSessions.agentId],
+      set: { updatedAt: sql`now()` },
+    })
     .returning({ id: chatSessions.id })
 
-  redirect(`/app/chat/${newSession.id}`)
+  redirect(`/app/chat/${chatSession.id}`)
 }

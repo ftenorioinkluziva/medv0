@@ -21,11 +21,13 @@ export default async function ChatSessionPage({ params }: ChatSessionPageProps) 
     notFound()
   }
 
-  const initialMessages = history.map((m) => ({
-    id: m.id,
-    role: m.role as 'user' | 'assistant',
-    content: m.content,
-  }))
+  const initialMessages = history
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .map((m) => ({
+      id: m.id,
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }))
 
   return (
     <ChatInterface

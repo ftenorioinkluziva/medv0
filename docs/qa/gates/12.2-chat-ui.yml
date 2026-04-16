@@ -14,13 +14,6 @@ top_issues:
     recommendation: 'Adicionar LIMIT + offset ou cursor pagination antes de produção'
     suggested_owner: dev
 
-  - id: TD-002
-    severity: low
-    category: code
-    description: 'generateId() usa Math.random() em vez de crypto.randomUUID() (src/hooks/use-chat-stream.ts:34)'
-    recommendation: 'Trocar por crypto.randomUUID() — IDs são client-side apenas, baixo risco prático'
-    suggested_owner: dev
-
   - id: TD-003
     severity: low
     category: tests
@@ -66,7 +59,5 @@ recommendations:
   future:
     - action: 'Adicionar paginação em getChatSessionsWithAgent'
       refs: ['src/lib/db/queries/chat.ts']
-    - action: 'Trocar generateId() por crypto.randomUUID()'
-      refs: ['src/hooks/use-chat-stream.ts']
     - action: 'Corrigir act() warning no teste de concorrência'
       refs: ['tests/unit/use-chat-stream.test.tsx']

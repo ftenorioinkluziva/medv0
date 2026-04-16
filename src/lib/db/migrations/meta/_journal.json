@@ -113,6 +113,13 @@
       "when": 1776299653076,
       "tag": "0015_robust_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1776350000000,
+      "tag": "0016_chat_sessions_unique_user_agent",
+      "breakpoints": true
     }
   ]
 }

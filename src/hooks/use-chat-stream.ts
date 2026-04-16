@@ -47,22 +47,28 @@ export function useChatStream({
   const [error, setError] = useState<Error | null>(null)
 
   const abortRef = useRef<AbortController | null>(null)
+  const statusRef = useRef<ChatStatus>('idle')
   const bodyRef = useRef(body)
   bodyRef.current = body
 
+  // Keep statusRef in sync so append can use it without stale-closure issues
+  statusRef.current = status
+
   const stop = useCallback(() => {
     abortRef.current?.abort()
+    statusRef.current = 'idle'
     setStatus('idle')
   }, [])
 
   const append = useCallback(
     async (content: string) => {
-      if (status !== 'idle') return
+      if (statusRef.current !== 'idle') return
 
       setError(null)
 
       const userMsg: ChatMessage = { id: generateId(), role: 'user', content }
       setMessages((prev) => [...prev, userMsg])
+      statusRef.current = 'loading'
       setStatus('loading')
 
       const abortController = new AbortController()
@@ -80,6 +86,7 @@ export function useChatStream({
 
         if (response.status === 429) {
           onRateLimit?.()
+          statusRef.current = 'idle'
           setStatus('idle')
           setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
           return
@@ -94,6 +101,7 @@ export function useChatStream({
           throw new Error('Empty response body')
         }
 
+        statusRef.current = 'streaming'
         setStatus('streaming')
         setMessages((prev) => [...prev, { id: assistantId, role: 'assistant', content: '' }])
 
@@ -111,19 +119,22 @@ export function useChatStream({
           )
         }
 
+        statusRef.current = 'idle'
         setStatus('idle')
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
+          statusRef.current = 'idle'
           setStatus('idle')
           return
         }
         const e = err instanceof Error ? err : new Error(String(err))
         setError(e)
+        statusRef.current = 'error'
         setStatus('error')
-        setMessages((prev) => prev.filter((m) => m.id !== assistantId))
+        setMessages((prev) => prev.filter((m) => m.id !== assistantId && m.id !== userMsg.id))
       }
     },
-    [api, status, onRateLimit],
+    [api, onRateLimit],
   )
 
   const handleSubmit = useCallback(

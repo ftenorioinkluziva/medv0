@@ -5,6 +5,7 @@ import {
   integer,
   timestamp,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { users } from './users'
 import { healthAgents } from './health-agents'
@@ -27,6 +28,8 @@ export const chatSessions = pgTable(
   },
   (table) => [
     index('chat_sessions_user_id_updated_at_idx').on(table.userId, table.updatedAt),
+    index('chat_sessions_user_agent_updated_idx').on(table.userId, table.agentId, table.updatedAt),
+    uniqueIndex('chat_sessions_user_id_agent_id_unique').on(table.userId, table.agentId),
   ],
 )
 
