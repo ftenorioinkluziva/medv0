@@ -22,8 +22,8 @@ test.describe('Mobile Layout — 390px viewport', () => {
     viewport: { width: 390, height: 844 },
   })
 
-  // AC1 — Bottom nav bar is visible with 4 items
-  test('T-ML-01 — bottom nav has 4 items on dashboard', async ({ page }) => {
+  // AC1 — Bottom nav bar is visible with 5 items (Chat added in Story 12.2)
+  test('T-ML-01 — bottom nav has 5 items on dashboard', async ({ page }) => {
     // #given
     await page.goto('/app/dashboard')
 
@@ -32,10 +32,11 @@ test.describe('Mobile Layout — 390px viewport', () => {
 
     // #then
     await expect(nav).toBeVisible()
-    await expect(nav.getByRole('link')).toHaveCount(4)
+    await expect(nav.getByRole('link')).toHaveCount(5)
     await expect(nav.getByRole('link', { name: 'Dashboard' })).toBeVisible()
     await expect(nav.getByRole('link', { name: 'Upload' })).toBeVisible()
     await expect(nav.getByRole('link', { name: 'Histórico' })).toBeVisible()
+    await expect(nav.getByRole('link', { name: 'Chat' })).toBeVisible()
     await expect(nav.getByRole('link', { name: 'Perfil' })).toBeVisible()
   })
 
