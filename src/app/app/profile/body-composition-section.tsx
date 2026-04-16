@@ -1,4 +1,5 @@
-import { Activity } from 'lucide-react'
+import Link from 'next/link'
+import { Activity, ArrowRight } from 'lucide-react'
 import {
   getLatestBodyComposition,
   getBodyCompositionHistory,
@@ -64,12 +65,22 @@ function HistoryRow({ record }: { record: BodyCompositionHistoryRecord }) {
   return (
     <div className="flex items-center justify-between gap-2 py-2 border-t border-foreground/6">
       <span className="text-xs text-muted-foreground shrink-0">{formatDate(record.measuredAt)}</span>
-      <div className="flex flex-wrap gap-x-3 gap-y-0.5 justify-end">
-        {values.map((v) => (
-          <span key={v} className="text-xs text-foreground">
-            {v}
-          </span>
-        ))}
+      <div className="flex items-center gap-2">
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 justify-end">
+          {values.map((v) => (
+            <span key={v} className="text-xs text-foreground">
+              {v}
+            </span>
+          ))}
+        </div>
+        <Link
+          href={`/app/profile/body-composition/${record.id}`}
+          className="shrink-0 inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
+          aria-label={`Ver detalhes da medição de ${formatDate(record.measuredAt)}`}
+        >
+          Ver
+          <ArrowRight className="size-3" aria-hidden="true" />
+        </Link>
       </div>
     </div>
   )
