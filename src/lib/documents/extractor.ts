@@ -1,8 +1,10 @@
 import { generateText, Output } from 'ai'
-import { google } from '@ai-sdk/google'
 import { z } from 'zod'
+import { resolveModel } from '@/lib/ai/core/resolve-model'
 
 const MAX_CONTENT_CHARS = 200_000
+const DEFAULT_EXTRACTION_MODEL = 'google/gemini-2.5-flash'
+const EXTRACTION_MODEL = resolveExtractionModel(process.env.DOCUMENT_EXTRACTION_MODEL)
 
 const MedicalDocumentSchema = z.object({
   documentType: z.string(),
@@ -83,6 +85,21 @@ type ExtractionMessageContent =
       | { type: 'file'; data: string; mediaType: string }
     >
 
+function resolveExtractionModel(rawModel?: string): string {
+  if (!rawModel) return DEFAULT_EXTRACTION_MODEL
+
+  const normalized = rawModel.trim()
+  const slashIndex = normalized.indexOf('/')
+
+  if (slashIndex <= 0 || slashIndex === normalized.length - 1) {
+    console.warn(
+      `[extractor] Invalid DOCUMENT_EXTRACTION_MODEL "${rawModel}", falling back to ${DEFAULT_EXTRACTION_MODEL}`,
+    )
+    return DEFAULT_EXTRACTION_MODEL
+  }
+
+  return normalized
+}
 
 function truncateWithWarning(text: string): string {
   if (text.length <= MAX_CONTENT_CHARS) return text
@@ -101,7 +118,7 @@ async function tryExtractWithSchema(
   userContent: ExtractionMessageContent,
 ): Promise<SanitizedMedicalDocument> {
   const { output } = await generateText({
-    model: google('gemini-2.5-flash'),
+    model: resolveModel(EXTRACTION_MODEL),
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userContent }],
     output: Output.object({ schema: MedicalDocumentSchema }),
@@ -118,7 +135,7 @@ async function tryExtractWithJsonFallback(
     'Retorne APENAS um JSON válido (sem markdown) com os campos: documentType, examDate?, overallSummary, patientInfo, providerInfo?, modules[].'
 
   const { text } = await generateText({
-    model: google('gemini-2.5-flash'),
+    model: resolveModel(EXTRACTION_MODEL),
     system: `${SYSTEM_PROMPT}\n${fallbackPrompt}`,
     messages: [{ role: 'user', content: userContent }],
     temperature: 0.1,

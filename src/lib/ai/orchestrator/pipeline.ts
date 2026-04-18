@@ -186,7 +186,7 @@ export async function runSynthesisPhase(params: SynthesisParams): Promise<string
 
   try {
     const { text } = await generateText({
-      model: resolveModel(params.synthesisModel ?? process.env.SYNTHESIS_MODEL ?? 'google/gemini-2.5-flash'),
+      model: resolveModel(resolveSynthesisModel(params.synthesisModel ?? process.env.SYNTHESIS_MODEL)),
       system: params.synthesisPrompt,
       prompt: `Snapshot de biomarcadores (use para indicadores ↑↓⚠):\n${params.snapshotContext}\n\nConsolide as seguintes análises especializadas em um relatório integrado:\n\n${synthesisInput}`,
       abortSignal: controller.signal,
@@ -200,6 +200,23 @@ export async function runSynthesisPhase(params: SynthesisParams): Promise<string
   } finally {
     clearTimeout(timeoutId)
   }
+}
+
+function resolveSynthesisModel(rawModel?: string): string {
+  const fallback = 'google/gemini-2.5-flash'
+  if (!rawModel) return fallback
+
+  const normalized = rawModel.trim()
+  const slashIndex = normalized.indexOf('/')
+
+  if (slashIndex <= 0 || slashIndex === normalized.length - 1) {
+    console.warn(
+      `[synthesis] Invalid SYNTHESIS_MODEL "${rawModel}", falling back to ${fallback}`,
+    )
+    return fallback
+  }
+
+  return normalized
 }
 
 export async function buildMedicalProfileContext(userId: string): Promise<string> {

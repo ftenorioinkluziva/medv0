@@ -121,6 +121,9 @@ Editar `.env.local`:
 ```env
 DATABASE_URL="postgresql://..."
 GOOGLE_GENERATIVE_AI_API_KEY="..."
+AI_GATEWAY_API_KEY="..."      # opcional: usa Vercel AI Gateway
+AI_GATEWAY_BASE_URL="https://ai-gateway.vercel.sh/v1"
+DOCUMENT_EXTRACTION_MODEL="google/gemini-2.5-flash"
 NEXTAUTH_SECRET="..."        # openssl rand -base64 32
 NEXTAUTH_URL="http://localhost:3000"
 
