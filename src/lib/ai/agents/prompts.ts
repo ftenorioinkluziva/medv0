@@ -34,11 +34,10 @@ const ENDOCRINOLOGY_SPECIALTY_KEYWORDS = [
 ]
 
 const NEUROSCIENCE_SPECIALTY_KEYWORDS = [
-  'neurociência',
+  'neurociência comportamental',
+  'neurociência aplicada',
   'neurocientista',
-  'sono',
-  'comportamento',
-  'neuro',
+  'huberman',
 ]
 
 function normalize(value: string): string {
