@@ -102,11 +102,9 @@ function SectionCard({ section, defaultOpen }: { section: ReportSection; default
           <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
         )}
       </button>
-      {open && (
-        <div id={`${section.id}-panel`} className="px-4 pb-4 pt-1 border-t text-sm leading-relaxed">
-          <MessageResponse content={section.content} />
-        </div>
-      )}
+      <div id={`${section.id}-panel`} hidden={!open} className="px-4 pb-4 pt-1 border-t text-sm leading-relaxed">
+        <MessageResponse content={section.content} />
+      </div>
     </div>
   )
 }
