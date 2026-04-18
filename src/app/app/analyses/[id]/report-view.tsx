@@ -75,10 +75,14 @@ function AgentStatusBadge({
 
 function SpecialistCard({ item }: { item: SpecializedTextAnalysis }) {
   const [open, setOpen] = useState(false)
+  const panelId = `specialist-panel-${item.agentName.replace(/\s+/g, '-').toLowerCase()}`
 
   return (
     <div className="rounded-lg border bg-card overflow-hidden">
       <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
       >
@@ -96,7 +100,7 @@ function SpecialistCard({ item }: { item: SpecializedTextAnalysis }) {
         )}
       </button>
       {open && (
-        <div className="px-4 pb-4 pt-1 border-t text-sm">
+        <div id={panelId} className="px-4 pb-4 pt-1 border-t text-sm">
           <MessageResponse content={item.content} />
           <p className="text-[11px] text-muted-foreground italic border-t pt-2 mt-3">
             Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional.
@@ -110,10 +114,14 @@ function SpecialistCard({ item }: { item: SpecializedTextAnalysis }) {
 function StructuredCard({ item }: { item: StructuredAnalysis }) {
   const [open, setOpen] = useState(false)
   const Component = getStructuredComponent(item.agentName)
+  const panelId = `structured-panel-${item.agentName.replace(/\s+/g, '-').toLowerCase()}`
 
   return (
     <div className="rounded-lg border bg-card overflow-hidden">
       <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
       >
@@ -131,7 +139,7 @@ function StructuredCard({ item }: { item: StructuredAnalysis }) {
         )}
       </button>
       {open && (
-        <div className="px-4 pb-4 pt-2 border-t space-y-3">
+        <div id={panelId} className="px-4 pb-4 pt-2 border-t space-y-3">
           <Component data={item.data} />
           <p className="text-[11px] text-muted-foreground italic border-t pt-2">
             Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional.
@@ -172,7 +180,7 @@ export function ReportView({
   const specializedStatus =
     specializedError > 0
       ? 'error'
-      : specializedTimeout > 0
+      : specializedTimeout > 0 || specializedCompleted < specializedTotal
         ? 'partial'
         : 'ok'
 

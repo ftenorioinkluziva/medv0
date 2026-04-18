@@ -41,9 +41,16 @@ const NEUROSCIENCE_SPECIALTY_KEYWORDS = [
   'neuro',
 ]
 
+function normalize(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
 function matchesKeywords(specialty: string, keywords: string[]): boolean {
-  const lower = specialty.toLowerCase()
-  return keywords.some((kw) => lower.includes(kw))
+  const normalizedSpecialty = normalize(specialty)
+  return keywords.some((kw) => normalizedSpecialty.includes(normalize(kw)))
 }
 
 export interface AgentPromptContext {
@@ -64,6 +71,8 @@ export interface AgentPromptContext {
  * For foundation/generic agents, the base prompt is returned unchanged.
  */
 export function resolveAgentPrompt(agent: HealthAgent, ctx: AgentPromptContext): string {
+  if (agent.analysisRole === 'foundation') return ctx.basePrompt
+
   const specialty = agent.specialty ?? ''
 
   if (matchesKeywords(specialty, EXERCISE_SPECIALTY_KEYWORDS)) {

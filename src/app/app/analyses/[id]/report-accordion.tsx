@@ -86,6 +86,9 @@ function SectionCard({ section, defaultOpen }: { section: ReportSection; default
   return (
     <div className="rounded-lg border bg-card overflow-hidden" id={section.id}>
       <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={`${section.id}-panel`}
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
       >
@@ -100,7 +103,7 @@ function SectionCard({ section, defaultOpen }: { section: ReportSection; default
         )}
       </button>
       {open && (
-        <div className="px-4 pb-4 pt-1 border-t text-sm leading-relaxed">
+        <div id={`${section.id}-panel`} className="px-4 pb-4 pt-1 border-t text-sm leading-relaxed">
           <MessageResponse content={section.content} />
         </div>
       )}
