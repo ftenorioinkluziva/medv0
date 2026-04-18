@@ -110,6 +110,7 @@ async function AnalysisContent({ id }: { id: string }) {
   let specializedTimeout = 0
   let specializedError = 0
   let structuredAnalyses: Array<{ agentName: string; specialty: string; data: unknown }> = []
+  let specializedTextAnalyses: Array<{ agentName: string; specialty: string; content: string; createdAt: Date }> = []
 
   if (currentVersionRow) {
     const [foundationRow] = await db
@@ -169,6 +170,32 @@ async function AnalysisContent({ id }: { id: string }) {
         return []
       }
     })
+
+    const specializedTextRows = await db
+      .select({
+        agentName: analyses.agentName,
+        specialty: healthAgents.specialty,
+        content: analyses.content,
+        createdAt: analyses.createdAt,
+      })
+      .from(analyses)
+      .innerJoin(healthAgents, eq(analyses.agentId, healthAgents.id))
+      .where(
+        and(
+          eq(analyses.livingAnalysisVersionId, currentVersionRow.id),
+          eq(analyses.analysisRole, 'specialized'),
+          eq(analyses.status, 'completed'),
+          eq(healthAgents.outputType, 'text'),
+        ),
+      )
+      .orderBy(asc(analyses.createdAt))
+
+    specializedTextAnalyses = specializedTextRows.map((r) => ({
+      agentName: r.agentName,
+      specialty: r.specialty,
+      content: r.content,
+      createdAt: r.createdAt,
+    }))
   }
 
   return (
@@ -183,6 +210,7 @@ async function AnalysisContent({ id }: { id: string }) {
       specializedTimeout={specializedTimeout}
       specializedError={specializedError}
       structuredAnalyses={structuredAnalyses}
+      specializedTextAnalyses={specializedTextAnalyses}
     />
   )
 }
