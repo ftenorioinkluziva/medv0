@@ -7,6 +7,7 @@ import {
 } from '@/lib/db/schema'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 import { analyzeWithAgent } from '@/lib/ai/agents/analyze'
+import { resolveAgentPrompt } from '@/lib/ai/agents/prompts'
 import { validateReportSections } from '@/lib/ai/utils/validate-report-sections'
 import {
   readTimeoutMs,
@@ -76,10 +77,10 @@ export async function runCompleteAnalysis(
   completeAnalysisId: string,
 ): Promise<void> {
   const startMs = Date.now()
-  const hardTimeoutMs = readTimeoutMs('COMPLETE_ANALYSIS_TIMEOUT_MS', 180_000)
-  const foundationTimeoutMs = readTimeoutMs('FOUNDATION_AGENT_TIMEOUT_MS', 45_000)
-  const specializedTimeoutMs = readTimeoutMs('SPECIALIZED_AGENT_TIMEOUT_MS', 45_000)
-  const synthesisTimeoutMs = readTimeoutMs('SYNTHESIS_TIMEOUT_MS', 45_000)
+  const hardTimeoutMs = readTimeoutMs('COMPLETE_ANALYSIS_TIMEOUT_MS', 600_000)
+  const foundationTimeoutMs = readTimeoutMs('FOUNDATION_AGENT_TIMEOUT_MS', 600_000)
+  const specializedTimeoutMs = readTimeoutMs('SPECIALIZED_AGENT_TIMEOUT_MS', 600_000)
+  const synthesisTimeoutMs = readTimeoutMs('SYNTHESIS_TIMEOUT_MS', 600_000)
 
   await db
     .update(completeAnalyses)
@@ -113,7 +114,12 @@ export async function runCompleteAnalysis(
       timeoutMs: foundationTimeoutMs,
       buildContexts: () => [{ snapshotContext, medicalProfileContext }],
       analyze: (agent, context, signal) =>
-        analyzeWithAgent(agent, ANALYSIS_PROMPT, context, signal),
+        analyzeWithAgent(
+          agent,
+          resolveAgentPrompt(agent, { basePrompt: ANALYSIS_PROMPT, isLivingAnalysis: false }),
+          context,
+          signal,
+        ),
       persist: (agent, result) =>
         db.insert(analyses).values({
           userId,
@@ -142,7 +148,12 @@ export async function runCompleteAnalysis(
       timeoutMs: specializedTimeoutMs,
       buildContexts: () => [{ snapshotContext, medicalProfileContext, foundationContext }],
       analyze: (agent, context, signal) =>
-        analyzeWithAgent(agent, ANALYSIS_PROMPT, context, signal),
+        analyzeWithAgent(
+          agent,
+          resolveAgentPrompt(agent, { basePrompt: ANALYSIS_PROMPT, isLivingAnalysis: false }),
+          context,
+          signal,
+        ),
       persist: (agent, result) =>
         db.insert(analyses).values({
           userId,

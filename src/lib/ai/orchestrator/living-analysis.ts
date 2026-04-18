@@ -8,7 +8,7 @@ import {
 } from '@/lib/db/schema'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 import { analyzeWithAgent } from '@/lib/ai/agents/analyze'
-import { searchKnowledge } from '@/lib/ai/rag/vector-search'
+import { resolveAgentPrompt } from '@/lib/ai/agents/prompts'
 import {
   readTimeoutMs,
   buildMedicalProfileContext,
@@ -67,9 +67,9 @@ export async function runLivingAnalysis(
   versionId: string,
 ): Promise<void> {
   const startMs = Date.now()
-  const hardTimeoutMs = readTimeoutMs('COMPLETE_ANALYSIS_TIMEOUT_MS', 360_000)
-  const foundationTimeoutMs = readTimeoutMs('FOUNDATION_AGENT_TIMEOUT_MS', 180_000)
-  const specializedTimeoutMs = readTimeoutMs('SPECIALIZED_AGENT_TIMEOUT_MS', 45_000)
+  const hardTimeoutMs = readTimeoutMs('COMPLETE_ANALYSIS_TIMEOUT_MS', 600_000)
+  const foundationTimeoutMs = readTimeoutMs('FOUNDATION_AGENT_TIMEOUT_MS', 600_000)
+  const specializedTimeoutMs = readTimeoutMs('SPECIALIZED_AGENT_TIMEOUT_MS', 600_000)
 
   const [existingLivingAnalysis] = await db
     .select({
@@ -127,38 +127,9 @@ export async function runLivingAnalysis(
       throw new Error('No active foundation agents configured')
     }
 
-    // Pre-fetch RAG knowledge using biomarker names from the snapshot so the
-    // query targets actual content in the knowledge base (hormones, lipids, etc.)
-    // rather than generic specialty/objective terms.
-    const prebuiltKnowledgeContext = await (async () => {
-      try {
-        const ragTerms: string[] = []
-
-        try {
-          const snapshot = JSON.parse(snapshotContext) as Record<string, unknown>
-          const biomarkerNames = Object.keys(snapshot).slice(0, 20).join(' ')
-          if (biomarkerNames) ragTerms.push(biomarkerNames)
-        } catch {
-          // non-blocking
-        }
-
-        try {
-          const profileObj = JSON.parse(medicalProfileContext) as Record<string, unknown>
-          if (typeof profileObj.healthObjectives === 'string' && profileObj.healthObjectives) {
-            ragTerms.push(profileObj.healthObjectives)
-          }
-        } catch {
-          // non-blocking
-        }
-
-        if (ragTerms.length === 0) return undefined
-
-        const chunks = await searchKnowledge(ragTerms.join(' '), 8)
-        return chunks.length > 0 ? chunks.map((c) => c.content).join('\n\n') : undefined
-      } catch {
-        return undefined
-      }
-    })()
+    // Knowledge context is fetched per-agent inside analyzeWithAgent using each
+    // agent's specialty + agentId filter, ensuring foundation and specialized agents
+    // receive distinct, role-appropriate knowledge from the RAG system.
 
     const globalDeadline = startMs + hardTimeoutMs
     const foundationPhase = await runFoundationPhase({
@@ -170,17 +141,20 @@ export async function runLivingAnalysis(
           snapshotContext,
           medicalProfileContext,
           previousAnalysisContext,
-          knowledgeContext: prebuiltKnowledgeContext,
         },
         {
           snapshotContext,
           medicalProfileContext,
           previousAnalysisContext: truncateText(previousAnalysisContext, 1800),
-          knowledgeContext: prebuiltKnowledgeContext,
         },
       ],
       analyze: (agent, context, signal) =>
-        analyzeWithAgent(agent, LIVING_ANALYSIS_PROMPT, context, signal),
+        analyzeWithAgent(
+          agent,
+          resolveAgentPrompt(agent, { basePrompt: LIVING_ANALYSIS_PROMPT, isLivingAnalysis: true }),
+          context,
+          signal,
+        ),
       persist: (agent, result) =>
         db.insert(analyses).values({
           userId,
@@ -215,11 +189,15 @@ export async function runLivingAnalysis(
           medicalProfileContext,
           foundationContext,
           previousAnalysisContext,
-          knowledgeContext: prebuiltKnowledgeContext,
         },
       ],
       analyze: (agent, context, signal) =>
-        analyzeWithAgent(agent, LIVING_ANALYSIS_PROMPT, context, signal),
+        analyzeWithAgent(
+          agent,
+          resolveAgentPrompt(agent, { basePrompt: LIVING_ANALYSIS_PROMPT, isLivingAnalysis: true }),
+          context,
+          signal,
+        ),
       persist: (agent, result) =>
         db.insert(analyses).values({
           userId,
@@ -245,6 +223,9 @@ export async function runLivingAnalysis(
     }
 
     const primaryFoundationReport = foundationPhase.completedOutputs[0].content.trim()
+
+    // Specialized outputs are displayed as separate cards in the frontend via the
+    // analyses table — do not embed them in reportMarkdown to avoid duplication.
     const reportMarkdown = `${primaryFoundationReport}\n\n---\n\n> ${DISCLAIMER_TEXT}`
 
     const foundationCompleted = foundationPhase.completedOutputs.length
