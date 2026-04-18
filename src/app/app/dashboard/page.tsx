@@ -52,12 +52,16 @@ async function DashboardDataLoader({ userId, userName }: { userId: string; userN
     getLatestBodyComposition(userId),
   ])
 
+  // Filtra apenas documentos do tipo 'lab_report' para análise
+  const labReportDocs = allDocs.filter((doc) => doc.documentType === 'lab_report')
+
   const historyEntries: HistoryEntry[] = allDocs.slice(0, 5).map((doc, i) => {
     const samePrevious = allDocs.slice(i + 1).find((d) => d.documentType === doc.documentType)
     return { doc, evolution: computeEvolution(doc, samePrevious) }
   })
 
-  const latestDocumentId = allDocs[0]?.id ?? null
+  // latestDocumentId só considera lab_report
+  const latestDocumentId = labReportDocs[0]?.id ?? null
 
   const bodyComposition: BodyCompositionSummary | null = bodyCompResult.latest
     ? {

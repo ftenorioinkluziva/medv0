@@ -166,12 +166,13 @@ Proteções implementadas no fluxo:
 - O orquestrador falha explicitamente se não houver agentes `foundation` e `specialized` ativos
 - Os timeouts por fase podem ser ajustados por variáveis de ambiente
 
+
 ### Timeouts atuais
 
-- Workflow completo: `180000ms`
-- Cada agente foundation: `45000ms`
-- Cada agente specialized: `45000ms`
-- Síntese final: `45000ms`
+- Workflow completo: `600000ms` (10 minutos)
+- Cada agente foundation: `600000ms` (10 minutos)
+- Cada agente specialized: `600000ms` (10 minutos)
+- Síntese final: `600000ms` (10 minutos)
 
 ---
 
