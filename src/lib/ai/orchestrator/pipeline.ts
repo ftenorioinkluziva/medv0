@@ -118,7 +118,18 @@ async function runAgentWithContexts<ContextType>(
       clearTimeout(timeoutId)
     }
 
-    if (result.status === 'completed') break
+    if (result.status === 'completed') {
+      if (result.content.trim().length < 100) {
+        result = {
+          ...result,
+          content: '',
+          status: 'timeout',
+          errorMessage: result.errorMessage ?? 'Content below minimum length threshold after completion',
+        }
+      } else {
+        break
+      }
+    }
   }
 
   await params.persist(agent, result)

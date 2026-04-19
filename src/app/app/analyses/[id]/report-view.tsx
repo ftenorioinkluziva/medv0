@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { ChevronDown, ChevronUp, Brain, Stethoscope, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
 import { ReportAccordion } from './report-accordion'
 import { getStructuredComponent } from '@/components/structured-outputs/registry'
-import { MessageResponse } from '@/components/ai-elements/message'
 
 interface StructuredAnalysis {
   agentName: string
@@ -73,6 +74,62 @@ function AgentStatusBadge({
   )
 }
 
+function SpecialistMarkdown({ content }: { content: string }) {
+  return (
+    <div className="text-sm text-foreground">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h2: ({ children }) => (
+            <h2 className="text-sm font-semibold text-foreground mt-4 mb-1.5 first:mt-0">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-3 mb-1 first:mt-0">{children}</h3>
+          ),
+          p: ({ children }) => (
+            <p className="text-sm text-foreground leading-relaxed mb-2">{children}</p>
+          ),
+          ul: ({ children }) => (
+            <ul className="list-disc list-outside pl-4 space-y-1 mb-2 text-sm">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal list-outside pl-4 space-y-1 mb-2 text-sm">{children}</ol>
+          ),
+          li: ({ children }) => (
+            <li className="text-foreground leading-relaxed">{children}</li>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold text-foreground">{children}</strong>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-2 rounded-md border border-border">
+              <table className="w-full text-xs border-collapse">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-muted/50">{children}</thead>
+          ),
+          th: ({ children }) => (
+            <th className="px-2.5 py-2 text-left font-semibold text-foreground border-b border-border whitespace-nowrap">{children}</th>
+          ),
+          td: ({ children }) => (
+            <td className="px-2.5 py-2 text-foreground border-b border-border last:border-b-0 align-top">{children}</td>
+          ),
+          tr: ({ children }) => (
+            <tr className="even:bg-muted/20">{children}</tr>
+          ),
+          hr: () => <hr className="my-3 border-border" />,
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-amber-500 pl-3 py-1 my-2 bg-amber-500/5 rounded-r text-xs text-muted-foreground">{children}</blockquote>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
 function SpecialistCard({ item }: { item: SpecializedTextAnalysis }) {
   const [open, setOpen] = useState(false)
   const panelId = `specialist-panel-${item.agentName.replace(/\s+/g, '-').toLowerCase()}`
@@ -99,8 +156,8 @@ function SpecialistCard({ item }: { item: SpecializedTextAnalysis }) {
           <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
         )}
       </button>
-      <div id={panelId} hidden={!open} className="px-4 pb-4 pt-1 border-t text-sm">
-        <MessageResponse content={item.content} />
+      <div id={panelId} hidden={!open} className="px-4 pb-4 pt-3 border-t">
+        <SpecialistMarkdown content={item.content} />
         <p className="text-[11px] text-muted-foreground italic border-t pt-2 mt-3">
           Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional.
         </p>

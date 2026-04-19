@@ -87,8 +87,20 @@ export async function analyzeWithAgent(
         abortSignal: signal,
       })
 
+      const serialized = JSON.stringify(object)
+      if (serialized.length < 10) {
+        return {
+          content: '',
+          ragContextUsed,
+          tokensUsed: usage?.totalTokens ?? null,
+          durationMs: Date.now() - startMs,
+          status: 'timeout',
+          errorMessage: `Structured output too small (${serialized.length} chars) — likely truncated response`,
+        }
+      }
+
       return {
-        content: JSON.stringify(object),
+        content: serialized,
         structuredOutput: object,
         ragContextUsed,
         tokensUsed: usage?.totalTokens ?? null,
@@ -106,15 +118,30 @@ export async function analyzeWithAgent(
       abortSignal: signal,
     })
 
+    const trimmed = text.trim()
+    if (trimmed.length < 100) {
+      return {
+        content: '',
+        ragContextUsed,
+        tokensUsed: usage?.totalTokens ?? null,
+        durationMs: Date.now() - startMs,
+        status: 'timeout',
+        errorMessage: `Content too short after trim (${trimmed.length} chars) — likely truncated response`,
+      }
+    }
+
     return {
-      content: text,
+      content: trimmed,
       ragContextUsed,
       tokensUsed: usage?.totalTokens ?? null,
       durationMs: Date.now() - startMs,
       status: 'completed',
     }
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (
+      error instanceof Error &&
+      (error.name === 'AbortError' || (error.cause instanceof Error && error.cause.name === 'AbortError'))
+    ) {
       return {
         content: '',
         ragContextUsed,
