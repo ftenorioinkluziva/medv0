@@ -1,14 +1,10 @@
 import { google } from '@ai-sdk/google'
-import { createOpenAI } from '@ai-sdk/openai'
+import { aiGatewayProvider } from '@/lib/ai/core/ai-gateway'
 
 export const KNOWLEDGE_EMBEDDING_MODEL_NAME = resolveEmbeddingModel(
   process.env.GOOGLE_EMBEDDING_MODEL,
 )
 export const KNOWLEDGE_EMBEDDING_DIMENSIONS = 768
-const AI_GATEWAY_BASE_URL = process.env.AI_GATEWAY_BASE_URL ?? 'https://ai-gateway.vercel.sh/v1'
-const aiGatewayProvider = process.env.AI_GATEWAY_API_KEY
-  ? createOpenAI({ apiKey: process.env.AI_GATEWAY_API_KEY, baseURL: AI_GATEWAY_BASE_URL })
-  : null
 
 export function getKnowledgeEmbeddingModel() {
   const normalizedName = KNOWLEDGE_EMBEDDING_MODEL_NAME.trim()
@@ -41,6 +37,7 @@ function resolveEmbeddingModel(rawModel?: string): string {
   const normalized = rawModel.trim()
   const slashIndex = normalized.indexOf('/')
 
+  // Allow bare model names (no slash) — e.g. "gemini-embedding-001"
   if (slashIndex === 0 || slashIndex === normalized.length - 1) {
     console.warn(
       `[embedding] Invalid GOOGLE_EMBEDDING_MODEL "${rawModel}", falling back to ${fallback}`,
