@@ -56,5 +56,8 @@ export function getKnowledgeEmbeddingProviderOptions(
       outputDimensionality: KNOWLEDGE_EMBEDDING_DIMENSIONS,
       taskType,
     },
+    openai: {
+      dimensions: KNOWLEDGE_EMBEDDING_DIMENSIONS,
+    },
   }
 }

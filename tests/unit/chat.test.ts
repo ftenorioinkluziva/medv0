@@ -28,6 +28,7 @@ vi.mock('@/lib/db/schema', () => ({
   chatSessions: { id: 'cs.id', userId: 'cs.userId', agentId: 'cs.agentId', title: 'cs.title' },
   healthAgents: { id: 'ha.id', isActive: 'ha.isActive' },
   livingAnalyses: { userId: 'la.userId', reportMarkdown: 'la.reportMarkdown' },
+  medicalProfiles: { userId: 'mp.userId' },
 }))
 
 vi.mock('ai', () => ({
@@ -45,6 +46,14 @@ vi.mock('@/lib/ai/rag/vector-search', () => ({
 vi.mock('@/lib/db/queries/chat', () => ({
   getSessionWithAgent: mockGetSessionWithAgent,
   getChatMessages: mockGetChatMessages,
+}))
+
+vi.mock('@/app/api/chat/intent', () => ({
+  classifyIntent: vi.fn().mockReturnValue(new Set(['profile_basic'])),
+}))
+
+vi.mock('@/app/api/chat/patient-context', () => ({
+  buildPatientContext: vi.fn().mockReturnValue(''),
 }))
 
 const { POST } = await import('@/app/api/chat/route')
@@ -135,11 +144,11 @@ function makeUpdateChain() {
   }
 }
 
-function setupSelectsForSuccessfulRequest(msgCount = 0, analysis: string | null = null) {
+function setupSelectsForSuccessfulRequest(msgCount = 0) {
   mockSelect
     .mockReturnValueOnce(makeCountChain(msgCount) as never)
     .mockReturnValueOnce(makeSelectChain([AGENT]) as never)
-    .mockReturnValueOnce(makeAnalysisChain(analysis) as never)
+    .mockReturnValueOnce(makeAnalysisChain(null) as never) // medicalProfiles
 }
 
 function setupDefaultMocks() {
@@ -162,12 +171,12 @@ beforeEach(() => {
 
 describe('buildChatSystemPrompt', () => {
   it('inclui systemPrompt do agente', () => {
-    const prompt = buildChatSystemPrompt('Base prompt.', null, '')
+    const prompt = buildChatSystemPrompt('Base prompt.', '', '')
     expect(prompt).toContain('Base prompt.')
   })
 
   it('inclui disclaimer educacional sempre', () => {
-    const prompt = buildChatSystemPrompt('Base.', null, '')
+    const prompt = buildChatSystemPrompt('Base.', '', '')
     expect(prompt).toContain('NÃO substitui consulta médica profissional')
   })
 
@@ -176,29 +185,29 @@ describe('buildChatSystemPrompt', () => {
     const knowledge = 'Vitamina D é importante para ossos.'
 
     // #when
-    const prompt = buildChatSystemPrompt('Base.', null, knowledge)
+    const prompt = buildChatSystemPrompt('Base.', '', knowledge)
 
     // #then
     expect(prompt).toContain('## Conhecimento Especializado')
     expect(prompt).toContain(knowledge)
   })
 
-  it('inclui análise quando analysisContext não nulo', () => {
+  it('inclui dados do paciente quando patientContext não vazio', () => {
     // #given
-    const analysis = 'Paciente com deficiência de vitamina D.'
+    const patientCtx = '### Perfil Básico\n- Idade: 35 anos, masculino'
 
     // #when
-    const prompt = buildChatSystemPrompt('Base.', analysis, '')
+    const prompt = buildChatSystemPrompt('Base.', patientCtx, '')
 
     // #then
-    expect(prompt).toContain('## Contexto da Última Análise do Paciente')
-    expect(prompt).toContain(analysis)
+    expect(prompt).toContain('## Dados do Paciente')
+    expect(prompt).toContain(patientCtx)
   })
 
   it('omite seções opcionais quando não fornecidas', () => {
-    const prompt = buildChatSystemPrompt('Base.', null, '')
+    const prompt = buildChatSystemPrompt('Base.', '', '')
     expect(prompt).not.toContain('## Conhecimento Especializado')
-    expect(prompt).not.toContain('## Contexto da Última Análise do Paciente')
+    expect(prompt).not.toContain('## Dados do Paciente')
   })
 })
 
@@ -438,10 +447,13 @@ describe('POST /api/chat — contexto', () => {
     )
   })
 
-  it('inclui contexto da análise no system prompt quando existir', async () => {
+  it('inclui contexto do paciente no system prompt quando buildPatientContext retornar conteúdo', async () => {
     // #given
+    const { buildPatientContext: mockBuildPatientContext } = await import('@/app/api/chat/patient-context')
+    vi.mocked(mockBuildPatientContext).mockReturnValueOnce('### Perfil Básico\nDeficiência de D3')
+
     setupDefaultMocks()
-    setupSelectsForSuccessfulRequest(0, '## Análise completa\nDeficiência de D3')
+    setupSelectsForSuccessfulRequest()
     mockInsert
       .mockReturnValueOnce(makeInsertReturning([{ id: NEW_SESSION_ID }]) as never)
       .mockReturnValueOnce(makeInsertValuesOnly() as never)

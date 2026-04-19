@@ -1,6 +1,6 @@
 export function buildChatSystemPrompt(
   agentSystemPrompt: string,
-  analysisContext: string | null,
+  patientContext: string,
   knowledgeContext: string,
 ): string {
   const parts = [agentSystemPrompt]
@@ -9,8 +9,8 @@ export function buildChatSystemPrompt(
     parts.push(`\n\n## Conhecimento Especializado\n${knowledgeContext}`)
   }
 
-  if (analysisContext) {
-    parts.push(`\n\n## Contexto da Última Análise do Paciente\n${analysisContext}`)
+  if (patientContext) {
+    parts.push(`\n\n## Dados do Paciente\n${patientContext}`)
   }
 
   parts.push(

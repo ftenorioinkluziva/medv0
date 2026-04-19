@@ -4,11 +4,13 @@ import { z } from 'zod'
 import { and, count, eq, gte } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { chatMessages, chatSessions, healthAgents, livingAnalyses } from '@/lib/db/schema'
+import { chatMessages, chatSessions, healthAgents, livingAnalyses, medicalProfiles } from '@/lib/db/schema'
 import { getChatMessages, getSessionWithAgent } from '@/lib/db/queries/chat'
 import { searchKnowledge } from '@/lib/ai/rag/vector-search'
 import { resolveModel } from '@/lib/ai/core/resolve-model'
 import { buildChatSystemPrompt } from './helpers'
+import { classifyIntent } from './intent'
+import { buildPatientContext } from './patient-context'
 
 export const maxDuration = 60
 
@@ -103,28 +105,39 @@ export async function POST(request: NextRequest): Promise<Response> {
     content: message,
   })
 
-  const [chatHistory, ragChunks, latestAnalysis] = await Promise.all([
+  const blocks = classifyIntent(message)
+  const needsAnalysis = blocks.has('living_analysis')
+
+  const [chatHistory, ragChunks, profile, analysisRow] = await Promise.all([
     getChatMessages(activeSessionId, 20),
     searchKnowledge(message, 3, agentId),
     db
-      .select({ reportMarkdown: livingAnalyses.reportMarkdown })
-      .from(livingAnalyses)
-      .where(eq(livingAnalyses.userId, userId))
+      .select()
+      .from(medicalProfiles)
+      .where(eq(medicalProfiles.userId, userId))
       .limit(1)
       .then((rows) => rows[0] ?? null),
+    needsAnalysis
+      ? db
+          .select({ reportMarkdown: livingAnalyses.reportMarkdown })
+          .from(livingAnalyses)
+          .where(eq(livingAnalyses.userId, userId))
+          .limit(1)
+          .then((rows) => rows[0] ?? null)
+      : Promise.resolve(null),
   ])
 
   const knowledgeContext = ragChunks
     .map((chunk) => `### ${chunk.article.title}\n${chunk.content}`)
     .join('\n\n')
 
-  const analysisContext = latestAnalysis?.reportMarkdown ?? null
+  const patientContext = buildPatientContext({
+    profile,
+    livingAnalysisReport: analysisRow?.reportMarkdown ?? null,
+    blocks,
+  })
 
-  const systemPrompt = buildChatSystemPrompt(
-    agent.systemPrompt,
-    analysisContext,
-    knowledgeContext,
-  )
+  const systemPrompt = buildChatSystemPrompt(agent.systemPrompt, patientContext, knowledgeContext)
 
   const messages = chatHistory.map((m) => ({
     role: m.role as 'user' | 'assistant',
