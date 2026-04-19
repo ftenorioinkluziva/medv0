@@ -1,6 +1,8 @@
 import { generateText } from 'ai'
 import { eq } from 'drizzle-orm'
 import { resolveModel } from '@/lib/ai/core/resolve-model'
+
+const DEFAULT_SYNTHESIS_MODEL = 'google/gemini-2.5-flash'
 import { db } from '@/lib/db/client'
 import type { AgentAnalysisResult } from '@/lib/ai/agents/analyze'
 import type { HealthAgent } from '@/lib/db/schema'
@@ -186,7 +188,7 @@ export async function runSynthesisPhase(params: SynthesisParams): Promise<string
 
   try {
     const { text } = await generateText({
-      model: resolveModel(params.synthesisModel ?? process.env.SYNTHESIS_MODEL ?? 'google/gemini-2.5-flash'),
+      model: resolveModel(resolveSynthesisModel(params.synthesisModel ?? process.env.SYNTHESIS_MODEL)),
       system: params.synthesisPrompt,
       prompt: `Snapshot de biomarcadores (use para indicadores ↑↓⚠):\n${params.snapshotContext}\n\nConsolide as seguintes análises especializadas em um relatório integrado:\n\n${synthesisInput}`,
       abortSignal: controller.signal,
@@ -200,6 +202,22 @@ export async function runSynthesisPhase(params: SynthesisParams): Promise<string
   } finally {
     clearTimeout(timeoutId)
   }
+}
+
+function resolveSynthesisModel(rawModel?: string): string {
+  if (!rawModel) return DEFAULT_SYNTHESIS_MODEL
+
+  const normalized = rawModel.trim()
+  const slashIndex = normalized.indexOf('/')
+
+  if (slashIndex <= 0 || slashIndex === normalized.length - 1) {
+    console.warn(
+      `[synthesis] Invalid SYNTHESIS_MODEL "${rawModel}", falling back to ${DEFAULT_SYNTHESIS_MODEL}`,
+    )
+    return DEFAULT_SYNTHESIS_MODEL
+  }
+
+  return normalized
 }
 
 export async function buildMedicalProfileContext(userId: string): Promise<string> {

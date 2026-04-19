@@ -99,14 +99,12 @@ function SpecialistCard({ item }: { item: SpecializedTextAnalysis }) {
           <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
         )}
       </button>
-      {open && (
-        <div id={panelId} className="px-4 pb-4 pt-1 border-t text-sm">
-          <MessageResponse content={item.content} />
-          <p className="text-[11px] text-muted-foreground italic border-t pt-2 mt-3">
-            Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional.
-          </p>
-        </div>
-      )}
+      <div id={panelId} hidden={!open} className="px-4 pb-4 pt-1 border-t text-sm">
+        <MessageResponse content={item.content} />
+        <p className="text-[11px] text-muted-foreground italic border-t pt-2 mt-3">
+          Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional.
+        </p>
+      </div>
     </div>
   )
 }
@@ -138,14 +136,12 @@ function StructuredCard({ item }: { item: StructuredAnalysis }) {
           <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
         )}
       </button>
-      {open && (
-        <div id={panelId} className="px-4 pb-4 pt-2 border-t space-y-3">
-          <Component data={item.data} />
-          <p className="text-[11px] text-muted-foreground italic border-t pt-2">
-            Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional.
-          </p>
-        </div>
-      )}
+      <div id={panelId} hidden={!open} className="px-4 pb-4 pt-2 border-t space-y-3">
+        <Component data={item.data} />
+        <p className="text-[11px] text-muted-foreground italic border-t pt-2">
+          Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional.
+        </p>
+      </div>
     </div>
   )
 }
@@ -223,10 +219,10 @@ export function ReportView({
           </p>
           <div className="space-y-2">
             {specializedTextAnalyses.map((item) => (
-              <SpecialistCard key={item.agentName} item={item} />
+              <SpecialistCard key={`special-${item.agentName}`} item={item} />
             ))}
             {structuredAnalyses.map((item) => (
-              <StructuredCard key={item.agentName} item={item} />
+              <StructuredCard key={`structured-${item.agentName}`} item={item} />
             ))}
           </div>
         </div>

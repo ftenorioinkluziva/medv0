@@ -78,9 +78,9 @@ export async function runCompleteAnalysis(
 ): Promise<void> {
   const startMs = Date.now()
   const hardTimeoutMs = readTimeoutMs('COMPLETE_ANALYSIS_TIMEOUT_MS', 600_000)
-  const foundationTimeoutMs = readTimeoutMs('FOUNDATION_AGENT_TIMEOUT_MS', 600_000)
-  const specializedTimeoutMs = readTimeoutMs('SPECIALIZED_AGENT_TIMEOUT_MS', 600_000)
-  const synthesisTimeoutMs = readTimeoutMs('SYNTHESIS_TIMEOUT_MS', 600_000)
+  const foundationTimeoutMs = readTimeoutMs('FOUNDATION_AGENT_TIMEOUT_MS', 180_000)
+  const specializedTimeoutMs = readTimeoutMs('SPECIALIZED_AGENT_TIMEOUT_MS', 180_000)
+  const synthesisTimeoutMs = readTimeoutMs('SYNTHESIS_TIMEOUT_MS', 120_000)
 
   await db
     .update(completeAnalyses)
