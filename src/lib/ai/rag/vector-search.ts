@@ -154,8 +154,6 @@ export async function searchKnowledge(
   const agentScopeFilter = agentId
     ? sql`${knowledgeEmbeddings.articleId} IN (
         SELECT ak.article_id FROM agent_knowledge ak WHERE ak.agent_id = ${agentId}
-        UNION
-        SELECT kb.id FROM knowledge_base kb WHERE kb.is_global = true
       )`
     : undefined
 

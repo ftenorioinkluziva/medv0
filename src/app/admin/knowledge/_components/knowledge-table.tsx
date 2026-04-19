@@ -13,7 +13,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -32,7 +31,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { deleteArticleAction } from '../_actions/knowledge'
-import { toggleArticleGlobalAction } from '@/lib/actions/admin-knowledge'
 import type { KnowledgeBase } from '@/lib/db/schema'
 
 const VERIFIED_BADGE: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
@@ -72,10 +70,6 @@ export function KnowledgeTable({ articles, agentsByArticle }: KnowledgeTableProp
   const [page, setPage] = useState(1)
   const [pendingDelete, setPendingDelete] = useState<KnowledgeBase | null>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
-  const [globalState, setGlobalState] = useState<Map<string, boolean>>(
-    () => new Map(articles.map((a) => [a.id, a.isGlobal])),
-  )
-  const [togglingGlobalIds, setTogglingGlobalIds] = useState<Set<string>>(new Set())
 
   const normalizedSearch = search.trim().toLowerCase()
 
@@ -108,30 +102,6 @@ export function KnowledgeTable({ articles, agentsByArticle }: KnowledgeTableProp
   const pageStartIndex = (currentPage - 1) * PAGE_SIZE
   const pageEndIndex = pageStartIndex + PAGE_SIZE
   const paginated = filtered.slice(pageStartIndex, pageEndIndex)
-
-  function handleToggleGlobal(articleId: string) {
-    const currentIsGlobal = globalState.get(articleId) ?? false
-    setTogglingGlobalIds((prev) => new Set(prev).add(articleId))
-    startTransition(async () => {
-      try {
-        const result = await toggleArticleGlobalAction(articleId, !currentIsGlobal)
-        if ('error' in result) {
-          toast.error(result.error)
-        } else {
-          setGlobalState((prev) => new Map(prev).set(articleId, !currentIsGlobal))
-          toast.success(!currentIsGlobal ? 'Artigo marcado como global' : 'Artigo desmarcado como global')
-        }
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : String(err))
-      } finally {
-        setTogglingGlobalIds((prev) => {
-          const next = new Set(prev)
-          next.delete(articleId)
-          return next
-        })
-      }
-    })
-  }
 
   function confirmDelete() {
     if (!pendingDelete) return
@@ -237,7 +207,6 @@ export function KnowledgeTable({ articles, agentsByArticle }: KnowledgeTableProp
             <TableRow>
               <TableHead>Artigo</TableHead>
               <TableHead>Categoria</TableHead>
-              <TableHead>Global</TableHead>
               <TableHead>Agentes</TableHead>
               <TableHead>Usos</TableHead>
               <TableHead>Status</TableHead>
@@ -248,7 +217,6 @@ export function KnowledgeTable({ articles, agentsByArticle }: KnowledgeTableProp
           <TableBody>
             {paginated.map((article) => {
               const badge = verifiedBadge(article.isVerified)
-              const isGlobal = globalState.get(article.id) ?? article.isGlobal
               const agents = agentsByArticle[article.id] ?? []
               return (
                 <TableRow key={article.id}>
@@ -268,17 +236,7 @@ export function KnowledgeTable({ articles, agentsByArticle }: KnowledgeTableProp
                     {article.category ?? '—'}
                   </TableCell>
                   <TableCell>
-                    <Switch
-                      checked={isGlobal}
-                      disabled={togglingGlobalIds.has(article.id)}
-                      onClick={() => handleToggleGlobal(article.id)}
-                      aria-label={`${isGlobal ? 'Desativar' : 'Ativar'} global para ${article.title}`}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {isGlobal ? (
-                      <Badge variant="secondary" className="whitespace-nowrap">Global</Badge>
-                    ) : agents.length > 0 ? (
+                    {agents.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {agents.slice(0, 2).map((a) => (
                           <Badge key={a.id} variant="outline" className="text-xs whitespace-nowrap">

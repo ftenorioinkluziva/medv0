@@ -23,7 +23,7 @@ export const knowledgeBase = pgTable(
     tags: text('tags').array(),
     language: text('language').notNull().default('pt-BR'),
     isVerified: text('is_verified').notNull().default('unverified'),
-    isGlobal: boolean('is_global').notNull().default(true),
+    isGlobal: boolean('is_global').notNull().default(false),
     usageCount: integer('usage_count').notNull().default(0),
     lastAnalyzedAt: timestamp('last_analyzed_at'),
     analysisVersion: text('analysis_version'),
