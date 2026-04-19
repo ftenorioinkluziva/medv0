@@ -2,7 +2,8 @@
 
 | Date | Author | Status |
 |------|--------|--------|
-| 2026-04-07 | Aria (Architect) | Proposed |
+| 2026-04-07 | Aria (Architect) | Implemented (ADR-1, ADR-2, ADR-3, ADR-6) |
+| 2026-04-18 | Orion (Orchestrator) | Updated — ADR-7 added (AI Gateway) |
 
 ---
 
@@ -94,10 +95,57 @@ const { text, usage } = await generateText({
 
 ### Implementation Notes
 
-- **Files changed:** `lib/ai/providers/registry.ts` (new), `lib/ai/agents/analyze.ts`, `lib/ai/orchestrator/living-analysis.ts`, `lib/ai/orchestrator/complete-analysis.ts`, `lib/db/schema/health-agents.ts`
+- **Files changed:** `src/lib/ai/core/resolve-model.ts` (new, replaces proposed `lib/ai/providers/registry.ts`), `src/lib/ai/agents/analyze.ts`, `src/lib/ai/orchestrator/living-analysis.ts`, `src/lib/ai/orchestrator/complete-analysis.ts`, `src/lib/db/schema/health-agents.ts`
 - **Migration:** Add `model_config` column with default `'{}'::jsonb`
 - **Admin form:** Replace text input for model with provider dropdown + model slug field. Add JSON editor for modelConfig with per-provider parameter presets.
 - **Dependencies:** `@ai-sdk/openai`, `@ai-sdk/anthropic` (install as needed)
+
+---
+
+## ADR-7: Vercel AI Gateway + Configurable Models
+
+### Context
+
+After ADR-1 was implemented, all AI calls route through `resolveModel()` using provider-specific SDK packages (`@ai-sdk/google`, `@ai-sdk/openai`, `@ai-sdk/anthropic`). Direct provider connections require separate API keys and lack centralized observability.
+
+Additionally, the extraction model (`google('gemini-2.5-flash')`), synthesis model, and embedding model were hardcoded — requiring code changes to switch models.
+
+### Decision
+
+**Optional AI Gateway proxy** activated by `AI_GATEWAY_API_KEY` env var. When set, ALL model calls route through Vercel AI Gateway via `createOpenAI` with a custom `baseURL`:
+
+```typescript
+// src/lib/ai/core/ai-gateway.ts (shared module)
+import { createOpenAI } from '@ai-sdk/openai'
+export const aiGatewayProvider = process.env.AI_GATEWAY_API_KEY
+  ? createOpenAI({ apiKey: process.env.AI_GATEWAY_API_KEY, baseURL: AI_GATEWAY_BASE_URL })
+  : null
+```
+
+**Configurable models via env vars** (format: `"provider/model"`):
+
+| Env Var | Default | Used By |
+|---------|---------|---------|
+| `DOCUMENT_EXTRACTION_MODEL` | `google/gemini-2.5-flash` | `src/lib/documents/extractor.ts` |
+| `SYNTHESIS_MODEL` | `google/gemini-2.5-flash` | `src/lib/ai/orchestrator/pipeline.ts` |
+| `GOOGLE_EMBEDDING_MODEL` | `gemini-embedding-001` | `src/lib/ai/rag/embedding-model.ts` |
+
+Each has a `resolveXxxModel()` validator that warns and falls back on invalid format.
+
+**Shared module pattern** — `src/lib/ai/core/ai-gateway.ts` exports `aiGatewayProvider` to avoid duplicating the gateway setup in `resolve-model.ts` and `embedding-model.ts`.
+
+### Consequences
+
+- **Positive:** Single `AI_GATEWAY_API_KEY` replaces multiple provider keys in production.
+- **Positive:** Centralized observability, model fallbacks, and zero data retention via Vercel AI Gateway.
+- **Positive:** Zero code changes required to switch providers/models — env vars only.
+- **Positive:** Fully backward compatible — no gateway key = original per-provider routing.
+- **Negative:** Gateway adds one network hop. Acceptable given Vercel infrastructure colocation.
+
+### Implementation Notes
+
+- **Files:** `src/lib/ai/core/ai-gateway.ts` (new), `src/lib/ai/core/resolve-model.ts`, `src/lib/ai/rag/embedding-model.ts`, `src/lib/documents/extractor.ts`, `src/lib/ai/orchestrator/pipeline.ts`
+- **Status:** Implemented in v0.7.0 (PR #41)
 
 ---
 
@@ -552,8 +600,8 @@ Both `runLivingAnalysis()` and `runCompleteAnalysis()` become thin wrappers:
 
 ### Implementation Notes
 
-- **Files:** New `lib/ai/orchestrator/pipeline.ts`, `lib/ai/orchestrator/types.ts`. Simplified `living-analysis.ts` and `complete-analysis.ts`.
-- **Should be done in E7** (hardening) before any E8-E12 work, since those epics modify the pipeline.
+- **Files:** `src/lib/ai/orchestrator/pipeline.ts` (implemented — `runFoundationPhase`, `runSpecializedPhase`, `runSynthesisPhase`, `buildMedicalProfileContext`). Simplified `living-analysis.ts` and `complete-analysis.ts`.
+- **Status:** Implemented. `types.ts` was merged into `pipeline.ts` as inline exports.
 
 ---
 
