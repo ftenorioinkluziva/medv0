@@ -1,6 +1,8 @@
 import { generateText } from 'ai'
 import { eq } from 'drizzle-orm'
-import { resolveModel, DEFAULT_MODEL } from '@/lib/ai/core/resolve-model'
+import { resolveModel } from '@/lib/ai/core/resolve-model'
+
+const DEFAULT_SYNTHESIS_MODEL = 'google/gemini-2.5-flash'
 import { db } from '@/lib/db/client'
 import type { AgentAnalysisResult } from '@/lib/ai/agents/analyze'
 import type { HealthAgent } from '@/lib/db/schema'
@@ -203,16 +205,16 @@ export async function runSynthesisPhase(params: SynthesisParams): Promise<string
 }
 
 function resolveSynthesisModel(rawModel?: string): string {
-  if (!rawModel) return DEFAULT_MODEL
+  if (!rawModel) return DEFAULT_SYNTHESIS_MODEL
 
   const normalized = rawModel.trim()
   const slashIndex = normalized.indexOf('/')
 
   if (slashIndex <= 0 || slashIndex === normalized.length - 1) {
     console.warn(
-      `[synthesis] Invalid SYNTHESIS_MODEL "${rawModel}", falling back to ${DEFAULT_MODEL}`,
+      `[synthesis] Invalid SYNTHESIS_MODEL "${rawModel}", falling back to ${DEFAULT_SYNTHESIS_MODEL}`,
     )
-    return DEFAULT_MODEL
+    return DEFAULT_SYNTHESIS_MODEL
   }
 
   return normalized
