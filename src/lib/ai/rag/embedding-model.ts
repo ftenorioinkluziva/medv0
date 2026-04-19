@@ -1,5 +1,4 @@
 import { google } from '@ai-sdk/google'
-import { aiGatewayProvider } from '@/lib/ai/core/ai-gateway'
 
 export const KNOWLEDGE_EMBEDDING_MODEL_NAME = resolveEmbeddingModel(
   process.env.GOOGLE_EMBEDDING_MODEL,
@@ -9,18 +8,14 @@ export const KNOWLEDGE_EMBEDDING_DIMENSIONS = 768
 export function getKnowledgeEmbeddingModel() {
   const normalizedName = KNOWLEDGE_EMBEDDING_MODEL_NAME.trim()
 
-  if (aiGatewayProvider) {
-    const gatewayModelName = normalizedName.includes('/')
-      ? normalizedName
-      : `google/${normalizedName}`
-    return aiGatewayProvider.textEmbeddingModel(gatewayModelName)
-  }
-
+  // Always use the Google provider directly for embeddings.
+  // The AI Gateway (OpenAI-compat) does not forward outputDimensionality,
+  // causing stored 768-dim vectors to mismatch at query time.
   if (normalizedName.includes('/')) {
     const [provider, slug] = normalizedName.split('/')
     if (provider !== 'google' || !slug) {
       console.warn(
-        `[embedding] Unsupported provider "${provider}" without AI Gateway; falling back to gemini-embedding-001`,
+        `[embedding] Unsupported provider "${provider}"; falling back to gemini-embedding-001`,
       )
       return google.textEmbeddingModel('gemini-embedding-001')
     }
@@ -55,9 +50,6 @@ export function getKnowledgeEmbeddingProviderOptions(
     google: {
       outputDimensionality: KNOWLEDGE_EMBEDDING_DIMENSIONS,
       taskType,
-    },
-    openai: {
-      dimensions: KNOWLEDGE_EMBEDDING_DIMENSIONS,
     },
   }
 }

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Send, AlertTriangle } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { useChatStream } from '@/hooks/use-chat-stream'
 import type { ChatMessage } from '@/hooks/use-chat-stream'
@@ -153,20 +155,54 @@ export function ChatInterface({
   )
 }
 
+function AssistantMarkdown({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-1 first:mt-0">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-sm font-semibold mt-3 mb-1 first:mt-0">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2 mb-1 first:mt-0">{children}</h3>,
+        p: ({ children }) => <p className="mb-1.5 last:mb-0 leading-relaxed">{children}</p>,
+        ul: ({ children }) => <ul className="list-disc list-outside pl-4 space-y-0.5 mb-1.5">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal list-outside pl-4 space-y-0.5 mb-1.5">{children}</ol>,
+        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+        table: ({ children }) => (
+          <div className="overflow-x-auto my-2 rounded border border-border/50">
+            <table className="w-full text-xs border-collapse">{children}</table>
+          </div>
+        ),
+        thead: ({ children }) => <thead className="bg-background/50">{children}</thead>,
+        th: ({ children }) => <th className="px-2 py-1.5 text-left font-semibold border-b border-border/50 whitespace-nowrap">{children}</th>,
+        td: ({ children }) => <td className="px-2 py-1.5 border-b border-border/30 last:border-b-0 align-top">{children}</td>,
+        tr: ({ children }) => <tr className="even:bg-background/30">{children}</tr>,
+        hr: () => <hr className="my-2 border-border/40" />,
+        code: ({ children }) => <code className="bg-background/50 rounded px-1 py-0.5 text-xs font-mono">{children}</code>,
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-2 border-primary/40 pl-3 py-0.5 my-1.5 text-muted-foreground">{children}</blockquote>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  )
+}
+
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user'
   return (
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
-          'max-w-[85%] break-words whitespace-pre-wrap',
+          'rounded-2xl px-4 py-2.5 text-sm',
+          'max-w-[85%] break-words',
           isUser
-            ? 'bg-primary text-primary-foreground rounded-br-sm'
+            ? 'bg-primary text-primary-foreground rounded-br-sm leading-relaxed whitespace-pre-wrap'
             : 'bg-muted text-foreground rounded-bl-sm',
         )}
       >
-        {message.content}
+        {isUser ? message.content : <AssistantMarkdown content={message.content} />}
       </div>
     </div>
   )
