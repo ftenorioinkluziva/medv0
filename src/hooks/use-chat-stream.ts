@@ -119,6 +119,10 @@ export function useChatStream({
           )
         }
 
+        if (!full) {
+          throw new Error('O agente não retornou resposta. Tente novamente.')
+        }
+
         statusRef.current = 'idle'
         setStatus('idle')
       } catch (err) {
@@ -131,7 +135,8 @@ export function useChatStream({
         setError(e)
         statusRef.current = 'error'
         setStatus('error')
-        setMessages((prev) => prev.filter((m) => m.id !== assistantId && m.id !== userMsg.id))
+        // Keep user message, only remove the empty assistant placeholder
+        setMessages((prev) => prev.filter((m) => m.id !== assistantId))
       }
     },
     [api, onRateLimit],

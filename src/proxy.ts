@@ -58,5 +58,5 @@ export default auth(function proxy(req: NextRequest) {
 })
 
 export const config = {
-  matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.json|icons).*)'],
+  matcher: ['/((?!api/|_next/static|_next/image|favicon.ico|manifest.json|icons).*)'],
 }

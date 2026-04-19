@@ -98,9 +98,10 @@ export function ChatInterface({
         )}
 
         {error && (
-          <p className="text-xs text-destructive text-center py-1">
-            Erro ao enviar mensagem. Tente novamente.
-          </p>
+          <div className="flex items-start gap-2 rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+            <span>{error.message || 'Erro ao enviar mensagem. Tente novamente.'}</span>
+          </div>
         )}
 
         <div ref={bottomRef} />
