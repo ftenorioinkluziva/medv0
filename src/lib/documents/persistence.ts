@@ -23,6 +23,12 @@ interface InsertDocumentInput {
   processingError?: string | null
 }
 
+function sanitizeDate(value: string | undefined | null): string | null {
+  if (!value || value === 'null' || value === 'undefined') return null
+  const parsed = new Date(value)
+  return isNaN(parsed.getTime()) ? null : value
+}
+
 async function insertDocument(input: InsertDocumentInput): Promise<string> {
   const { userId, fileName, structuredData, processingStatus, processingError } = input
 
@@ -32,7 +38,7 @@ async function insertDocument(input: InsertDocumentInput): Promise<string> {
       userId,
       documentType: structuredData.documentType,
       originalFileName: fileName,
-      examDate: structuredData.examDate ?? null,
+      examDate: sanitizeDate(structuredData.examDate),
       extractedAt: new Date(),
       overallSummary: structuredData.overallSummary ?? null,
       processingStatus,
