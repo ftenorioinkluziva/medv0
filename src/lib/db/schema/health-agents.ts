@@ -30,6 +30,7 @@ export const healthAgents = pgTable('health_agents', {
   specialty: text('specialty').notNull(),
   description: text('description'),
   systemPrompt: text('system_prompt').notNull(),
+  chatPrompt: text('chat_prompt'),
   analysisRole: analysisRoleEnum('analysis_role').notNull(),
   model: text('model').notNull().default('google/gemini-2.5-flash'),
   temperature: numeric('temperature', { precision: 3, scale: 2 }).notNull().default('0.7'),

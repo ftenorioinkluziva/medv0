@@ -38,6 +38,7 @@ const mockAgent = {
   specialty: 'nutrição clínica',
   description: null,
   systemPrompt: 'Você é um especialista em nutrição.',
+      chatPrompt: null,
   analysisRole: 'specialized' as const,
   model: 'google/gemini-2.5-flash',
   temperature: '0.7',

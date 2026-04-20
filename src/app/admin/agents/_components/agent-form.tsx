@@ -132,7 +132,7 @@ export function AgentForm({ agent }: AgentFormProps) {
       <div className="space-y-2">
         <Label htmlFor="systemPrompt">
           System Prompt *{' '}
-          <span className="text-xs text-muted-foreground">(mín. 50 chars)</span>
+          <span className="text-xs text-muted-foreground">(mín. 50 chars — usado na análise)</span>
         </Label>
         <Textarea
           id="systemPrompt"
@@ -141,6 +141,20 @@ export function AgentForm({ agent }: AgentFormProps) {
           placeholder="Defina a identidade, comportamento e especialidade do agente..."
           rows={8}
           required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="chatPrompt">
+          Chat Prompt{' '}
+          <span className="text-xs text-muted-foreground">(opcional — usado no chat com paciente; se vazio, usa System Prompt)</span>
+        </Label>
+        <Textarea
+          id="chatPrompt"
+          name="chatPrompt"
+          defaultValue={agent?.chatPrompt ?? ''}
+          placeholder="Tom conversacional, sem formato rígido de seções. Se vazio, o chat usará o System Prompt."
+          rows={8}
         />
       </div>
 

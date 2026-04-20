@@ -69,6 +69,7 @@ const AGENT = {
   specialty: 'nutrition',
   description: null,
   systemPrompt: 'Você é um agente de nutrição.',
+      chatPrompt: null,
   analysisRole: 'specialized',
   model: 'google/gemini-2.5-flash',
   temperature: '0.7',

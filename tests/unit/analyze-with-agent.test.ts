@@ -31,6 +31,7 @@ const baseAgent: HealthAgent = {
   specialty: 'cardiology',
   description: null,
   systemPrompt: 'You are a cardiologist',
+      chatPrompt: null,
   analysisRole: 'specialized',
   model: 'google/gemini-2.5-flash',
   temperature: '0.7',

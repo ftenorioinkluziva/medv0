@@ -44,6 +44,7 @@ const mockFoundationAgent: HealthAgent = {
   specialty: 'Medicina Funcional',
   description: null,
   systemPrompt: LONG_PROMPT,
+  chatPrompt: null,
   analysisRole: 'foundation',
   model: 'google/gemini-2.5-flash',
   temperature: '0.7',

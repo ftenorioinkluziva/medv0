@@ -65,6 +65,7 @@ const workoutAgent: HealthAgent = {
   specialty: 'Exercício e Movimento',
   description: 'Gera plano de treino personalizado',
   systemPrompt: 'Você é um especialista em prescrição de exercício',
+      chatPrompt: null,
   analysisRole: 'specialized',
   model: 'google/gemini-2.5-flash',
   temperature: '0.7',

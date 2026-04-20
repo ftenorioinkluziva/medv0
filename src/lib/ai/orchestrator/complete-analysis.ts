@@ -139,7 +139,7 @@ export async function runCompleteAnalysis(
 
     const agentOutputs: AgentOutput[] = [...foundationPhase.allOutputs]
     const foundationContext = foundationPhase.completedOutputs
-      .map((o) => `### ${o.agentName}\n${o.content}`)
+      .map((o) => `### ${o.agentName} (referência — NÃO REPITA estes achados)\n${o.content.slice(0, 1200)}`)
       .join('\n\n')
 
     const specializedPhase = await runSpecializedPhase({

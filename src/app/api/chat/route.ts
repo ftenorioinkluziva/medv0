@@ -137,7 +137,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     blocks,
   })
 
-  const systemPrompt = buildChatSystemPrompt(agent.systemPrompt, patientContext, knowledgeContext)
+  const systemPrompt = buildChatSystemPrompt(agent.chatPrompt ?? agent.systemPrompt, patientContext, knowledgeContext)
 
   const messages = chatHistory.map((m) => ({
     role: m.role as 'user' | 'assistant',
