@@ -69,8 +69,8 @@ function ExamRow({ doc, evolution }: { doc: DocumentWithHistory; evolution: Para
       {/* Evolução de parâmetros */}
       {evolution.length > 0 && (
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 border-t border-foreground/6 pt-1.5">
-          {evolution.map((ev) => (
-            <EvolutionBadge key={`${ev.name}-${ev.unit}`} ev={ev} />
+          {evolution.map((ev, i) => (
+            <EvolutionBadge key={`${ev.name}-${ev.unit}-${i}`} ev={ev} />
           ))}
         </div>
       )}

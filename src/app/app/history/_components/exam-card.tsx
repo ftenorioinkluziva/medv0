@@ -58,8 +58,8 @@ export function ExamCard({ doc, evolution }: Props) {
 
       {evolution.length > 0 && (
         <div className="flex flex-col gap-1">
-          {evolution.map((ev) => (
-            <EvolutionItem key={`${ev.name}-${ev.unit}`} ev={ev} />
+          {evolution.map((ev, i) => (
+            <EvolutionItem key={`${ev.name}-${ev.unit}-${i}`} ev={ev} />
           ))}
         </div>
       )}
