@@ -46,7 +46,7 @@ export function extractBodyCompositionMetrics(
 ): BodyCompositionMetrics {
   const metrics: BodyCompositionMetrics = {}
 
-  if (structuredData.examDate) {
+  if (structuredData.examDate && structuredData.examDate !== 'null') {
     metrics.measuredAt = structuredData.examDate
   }
 
