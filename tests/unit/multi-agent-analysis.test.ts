@@ -102,8 +102,9 @@ beforeEach(() => {
 describe('analyzeWithAgent — AC4', () => {
   it('retorna AgentAnalysisResult com status completed em chamada bem-sucedida', async () => {
     // #given
+    const MOCK_ANALYSIS = '## Análise\nResultado da análise médica completa com todos os parâmetros avaliados detalhadamente pelo agente especializado.'
     vi.mocked(generateText).mockResolvedValue({
-      text: '## Análise\nResultado da análise.',
+      text: MOCK_ANALYSIS,
       usage: { totalTokens: 500, promptTokens: 300, completionTokens: 200 },
     } as never)
 
@@ -121,7 +122,7 @@ describe('analyzeWithAgent — AC4', () => {
 
     // #then
     expect(result.status).toBe('completed')
-    expect(result.content).toBe('## Análise\nResultado da análise.')
+    expect(result.content).toBe(MOCK_ANALYSIS)
     expect(result.tokensUsed).toBe(500)
     expect(result.durationMs).toBeGreaterThanOrEqual(0)
   })

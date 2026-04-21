@@ -1,6 +1,6 @@
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
 
-export type DocumentClassification = 'lab_test' | 'body_composition'
+export type DocumentClassification = 'bioimpedance' | 'blood_test' | 'other'
 
 const BODY_COMPOSITION_KEYWORDS = [
   'gordura corporal',
@@ -19,6 +19,25 @@ const BODY_COMPOSITION_KEYWORDS = [
   'bioimpedance',
 ]
 
+const LAB_TEST_KEYWORDS = [
+  'hemograma',
+  'blood count',
+  'glicose',
+  'glucose',
+  'colesterol',
+  'cholesterol',
+  'triglicerideos',
+  'triglycerides',
+  'creatinina',
+  'creatinine',
+  'hemoglobina',
+  'hemoglobin',
+  'leucocitos',
+  'leukocytes',
+  'plaquetas',
+  'platelets',
+]
+
 const THRESHOLD = 3
 
 function normalizeText(text: string): string {
@@ -28,10 +47,15 @@ function normalizeText(text: string): string {
     .toLowerCase()
 }
 
-const NORMALIZED_KEYWORDS = BODY_COMPOSITION_KEYWORDS.map(normalizeText)
+const NORMALIZED_BODY_COMPOSITION = BODY_COMPOSITION_KEYWORDS.map(normalizeText)
+const NORMALIZED_LAB_TEST = LAB_TEST_KEYWORDS.map(normalizeText)
 
 export function classifyDocument(structuredData: SanitizedMedicalDocument): DocumentClassification {
   const searchText = normalizeText(JSON.stringify(structuredData))
-  const matchCount = NORMALIZED_KEYWORDS.filter((kw) => searchText.includes(kw)).length
-  return matchCount >= THRESHOLD ? 'body_composition' : 'lab_test'
+  const bioCount = NORMALIZED_BODY_COMPOSITION.filter((kw) => searchText.includes(kw)).length
+  const labCount = NORMALIZED_LAB_TEST.filter((kw) => searchText.includes(kw)).length
+
+  if (bioCount >= THRESHOLD && bioCount > labCount) return 'bioimpedance'
+  if (labCount >= THRESHOLD && labCount >= bioCount) return 'blood_test'
+  return 'other'
 }

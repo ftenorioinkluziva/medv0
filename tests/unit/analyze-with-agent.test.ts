@@ -10,7 +10,7 @@ vi.mock('@/lib/ai/rag/vector-search', () => ({
 
 vi.mock('ai', () => ({
   generateText: vi.fn().mockResolvedValue({
-    text: 'mock analysis result',
+    text: 'Mock analysis result. Mock analysis result. Mock analysis result. Mock analysis result. Mock analysis result. Mock analysis result.',
     usage: { totalTokens: 100 },
   }),
   generateObject: vi.fn().mockResolvedValue({
@@ -90,7 +90,7 @@ describe('analyzeWithAgent', () => {
 
       // #then
       expect(result.status).toBe('completed')
-      expect(result.content).toBe('mock analysis result')
+      expect(result.content).toBe('Mock analysis result. Mock analysis result. Mock analysis result. Mock analysis result. Mock analysis result. Mock analysis result.')
       expect(result.tokensUsed).toBe(100)
     })
   })
@@ -107,7 +107,7 @@ describe('analyzeWithAgent', () => {
       expect(generateText).toHaveBeenCalledOnce()
       expect(generateObject).not.toHaveBeenCalled()
       expect(result.status).toBe('completed')
-      expect(result.content).toBe('mock analysis result')
+      expect(result.content).toBe('Mock analysis result. Mock analysis result. Mock analysis result. Mock analysis result. Mock analysis result. Mock analysis result.')
       expect(result.structuredOutput).toBeUndefined()
     })
 
