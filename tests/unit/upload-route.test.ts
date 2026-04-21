@@ -121,48 +121,48 @@ describe('POST /api/documents/upload', () => {
     expect(mockTriggerLivingAnalysis).not.toHaveBeenCalled()
   })
 
-  it('classifica como blood_test: dispara análise e retorna type=lab_test', async () => {
+  it('classifica como blood_test: retorna type=lab_test e category sem disparar análise', async () => {
     // #given
     mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
     mockHasUsableMedicalDocumentData.mockReturnValue(true)
     mockClassifyDocument.mockReturnValue('blood_test')
     mockPersistSnapshot.mockResolvedValue({ documentId: 'doc-lab-1' })
-    mockTriggerLivingAnalysis.mockResolvedValue(undefined)
 
     // #when
     const response = await POST(makeUploadRequest('hemograma.pdf'))
     const json = await response.json()
 
-    // #then
+    // #then — análise só dispara após confirmação da categoria (PATCH /category)
     expect(response.status).toBe(200)
     expect(json.type).toBe('lab_test')
     expect(json.documentId).toBe('doc-lab-1')
+    expect(json.category).toBe('blood_test')
     expect(mockPersistSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ classifiedDocumentType: 'blood_test' }),
     )
-    expect(mockTriggerLivingAnalysis).toHaveBeenCalledOnce()
+    expect(mockTriggerLivingAnalysis).not.toHaveBeenCalled()
   })
 
-  it('classifica como other: dispara análise e retorna type=lab_test', async () => {
+  it('classifica como other: retorna type=lab_test e category sem disparar análise', async () => {
     // #given
     mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
     mockHasUsableMedicalDocumentData.mockReturnValue(true)
     mockClassifyDocument.mockReturnValue('other')
     mockPersistSnapshot.mockResolvedValue({ documentId: 'doc-other-1' })
-    mockTriggerLivingAnalysis.mockResolvedValue(undefined)
 
     // #when
     const response = await POST(makeUploadRequest('desconhecido.pdf'))
     const json = await response.json()
 
-    // #then
+    // #then — análise só dispara após confirmação da categoria (PATCH /category)
     expect(response.status).toBe(200)
     expect(json.type).toBe('lab_test')
     expect(json.documentId).toBe('doc-other-1')
+    expect(json.category).toBe('other')
     expect(mockPersistSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ classifiedDocumentType: 'other' }),
     )
-    expect(mockTriggerLivingAnalysis).toHaveBeenCalledOnce()
+    expect(mockTriggerLivingAnalysis).not.toHaveBeenCalled()
   })
 
   it('classifica como bioimpedance: não dispara análise e retorna mensagem diferenciada', async () => {
@@ -181,6 +181,7 @@ describe('POST /api/documents/upload', () => {
     expect(json.type).toBe('body_composition')
     expect(json.success).toBe(true)
     expect(json.documentId).toBe('doc-bio-1')
+    expect(json.category).toBe('bioimpedance')
     expect(json.message).toBe('Dados de composição corporal detectados')
     expect(mockPersistSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ classifiedDocumentType: 'bioimpedance' }),
