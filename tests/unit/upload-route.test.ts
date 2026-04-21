@@ -121,11 +121,11 @@ describe('POST /api/documents/upload', () => {
     expect(mockTriggerLivingAnalysis).not.toHaveBeenCalled()
   })
 
-  it('classifica como lab_test: dispara análise e retorna type=lab_test', async () => {
+  it('classifica como blood_test: dispara análise e retorna type=lab_test', async () => {
     // #given
     mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
     mockHasUsableMedicalDocumentData.mockReturnValue(true)
-    mockClassifyDocument.mockReturnValue('lab_test')
+    mockClassifyDocument.mockReturnValue('blood_test')
     mockPersistSnapshot.mockResolvedValue({ documentId: 'doc-lab-1' })
     mockTriggerLivingAnalysis.mockResolvedValue(undefined)
 
@@ -138,7 +138,7 @@ describe('POST /api/documents/upload', () => {
     expect(json.type).toBe('lab_test')
     expect(json.documentId).toBe('doc-lab-1')
     expect(mockPersistSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({ classifiedDocumentType: 'lab_test' }),
+      expect.objectContaining({ classifiedDocumentType: 'blood_test' }),
     )
     expect(mockTriggerLivingAnalysis).toHaveBeenCalledOnce()
   })
@@ -165,11 +165,11 @@ describe('POST /api/documents/upload', () => {
     expect(mockTriggerLivingAnalysis).toHaveBeenCalledOnce()
   })
 
-  it('classifica como body_composition: não dispara análise e retorna mensagem diferenciada', async () => {
+  it('classifica como bioimpedance: não dispara análise e retorna mensagem diferenciada', async () => {
     // #given
     mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
     mockHasUsableMedicalDocumentData.mockReturnValue(true)
-    mockClassifyDocument.mockReturnValue('body_composition')
+    mockClassifyDocument.mockReturnValue('bioimpedance')
     mockPersistSnapshot.mockResolvedValue({ documentId: 'doc-bio-1' })
 
     // #when
@@ -183,7 +183,7 @@ describe('POST /api/documents/upload', () => {
     expect(json.documentId).toBe('doc-bio-1')
     expect(json.message).toBe('Dados de composição corporal detectados')
     expect(mockPersistSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({ classifiedDocumentType: 'body_composition' }),
+      expect.objectContaining({ classifiedDocumentType: 'bioimpedance' }),
     )
     expect(mockTriggerLivingAnalysis).not.toHaveBeenCalled()
   })

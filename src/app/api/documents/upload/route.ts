@@ -96,9 +96,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       classifiedDocumentType: classification,
     })
 
-    // Internal: body_composition | lab_test | other
+    // Internal: bioimpedance | blood_test | other
     // Response type: 'body_composition' triggers body comp UI; 'lab_test' (including 'other') triggers living analysis
-    if (classification === 'body_composition') {
+    if (classification === 'bioimpedance') {
       const userId = session.user.id
       after(async () => {
         try {

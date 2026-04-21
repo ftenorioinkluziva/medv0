@@ -1,6 +1,6 @@
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
 
-export type DocumentClassification = 'body_composition' | 'lab_test' | 'other'
+export type DocumentClassification = 'bioimpedance' | 'blood_test' | 'other'
 
 const BODY_COMPOSITION_KEYWORDS = [
   'gordura corporal',
@@ -55,7 +55,7 @@ export function classifyDocument(structuredData: SanitizedMedicalDocument): Docu
   const bioCount = NORMALIZED_BODY_COMPOSITION.filter((kw) => searchText.includes(kw)).length
   const labCount = NORMALIZED_LAB_TEST.filter((kw) => searchText.includes(kw)).length
 
-  if (bioCount >= THRESHOLD && bioCount > labCount) return 'body_composition'
-  if (labCount >= THRESHOLD && labCount >= bioCount) return 'lab_test'
+  if (bioCount >= THRESHOLD && bioCount > labCount) return 'bioimpedance'
+  if (labCount >= THRESHOLD && labCount >= bioCount) return 'blood_test'
   return 'other'
 }

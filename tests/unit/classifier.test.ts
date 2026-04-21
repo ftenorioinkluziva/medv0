@@ -14,8 +14,8 @@ function makeDoc(overrides: Partial<SanitizedMedicalDocument>): SanitizedMedical
 }
 
 describe('classifyDocument', () => {
-  describe('body_composition detection', () => {
-    it('classifica como body_composition quando ≥3 keywords estão presentes', () => {
+  describe('bioimpedance detection', () => {
+    it('classifica como bioimpedance quando ≥3 keywords estão presentes', () => {
       // #given
       const doc = makeDoc({
         modules: [
@@ -37,7 +37,7 @@ describe('classifyDocument', () => {
       const result = classifyDocument(doc)
 
       // #then
-      expect(result).toBe('body_composition')
+      expect(result).toBe('bioimpedance')
     })
 
     it('classifica como body_composition com keywords em inglês', () => {
@@ -63,7 +63,7 @@ describe('classifyDocument', () => {
       const result = classifyDocument(doc)
 
       // #then
-      expect(result).toBe('body_composition')
+      expect(result).toBe('bioimpedance')
     })
 
     it('classifica como body_composition com todos os parâmetros típicos de bioimpedância', () => {
@@ -89,12 +89,12 @@ describe('classifyDocument', () => {
       const result = classifyDocument(doc)
 
       // #then
-      expect(result).toBe('body_composition')
+      expect(result).toBe('bioimpedance')
     })
   })
 
-  describe('lab_test detection', () => {
-    it('classifica como lab_test para exame de sangue típico com ≥3 keywords', () => {
+  describe('blood_test detection', () => {
+    it('classifica como blood_test para exame de sangue típico com ≥3 keywords', () => {
       // #given
       const doc = makeDoc({
         documentType: 'Hemograma Completo',
@@ -117,10 +117,10 @@ describe('classifyDocument', () => {
       const result = classifyDocument(doc)
 
       // #then
-      expect(result).toBe('lab_test')
+      expect(result).toBe('blood_test')
     })
 
-    it('classifica como lab_test quando keywords de lab superam body_composition', () => {
+    it('classifica como blood_test quando keywords de lab superam bioimpedance', () => {
       // #given — 1 bioimpedance keyword, 3 lab keywords → lab wins
       const doc = makeDoc({
         modules: [
@@ -143,7 +143,7 @@ describe('classifyDocument', () => {
       const result = classifyDocument(doc)
 
       // #then
-      expect(result).toBe('lab_test')
+      expect(result).toBe('blood_test')
     })
   })
 
