@@ -198,7 +198,11 @@ export function UploadForm() {
         throw new Error(data.error ?? 'Erro ao salvar categoria.')
       }
 
-      setSuccessInfo((prev) => (prev ? { ...prev, category: selectedCategory } : prev))
+      const confirmedType: UploadSuccessInfo['type'] =
+        selectedCategory === 'bioimpedance' ? 'body_composition' : 'lab_test'
+      setSuccessInfo((prev) =>
+        prev ? { ...prev, category: selectedCategory, type: confirmedType } : prev,
+      )
       toast.success('Exame processado!')
       setStep('done')
     } catch (err) {
@@ -316,9 +320,10 @@ export function UploadForm() {
                   </p>
                 </div>
                 <div role="radiogroup" aria-label="Tipo de documento" className="flex flex-col gap-2">
-                  {CATEGORY_OPTIONS.map(({ value, label, Icon }) => (
+                  {CATEGORY_OPTIONS.map(({ value, label, Icon }, index) => (
                     <button
                       key={value}
+                      id={`category-option-${value}`}
                       type="button"
                       role="radio"
                       aria-checked={selectedCategory === value}
@@ -328,6 +333,19 @@ export function UploadForm() {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
                           setSelectedCategory(value)
+                        } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                          e.preventDefault()
+                          const next = CATEGORY_OPTIONS[(index + 1) % CATEGORY_OPTIONS.length]
+                          setSelectedCategory(next.value)
+                          document.getElementById(`category-option-${next.value}`)?.focus()
+                        } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                          e.preventDefault()
+                          const prev =
+                            CATEGORY_OPTIONS[
+                              (index - 1 + CATEGORY_OPTIONS.length) % CATEGORY_OPTIONS.length
+                            ]
+                          setSelectedCategory(prev.value)
+                          document.getElementById(`category-option-${prev.value}`)?.focus()
                         }
                       }}
                       className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
