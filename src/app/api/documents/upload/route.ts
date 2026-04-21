@@ -113,6 +113,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         success: true,
         documentId,
         fileName: file.name,
+        category: classification,
         message: 'Dados de composição corporal detectados',
       })
     }
@@ -127,7 +128,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     })
 
-    return NextResponse.json({ type: 'lab_test', success: true, documentId, fileName: file.name })
+    return NextResponse.json({
+      type: 'lab_test',
+      success: true,
+      documentId,
+      fileName: file.name,
+      category: classification,
+    })
   } catch (error) {
     console.error('[documents/upload] failed:', error)
     return NextResponse.json({ error: 'Erro interno ao salvar o exame.' }, { status: 500 })
