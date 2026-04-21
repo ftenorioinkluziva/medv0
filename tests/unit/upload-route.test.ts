@@ -143,6 +143,28 @@ describe('POST /api/documents/upload', () => {
     expect(mockTriggerLivingAnalysis).toHaveBeenCalledOnce()
   })
 
+  it('classifica como other: dispara análise e retorna type=lab_test', async () => {
+    // #given
+    mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
+    mockHasUsableMedicalDocumentData.mockReturnValue(true)
+    mockClassifyDocument.mockReturnValue('other')
+    mockPersistSnapshot.mockResolvedValue({ documentId: 'doc-other-1' })
+    mockTriggerLivingAnalysis.mockResolvedValue(undefined)
+
+    // #when
+    const response = await POST(makeUploadRequest('desconhecido.pdf'))
+    const json = await response.json()
+
+    // #then
+    expect(response.status).toBe(200)
+    expect(json.type).toBe('lab_test')
+    expect(json.documentId).toBe('doc-other-1')
+    expect(mockPersistSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ classifiedDocumentType: 'other' }),
+    )
+    expect(mockTriggerLivingAnalysis).toHaveBeenCalledOnce()
+  })
+
   it('classifica como body_composition: não dispara análise e retorna mensagem diferenciada', async () => {
     // #given
     mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)

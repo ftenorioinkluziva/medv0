@@ -271,6 +271,7 @@ docs/
 ## Changelog
 
 ### v0.7.0 — 2026-04-18
+- Auto-classificação de documentos: `document_category` (body_composition / lab_test / other) populado automaticamente no upload
 - Vercel AI Gateway: proxy opcional para todos os providers via `AI_GATEWAY_API_KEY`
 - Shared `ai-gateway.ts` module — elimina setup duplicado entre resolve-model e embedding-model
 - Modelos configuráveis via env: `DOCUMENT_EXTRACTION_MODEL`, `SYNTHESIS_MODEL`, `GOOGLE_EMBEDDING_MODEL`

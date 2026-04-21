@@ -57,7 +57,7 @@ export async function persistSnapshot(input: PersistSnapshotInput): Promise<Pers
     ? { ...structuredData, documentType: classifiedDocumentType }
     : structuredData
 
-  const category = classifyDocument(persistedStructuredData)
+  const category = classifiedDocumentType ?? classifyDocument(structuredData)
 
   const documentId = await insertDocument({
     userId,
@@ -97,6 +97,7 @@ export async function persistFailedDocument(
     structuredData: input.structuredData,
     processingStatus: 'failed',
     processingError: input.processingError,
+    category: 'other',
   })
 
   return { documentId }
