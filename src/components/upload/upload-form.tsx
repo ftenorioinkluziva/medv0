@@ -26,6 +26,8 @@ type UploadStep =
 
 type DocumentCategory = 'bioimpedance' | 'blood_test' | 'other'
 
+const VALID_CATEGORIES: DocumentCategory[] = ['bioimpedance', 'blood_test', 'other']
+
 const STEP_LABELS: Record<UploadStep, string> = {
   idle: '',
   preparing: 'Preparando...',
@@ -153,15 +155,20 @@ export function UploadForm() {
         throw new Error(payload.error ?? 'Erro ao processar arquivo.')
       }
 
+      const rawCategory = payload.category
+      const validCategory: DocumentCategory = VALID_CATEGORIES.includes(rawCategory)
+        ? (rawCategory as DocumentCategory)
+        : 'other'
+
       const info: UploadSuccessInfo = {
         fileName: payload.fileName ?? preview.file.name,
         type: payload.type,
         documentId: payload.documentId,
-        category: payload.category,
+        category: validCategory,
       }
 
       setSuccessInfo(info)
-      setSelectedCategory(payload.category ?? 'other')
+      setSelectedCategory(validCategory)
       setStep('categorizing')
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
@@ -308,12 +315,21 @@ export function UploadForm() {
                     Classificado automaticamente. Ajuste se necessário.
                   </p>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div role="radiogroup" aria-label="Tipo de documento" className="flex flex-col gap-2">
                   {CATEGORY_OPTIONS.map(({ value, label, Icon }) => (
                     <button
                       key={value}
                       type="button"
+                      role="radio"
+                      aria-checked={selectedCategory === value}
+                      tabIndex={selectedCategory === value ? 0 : -1}
                       onClick={() => setSelectedCategory(value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setSelectedCategory(value)
+                        }
+                      }}
                       className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
                         selectedCategory === value
                           ? 'border-primary bg-primary/5 text-primary'
