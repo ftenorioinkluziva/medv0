@@ -96,7 +96,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       classifiedDocumentType: classification,
     })
 
-    if (classification === 'bioimpedance') {
+    if (classification === 'body_composition') {
       const userId = session.user.id
       after(async () => {
         try {

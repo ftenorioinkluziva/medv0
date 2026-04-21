@@ -102,14 +102,14 @@ describe('runCompleteAnalysis', () => {
 
     vi.mocked(analyzeWithAgent)
       .mockResolvedValueOnce({
-        content: 'Foundation output',
+        content: 'Foundation output: análise integrativa completa com todos os parâmetros avaliados e recomendações detalhadas pelo agente de fundação.',
         ragContextUsed: false,
         tokensUsed: 100,
         durationMs: 20,
         status: 'completed',
       })
       .mockResolvedValueOnce({
-        content: 'Specialized output',
+        content: 'Specialized output: análise especializada completa com todos os parâmetros avaliados e recomendações detalhadas pelo agente especializado.',
         ragContextUsed: true,
         tokensUsed: 120,
         durationMs: 30,

@@ -3,7 +3,7 @@ import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
 import { users } from './users'
 
 export const processingStatusEnum = pgEnum('processing_status', ['processing', 'completed', 'failed'])
-export const documentCategoryEnum = pgEnum('document_category', ['bioimpedance', 'blood_test', 'other'])
+export const documentCategoryEnum = pgEnum('document_category', ['body_composition', 'lab_test', 'other'])
 
 export const documents = pgTable(
   'documents',

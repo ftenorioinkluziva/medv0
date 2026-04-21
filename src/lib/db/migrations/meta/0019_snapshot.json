@@ -2181,8 +2181,8 @@
       "name": "document_category",
       "schema": "public",
       "values": [
-        "bioimpedance",
-        "blood_test",
+        "body_composition",
+        "lab_test",
         "other"
       ]
     },
