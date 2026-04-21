@@ -39,9 +39,9 @@ async function main() {
 
   // Monta o contexto (ajuste conforme necessário)
   const context = {
-    snapshotContext: snapshot.structuredData,
-    medicalProfileContext: {}, // Preencha se necessário
-    knowledgeContext: {},      // Preencha se necessário
+    snapshotContext: JSON.stringify(snapshot.structuredData),
+    medicalProfileContext: '',
+    knowledgeContext: '',
   }
 
   // Prompt padrão (ajuste se quiser)
