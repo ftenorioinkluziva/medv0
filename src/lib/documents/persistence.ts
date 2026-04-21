@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { documents, snapshots } from '@/lib/db/schema'
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
-import type { DocumentClassification } from '@/lib/documents/classifier'
+import { classifyDocument, type DocumentClassification } from '@/lib/documents/classifier'
 
 export interface PersistSnapshotInput {
   userId: string
@@ -21,6 +21,7 @@ interface InsertDocumentInput {
   structuredData: SanitizedMedicalDocument
   processingStatus: 'completed' | 'failed'
   processingError?: string | null
+  category?: DocumentClassification | null
 }
 
 function sanitizeDate(value: string | undefined | null): string | null {
@@ -30,7 +31,7 @@ function sanitizeDate(value: string | undefined | null): string | null {
 }
 
 async function insertDocument(input: InsertDocumentInput): Promise<string> {
-  const { userId, fileName, structuredData, processingStatus, processingError } = input
+  const { userId, fileName, structuredData, processingStatus, processingError, category } = input
 
   const [doc] = await db
     .insert(documents)
@@ -41,6 +42,7 @@ async function insertDocument(input: InsertDocumentInput): Promise<string> {
       examDate: sanitizeDate(structuredData.examDate),
       extractedAt: new Date(),
       overallSummary: structuredData.overallSummary ?? null,
+      category: category ?? null,
       processingStatus,
       processingError: processingError ?? null,
     })
@@ -55,11 +57,14 @@ export async function persistSnapshot(input: PersistSnapshotInput): Promise<Pers
     ? { ...structuredData, documentType: classifiedDocumentType }
     : structuredData
 
+  const category = classifyDocument(persistedStructuredData)
+
   const documentId = await insertDocument({
     userId,
     fileName,
     structuredData: persistedStructuredData,
     processingStatus: 'completed',
+    category,
   })
 
   try {
