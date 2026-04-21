@@ -2,7 +2,7 @@
 
 > Plataforma de análise de saúde baseada em IA que processa documentos médicos e gera insights personalizados por meio de agentes especializados.
 
-![Version](https://img.shields.io/badge/version-0.6.0-blue)
+![Version](https://img.shields.io/badge/version-0.7.0-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![License](https://img.shields.io/badge/license-private-red)
 
@@ -33,8 +33,11 @@ O SAMI permite que pacientes submetam exames médicos (PDFs e imagens) para extr
 | **Relatório Estruturado** | Markdown com resumo executivo, eixos funcionais, recomendações |
 | **Auth & RBAC** | Roles: `patient`, `doctor`, `admin` via NextAuth v5 |
 | **Multi-Provider AI** | Suporte a Google Gemini, OpenAI e Anthropic via factory `resolveModel` |
+| **Vercel AI Gateway** | Proxy opcional para todos os providers via `AI_GATEWAY_API_KEY`; ativa com zero mudança de código |
+| **Modelos Configuráveis** | `DOCUMENT_EXTRACTION_MODEL`, `SYNTHESIS_MODEL`, `GOOGLE_EMBEDDING_MODEL` configuráveis via env |
 | **Model Config por Agente** | topP, topK, seed, frequencyPenalty, presencePenalty configuráveis por agente via admin |
 | **Output Estruturado** | Agentes podem gerar JSON tipado via `generateObject` + JSON Schema dinâmico |
+| **Prompts Especializados** | Cada agente recebe prompt customizado por especialidade (exercício, nutrição, cardiologia, endocrinologia, neurociência) |
 
 ---
 
@@ -121,17 +124,23 @@ Editar `.env.local`:
 ```env
 DATABASE_URL="postgresql://..."
 GOOGLE_GENERATIVE_AI_API_KEY="..."
-AI_GATEWAY_API_KEY="..."      # opcional: usa Vercel AI Gateway
-AI_GATEWAY_BASE_URL="https://ai-gateway.vercel.sh/v1"
-DOCUMENT_EXTRACTION_MODEL="google/gemini-2.5-flash"
 NEXTAUTH_SECRET="..."        # openssl rand -base64 32
 NEXTAUTH_URL="http://localhost:3000"
 
+# Modelos configuráveis (formato "provider/model")
+DOCUMENT_EXTRACTION_MODEL="google/gemini-2.5-flash"
+SYNTHESIS_MODEL="google/gemini-2.5-flash"
+GOOGLE_EMBEDDING_MODEL="gemini-embedding-001"
+
+# Vercel AI Gateway (opcional — roteia todos os providers pelo gateway)
+AI_GATEWAY_API_KEY="..."
+AI_GATEWAY_BASE_URL="https://ai-gateway.vercel.sh/v1"
+
 # Timeouts do pipeline multi-agente (opcional)
-COMPLETE_ANALYSIS_TIMEOUT_MS="600000"
-FOUNDATION_AGENT_TIMEOUT_MS="600000"
-SPECIALIZED_AGENT_TIMEOUT_MS="600000"
-SYNTHESIS_TIMEOUT_MS="600000"
+COMPLETE_ANALYSIS_TIMEOUT_MS="600000"   # 10 min (hard limit)
+FOUNDATION_AGENT_TIMEOUT_MS="180000"    # 3 min por agente
+SPECIALIZED_AGENT_TIMEOUT_MS="180000"   # 3 min por agente
+SYNTHESIS_TIMEOUT_MS="120000"           # 2 min
 ```
 
 ---
@@ -172,10 +181,12 @@ Proteções implementadas no fluxo:
 
 ### Timeouts atuais
 
-- Workflow completo: `600000ms` (10 minutos)
-- Cada agente foundation: `600000ms` (10 minutos)
-- Cada agente specialized: `600000ms` (10 minutos)
-- Síntese final: `600000ms` (10 minutos)
+- Workflow completo (hard limit): `600000ms` (10 minutos)
+- Cada agente foundation: `180000ms` (3 minutos)
+- Cada agente specialized: `180000ms` (3 minutos)
+- Síntese final: `120000ms` (2 minutos)
+
+Todos os timeouts por fase são independentes e menores que o hard limit, garantindo que o orçamento total não seja consumido em uma única fase.
 
 ---
 
@@ -234,10 +245,10 @@ src/
 │   └── api/                # Route Handlers
 ├── lib/
 │   ├── ai/
-│   │   ├── agents/         # Motor de análise por agente
-│   │   ├── core/           # generateMedicalAnalysis
-│   │   ├── orchestrator/   # complete-analysis (flow completo)
-│   │   └── rag/            # Vector search + context builder
+│   │   ├── agents/         # Motor de análise + prompts especializados por agente
+│   │   ├── core/           # resolveModel, ai-gateway (shared), generateMedicalAnalysis
+│   │   ├── orchestrator/   # complete-analysis, living-analysis, pipeline (shared)
+│   │   └── rag/            # Vector search + context builder + embedding model
 │   ├── auth/               # NextAuth config
 │   ├── db/
 │   │   ├── schema/         # Drizzle schema
@@ -258,6 +269,15 @@ docs/
 ---
 
 ## Changelog
+
+### v0.7.0 — 2026-04-18
+- Vercel AI Gateway: proxy opcional para todos os providers via `AI_GATEWAY_API_KEY`
+- Shared `ai-gateway.ts` module — elimina setup duplicado entre resolve-model e embedding-model
+- Modelos configuráveis via env: `DOCUMENT_EXTRACTION_MODEL`, `SYNTHESIS_MODEL`, `GOOGLE_EMBEDDING_MODEL`
+- Prompts especializados por agente (`prompts.ts`): exercício, nutrição, cardiologia, endocrinologia, neurociência
+- Timeouts por fase corrigidos: foundation/specialized 180s, synthesis 120s (vs hard limit 600s)
+- Acessibilidade: `aria-controls` + painéis sempre montados com `hidden={!open}` no report UI
+- React keys únicos em `ReportView` (`special-` e `structured-` prefixes)
 
 ### v0.6.0 — 2026-04-14
 - Story 9.2: Model Config & Output Schema por agente (modelConfig, outputSchema, outputType)

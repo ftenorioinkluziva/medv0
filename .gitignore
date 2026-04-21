@@ -60,3 +60,10 @@ docs/legacy-knowledge-migration-analysis.md
 
 # Scripts locais (não expor publicamente)
 scripts/*.py
+scripts/rerun-living-analysis.ts
+
+# Arquivos JS temporários de debug
+apply-migration.js
+check-constraint.js
+check-db.js
+test-on-conflict.js
