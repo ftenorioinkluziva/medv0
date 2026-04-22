@@ -20,6 +20,7 @@ function makeDoc(
     examDate: '2026-01-01',
     createdAt: new Date('2026-01-01'),
     processingStatus: 'completed',
+    category: null,
     snapshot: null,
     livingAnalysis: null,
     ...overrides,
