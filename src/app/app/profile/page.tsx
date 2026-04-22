@@ -19,42 +19,28 @@ export default async function ProfilePage() {
             Preencha seus dados de saúde para personalizar as análises.
           </p>
         </div>
-        <Suspense fallback={<SectionSkeleton />}>
-          <BodyCompositionSection userId={session.user.id} />
-        </Suspense>
         <Suspense fallback={<ProfileSkeleton />}>
-          <ProfileDataLoader />
+          <ProfileDataLoader userId={session.user.id} />
         </Suspense>
       </div>
     </main>
   )
 }
 
-async function ProfileDataLoader() {
+async function ProfileDataLoader({ userId }: { userId: string }) {
   const profile = await getMedicalProfile()
-  return <ProfileForm initialData={profile} />
-}
-
-function SectionSkeleton() {
   return (
-    <div className="rounded-xl border border-foreground/10 bg-card p-4 shadow-sm" role="status" aria-label="Carregando composição corporal...">
-      <Skeleton className="h-5 w-44 mb-4" />
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="space-y-1">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-5 w-16" />
-          </div>
-        ))}
-      </div>
-    </div>
+    <ProfileForm initialData={profile}>
+      <BodyCompositionSection userId={userId} />
+    </ProfileForm>
   )
 }
 
 function ProfileSkeleton() {
   return (
     <div className="space-y-4" aria-label="Carregando perfil..." role="status">
-      {Array.from({ length: 6 }).map((_, i) => (
+      <Skeleton className="h-9 w-full rounded-lg" />
+      {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="space-y-1.5">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-10 w-full rounded-md" />

@@ -1,0 +1,65 @@
+schema: 1
+story: '15.3'
+story_title: 'UI: Perfil em 4 Abas'
+linear_id: BLA-93
+gate: PASS
+status_reason: >
+  All ACs met. AC2 fix confirmed: BodyCompositionSection now renders all
+  23 InBody fields (7 main + 6 advanced InBody + 10 segmental). 4-tab layout
+  implemented in profile-form.tsx. muscleMass added to medical-profile actions.
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-04-22T12:00:00.000Z'
+
+quality_score: 85
+
+evidence:
+  typescript: PASS
+  lint: PASS
+  tests_reviewed: 0
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: >
+      Auth checked in both getMedicalProfile() and upsertMedicalProfile().
+      Drizzle ORM eliminates SQL injection risk. No sensitive data leaked.
+  performance:
+    status: PASS
+    notes: >
+      keepMounted preserves tab DOM — no remount cost on tab switch.
+      getLatestBodyComposition() fetches limit 2 records, efficient.
+      Collapsible sections (details/summary) defer rendering of segmental data.
+  reliability:
+    status: PASS
+    notes: >
+      Scroll persistence via scrollRef + requestAnimationFrame is solid.
+      Toast auto-dismisses after 3.5s. useTransition prevents double-submit.
+      IndicatorCell returns null on null value — no render errors.
+  maintainability:
+    status: PASS
+    notes: >
+      Components are well-scoped. tabs.tsx uses @base-ui/react (functionally
+      identical to Shadcn UI Tabs). selectCls/textareaCls duplication minor,
+      registered as future refactor candidate.
+
+top_issues: []
+
+recommendations:
+  future:
+    - action: >
+        Extract selectCls/textareaCls from profile-form.tsx into shared CSS
+        or a small utility — currently duplicated across profile form files.
+      refs:
+        - src/app/app/profile/profile-form.tsx
+    - action: >
+        Add unit test coverage for BodyCompositionSection rendering with
+        full InBody data fixture (segmental section visibility, null handling).
+      refs:
+        - src/app/app/profile/body-composition-section.tsx
+
+waiver:
+  active: false
