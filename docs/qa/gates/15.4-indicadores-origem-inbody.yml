@@ -1,0 +1,43 @@
+schema: 1
+story: '15.4'
+story_title: 'Indicadores de Origem e Data InBody'
+linear_id: BLA-94
+gate: PASS
+status_reason: 'All 4 ACs implemented correctly. Single presentational file, no schema/auth/API changes. Staleness logic boundary-correct, --warning token verified, date normalization consistent.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-04-22T00:00:00.000Z'
+
+top_issues: []
+waiver:
+  active: false
+
+quality_score: 95
+expires: '2026-05-06T00:00:00.000Z'
+
+evidence:
+  tests_reviewed: 0
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Server component, read-only, no user input, no dynamic queries'
+  performance:
+    status: PASS
+    notes: 'Promise.all parallel fetch inherited from BLA-93, no regression'
+  reliability:
+    status: PASS
+    notes: 'Null checks present (empty state), conditional rendering throughout'
+  maintainability:
+    status: PASS
+    notes: 'Clean single-file implementation, self-documenting, data-testid markers present'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Extract formatDate() to shared lib/utils/date.ts'
+      refs: ['src/app/app/profile/body-composition-section.tsx']
+      severity: low
