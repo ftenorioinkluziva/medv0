@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -22,8 +22,28 @@ type Props = {
   evolutionMap: Record<string, ParameterEvolution[]>
 }
 
+const FILTER_VALUES: FilterValue[] = ['all', 'bioimpedance', 'blood_test', 'other']
+const SESSION_KEY = 'history.activeFilter'
+
 export function HistoryList({ documents, evolutionMap }: Props) {
-  const [activeFilter, setActiveFilter] = useState<FilterValue>('all')
+  const [activeFilter, setActiveFilter] = useState<FilterValue>(() => {
+    try {
+      const stored = sessionStorage.getItem(SESSION_KEY)
+      return stored && FILTER_VALUES.includes(stored as FilterValue)
+        ? (stored as FilterValue)
+        : 'all'
+    } catch {
+      return 'all'
+    }
+  })
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(SESSION_KEY, activeFilter)
+    } catch {
+      // sessionStorage unavailable — silently ignore
+    }
+  }, [activeFilter])
 
   if (documents.length === 0) {
     return (
@@ -53,15 +73,15 @@ export function HistoryList({ documents, evolutionMap }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <div
-        role="tablist"
+        role="group"
         aria-label="Filtrar por categoria"
         className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar"
       >
         {FILTERS.map(({ value, label }) => (
           <button
             key={value}
-            role="tab"
-            aria-selected={activeFilter === value}
+            type="button"
+            aria-pressed={activeFilter === value}
             onClick={() => setActiveFilter(value)}
             className={cn(
               'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap',

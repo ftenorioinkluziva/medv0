@@ -34,8 +34,7 @@ const CATEGORY_CONFIG: Record<
 }
 
 function CategoryBadge({ category }: { category: DocumentCategory | null }) {
-  if (!category) return null
-  const { label, Icon, className } = CATEGORY_CONFIG[category]
+  const { label, Icon, className } = category ? CATEGORY_CONFIG[category] : CATEGORY_CONFIG.other
   return (
     <span
       className={cn(
@@ -73,13 +72,15 @@ function EvolutionItem({ ev }: { ev: ParameterEvolution }) {
 }
 
 export function ExamCard({ doc, evolution }: Props) {
-  const examDateLabel = doc.examDate
-    ? new Date(doc.examDate).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
-    : null
+  const examDateLabel = (() => {
+    if (!doc.examDate) return null
+    const [year, month, day] = doc.examDate.split('-').map(Number)
+    return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+  })()
   const uploadDateLabel = doc.createdAt.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'short',
