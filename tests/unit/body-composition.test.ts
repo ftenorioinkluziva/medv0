@@ -99,6 +99,101 @@ describe('extractBodyCompositionMetrics', () => {
     expect(result.measuredAt).toBe('2026-03-15')
   })
 
+  it('extrai campos avançados InBody (AC1)', () => {
+    // #given
+    const doc = makeDoc([
+      { name: 'Água Corporal Total', value: '33.5 L' },
+      { name: 'Proteína', value: '11.2 kg' },
+      { name: 'Relação Cintura-Quadril', value: '0.850' },
+      { name: 'Grau de Obesidade', value: '15.3%' },
+      { name: 'Pontuação InBody', value: '78' },
+      { name: 'Peso Ideal', value: '68.0 kg' },
+    ])
+
+    // #when
+    const result = extractBodyCompositionMetrics(doc)
+
+    // #then
+    expect(result.bodyWaterLiters).toBe(33.5)
+    expect(result.proteinMass).toBe(11.2)
+    expect(result.waistHipRatio).toBe(0.85)
+    expect(result.obesityDegree).toBe(15.3)
+    expect(result.inbodyScore).toBe(78)
+    expect(result.idealWeight).toBe(68)
+  })
+
+  it('não confunde Água Corporal Total (litros) com Água Corporal (percentual)', () => {
+    // #given
+    const doc = makeDoc([
+      { name: 'Água Corporal Total', value: '33.5 L' },
+      { name: 'Água Corporal', value: '52.3%' },
+    ])
+
+    // #when
+    const result = extractBodyCompositionMetrics(doc)
+
+    // #then
+    expect(result.bodyWaterLiters).toBe(33.5)
+    expect(result.bodyWater).toBe(52.3)
+  })
+
+  it('não confunde Peso Ideal com Peso', () => {
+    // #given
+    const doc = makeDoc([
+      { name: 'Peso Ideal', value: '68.0 kg' },
+      { name: 'Peso', value: '75.0 kg' },
+    ])
+
+    // #when
+    const result = extractBodyCompositionMetrics(doc)
+
+    // #then
+    expect(result.idealWeight).toBe(68)
+    expect(result.weight).toBe(75)
+  })
+
+  it('extrai massa magra segmentar por nome composto (AC2)', () => {
+    // #given
+    const doc = makeDoc([
+      { name: 'Massa Magra Braço Direito', value: '3.5 kg' },
+      { name: 'Massa Magra Braço Esquerdo', value: '3.3 kg' },
+      { name: 'Massa Magra Tronco', value: '26.1 kg' },
+      { name: 'Massa Magra Perna Direita', value: '9.2 kg' },
+      { name: 'Massa Magra Perna Esquerda', value: '9.0 kg' },
+    ])
+
+    // #when
+    const result = extractBodyCompositionMetrics(doc)
+
+    // #then
+    expect(result.leanMassArmRight).toBe(3.5)
+    expect(result.leanMassArmLeft).toBe(3.3)
+    expect(result.leanMassTrunk).toBe(26.1)
+    expect(result.leanMassLegRight).toBe(9.2)
+    expect(result.leanMassLegLeft).toBe(9.0)
+  })
+
+  it('extrai gordura segmentar por nome composto (AC2)', () => {
+    // #given
+    const doc = makeDoc([
+      { name: 'Gordura Braço Direito', value: '0.3 kg' },
+      { name: 'Gordura Braço Esquerdo', value: '0.3 kg' },
+      { name: 'Gordura Tronco', value: '10.5 kg' },
+      { name: 'Gordura Perna Direita', value: '2.1 kg' },
+      { name: 'Gordura Perna Esquerda', value: '2.0 kg' },
+    ])
+
+    // #when
+    const result = extractBodyCompositionMetrics(doc)
+
+    // #then
+    expect(result.fatMassArmRight).toBe(0.3)
+    expect(result.fatMassArmLeft).toBe(0.3)
+    expect(result.fatMassTrunk).toBe(10.5)
+    expect(result.fatMassLegRight).toBe(2.1)
+    expect(result.fatMassLegLeft).toBe(2.0)
+  })
+
   it('retorna objeto vazio quando sem parâmetros reconhecidos', () => {
     // #given
     const doc = makeDoc([{ name: 'Parâmetro Desconhecido', value: 42 }])
