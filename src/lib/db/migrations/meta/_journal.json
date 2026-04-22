@@ -148,6 +148,13 @@
       "when": 1776820000000,
       "tag": "0020_fix_category_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1776820785018,
+      "tag": "0021_majestic_thing",
+      "breakpoints": true
     }
   ]
 }
