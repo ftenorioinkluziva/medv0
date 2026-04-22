@@ -30,7 +30,9 @@ nfr_validation:
   performance:
     status: PASS
     notes: >
-      keepMounted preserves tab DOM — no remount cost on tab switch.
+      TabsContent keepMounted preserves tab DOM — no remount cost on tab switch;
+      inert attribute on inactive panels blocks interaction but NOT form submission (HTML spec).
+      BodyCompositionSection streams independently via inner Suspense — profile form renders immediately.
       getLatestBodyComposition() fetches limit 2 records, efficient.
       Collapsible sections (details/summary) defer rendering of segmental data.
   reliability:

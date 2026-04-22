@@ -210,8 +210,15 @@ export async function BodyCompositionSection({ userId }: Props) {
 
       {/* Segmental Data */}
       {(latest.leanMassArmRight != null ||
+        latest.leanMassArmLeft != null ||
         latest.leanMassTrunk != null ||
-        latest.fatMassTrunk != null) && (
+        latest.leanMassLegRight != null ||
+        latest.leanMassLegLeft != null ||
+        latest.fatMassArmRight != null ||
+        latest.fatMassArmLeft != null ||
+        latest.fatMassTrunk != null ||
+        latest.fatMassLegRight != null ||
+        latest.fatMassLegLeft != null) && (
         <details className="group" data-testid="body-composition-segmental">
           <summary className="cursor-pointer text-xs font-medium text-primary hover:underline list-none flex items-center gap-1 select-none">
             <span className="group-open:hidden">Dados segmentais</span>

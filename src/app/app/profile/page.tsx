@@ -31,8 +31,26 @@ async function ProfileDataLoader({ userId }: { userId: string }) {
   const profile = await getMedicalProfile()
   return (
     <ProfileForm initialData={profile}>
-      <BodyCompositionSection userId={userId} />
+      <Suspense fallback={<BodyCompositionSkeleton />}>
+        <BodyCompositionSection userId={userId} />
+      </Suspense>
     </ProfileForm>
+  )
+}
+
+function BodyCompositionSkeleton() {
+  return (
+    <div className="rounded-xl border border-foreground/10 bg-card p-4 shadow-sm" role="status" aria-label="Carregando composição corporal...">
+      <Skeleton className="h-5 w-44 mb-4" />
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="space-y-1">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 

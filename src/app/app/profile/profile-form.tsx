@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { upsertMedicalProfile } from '@/lib/actions/medical-profile'
 import { AdvancedForm } from './advanced-form'
 import { TagInput } from './tag-input'
@@ -23,10 +23,11 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
   const scrollRef = useRef<Record<string, number>>({})
 
   const [height, setHeight] = useState(initialData?.height ?? 0)
-  const [weight, setWeight] = useState(parseFloat(initialData?.weight ?? '0'))
+  const [weightStr, setWeightStr] = useState(initialData?.weight ?? '')
+  const weightNum = parseFloat(weightStr) || 0
   const bmi =
-    height > 0 && weight > 0
-      ? (weight / Math.pow(height / 100, 2)).toFixed(1)
+    height > 0 && weightNum > 0
+      ? (weightNum / Math.pow(height / 100, 2)).toFixed(1)
       : null
 
   const [activities, setActivities] = useState<ExerciseActivity[]>(
@@ -159,7 +160,7 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
         </TabsList>
 
         {/* Tab 1: Dados básicos, cardiovasculares, histórico médico, composição básica */}
-        <div role="tabpanel" className={activeTab === 'basicos' ? 'space-y-4 mt-4' : 'hidden'}>
+        <TabsContent value="basicos" keepMounted className="space-y-4 mt-4">
           <Card className="p-4 space-y-4">
             <h2 className="font-semibold text-foreground">Dados Básicos</h2>
 
@@ -220,8 +221,8 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
                   required
                   step="0.01"
                   min={1}
-                  value={weight || ''}
-                  onChange={(e) => setWeight(Number(e.target.value))}
+                  value={weightStr}
+                  onChange={(e) => setWeightStr(e.target.value)}
                   placeholder="Ex: 72.5"
                 />
               </div>
@@ -390,15 +391,15 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
               </div>
             </div>
           </Card>
-        </div>
+        </TabsContent>
 
         {/* Tab 2: Composição — display-only InBody data */}
-        <div role="tabpanel" className={activeTab === 'composicao' ? 'mt-4' : 'hidden'}>
+        <TabsContent value="composicao" keepMounted className="mt-4">
           {children}
-        </div>
+        </TabsContent>
 
         {/* Tab 3: Estilo de vida — physical performance + AdvancedForm */}
-        <div role="tabpanel" className={activeTab === 'estilo' ? 'space-y-4 mt-4' : 'hidden'}>
+        <TabsContent value="estilo" keepMounted className="space-y-4 mt-4">
           <Card className="p-4 space-y-4">
             <h2 className="font-semibold text-foreground">Desempenho Físico</h2>
             <p className="text-xs text-muted-foreground">
@@ -463,10 +464,10 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
             onActivitiesChange={setActivities}
             onSupplementationChange={setSupplementation}
           />
-        </div>
+        </TabsContent>
 
         {/* Tab 4: Biomarcadores — display-only latestBiomarkers jsonb */}
-        <div role="tabpanel" className={activeTab === 'biomarcadores' ? 'mt-4' : 'hidden'}>
+        <TabsContent value="biomarcadores" keepMounted className="mt-4">
           <Card className="p-4 space-y-4">
             <h2 className="font-semibold text-foreground">Últimos Biomarcadores</h2>
             {biomarkers && Object.keys(biomarkers).length > 0 ? (
@@ -480,7 +481,11 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
                       {key.replace(/_/g, ' ')}
                     </dt>
                     <dd className="text-sm font-medium text-foreground">
-                      {String(value ?? '—')}
+                      {value == null
+                        ? '—'
+                        : typeof value === 'object'
+                          ? JSON.stringify(value)
+                          : String(value)}
                     </dd>
                   </div>
                 ))}
@@ -491,7 +496,7 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
               </p>
             )}
           </Card>
-        </div>
+        </TabsContent>
       </Tabs>
 
       <Button type="submit" disabled={isPending} className="w-full">
