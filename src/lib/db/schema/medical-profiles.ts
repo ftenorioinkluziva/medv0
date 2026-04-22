@@ -50,6 +50,14 @@ export const medicalProfiles = pgTable('medical_profiles', {
   basalMetabolicRate: integer('basal_metabolic_rate'),
   bodyWaterPercentage: numeric('body_water_percentage', { precision: 5, scale: 2 }),
 
+  // InBody avançado (AC1 — Story 15.1)
+  bodyWaterLiters: numeric('body_water_liters', { precision: 5, scale: 2 }),
+  proteinMass: numeric('protein_mass', { precision: 5, scale: 2 }),
+  waistHipRatio: numeric('waist_hip_ratio', { precision: 4, scale: 3 }),
+  obesityDegree: numeric('obesity_degree', { precision: 5, scale: 2 }),
+  inbodyScore: integer('inbody_score'),
+  idealWeight: numeric('ideal_weight', { precision: 5, scale: 2 }),
+
   // AC1 — Dados avançados: Sono
   sleepHours: numeric('sleep_hours', { precision: 4, scale: 1 }),
   sleepQuality: integer('sleep_quality'), // 1-10
