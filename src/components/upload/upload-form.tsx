@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Camera, FileText, Upload, X } from 'lucide-react'
+import { Camera, Droplets, FileText, Scale, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -15,7 +15,18 @@ import {
   DOCUMENT_UPLOAD_MAX_SIZE_BYTES,
 } from '@/lib/documents/upload-config'
 
-type UploadStep = 'idle' | 'preparing' | 'uploading' | 'extracting' | 'saving' | 'done'
+type UploadStep =
+  | 'idle'
+  | 'preparing'
+  | 'uploading'
+  | 'extracting'
+  | 'saving'
+  | 'categorizing'
+  | 'done'
+
+type DocumentCategory = 'bioimpedance' | 'blood_test' | 'other'
+
+const VALID_CATEGORIES: DocumentCategory[] = ['bioimpedance', 'blood_test', 'other']
 
 const STEP_LABELS: Record<UploadStep, string> = {
   idle: '',
@@ -23,6 +34,7 @@ const STEP_LABELS: Record<UploadStep, string> = {
   uploading: 'Enviando...',
   extracting: 'Extraindo dados...',
   saving: 'Salvando...',
+  categorizing: '',
   done: 'Concluído!',
 }
 
@@ -32,8 +44,19 @@ const STEP_PROGRESS: Record<UploadStep, number> = {
   uploading: 40,
   extracting: 70,
   saving: 90,
+  categorizing: 100,
   done: 100,
 }
+
+const CATEGORY_OPTIONS: {
+  value: DocumentCategory
+  label: string
+  Icon: React.ElementType
+}[] = [
+  { value: 'bioimpedance', label: 'Bioimpedância', Icon: Scale },
+  { value: 'blood_test', label: 'Exames de Sangue', Icon: Droplets },
+  { value: 'other', label: 'Outros', Icon: FileText },
+]
 
 interface FilePreview {
   file: File
@@ -43,6 +66,8 @@ interface FilePreview {
 interface UploadSuccessInfo {
   fileName: string
   type?: 'lab_test' | 'body_composition'
+  documentId?: string
+  category?: DocumentCategory
 }
 
 export function UploadForm() {
@@ -54,6 +79,8 @@ export function UploadForm() {
   const [preview, setPreview] = useState<FilePreview | null>(null)
   const [step, setStep] = useState<UploadStep>('idle')
   const [successInfo, setSuccessInfo] = useState<UploadSuccessInfo | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<DocumentCategory>('other')
+  const [isSavingCategory, setIsSavingCategory] = useState(false)
 
   useEffect(() => {
     return () => {
@@ -88,6 +115,7 @@ export function UploadForm() {
     setStep('idle')
     setPreview(null)
     setSuccessInfo(null)
+    setSelectedCategory('other')
   }
 
   async function handleSubmit() {
@@ -124,16 +152,24 @@ export function UploadForm() {
       const payload = await response.json().catch(() => ({}))
 
       if (!response.ok) {
-        const data = payload
-        throw new Error(data.error ?? 'Erro ao processar arquivo.')
+        throw new Error(payload.error ?? 'Erro ao processar arquivo.')
       }
 
-      setStep('done')
-      setSuccessInfo({
+      const rawCategory = payload.category
+      const validCategory: DocumentCategory = VALID_CATEGORIES.includes(rawCategory)
+        ? (rawCategory as DocumentCategory)
+        : 'other'
+
+      const info: UploadSuccessInfo = {
         fileName: payload.fileName ?? preview.file.name,
         type: payload.type,
-      })
-      toast.success('Exame processado!')
+        documentId: payload.documentId,
+        category: validCategory,
+      }
+
+      setSuccessInfo(info)
+      setSelectedCategory(validCategory)
+      setStep('categorizing')
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
       toast.error((err as Error).message ?? 'Erro inesperado. Tente novamente.')
@@ -143,7 +179,40 @@ export function UploadForm() {
     }
   }
 
-  const isProcessing = step !== 'idle' && step !== 'done'
+  async function handleConfirmCategory() {
+    if (!successInfo?.documentId) {
+      setStep('done')
+      return
+    }
+
+    setIsSavingCategory(true)
+    try {
+      const res = await fetch(`/api/documents/${successInfo.documentId}/category`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: selectedCategory }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? 'Erro ao salvar categoria.')
+      }
+
+      const confirmedType: UploadSuccessInfo['type'] =
+        selectedCategory === 'bioimpedance' ? 'body_composition' : 'lab_test'
+      setSuccessInfo((prev) =>
+        prev ? { ...prev, category: selectedCategory, type: confirmedType } : prev,
+      )
+      toast.success('Exame processado!')
+      setStep('done')
+    } catch (err) {
+      toast.error((err as Error).message ?? 'Erro ao salvar categoria.')
+    } finally {
+      setIsSavingCategory(false)
+    }
+  }
+
+  const isProcessing = step !== 'idle' && step !== 'done' && step !== 'categorizing'
 
   return (
     <div className="flex flex-col gap-4 w-full max-w-sm mx-auto">
@@ -220,7 +289,7 @@ export function UploadForm() {
                   {(preview.file.size / 1024 / 1024).toFixed(1)} MB
                 </p>
               </div>
-              {!isProcessing && (
+              {!isProcessing && step !== 'categorizing' && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -234,41 +303,100 @@ export function UploadForm() {
             </div>
 
             {/* Progresso */}
-            {step !== 'idle' && (
+            {step !== 'idle' && step !== 'categorizing' && step !== 'done' && (
               <div className="flex flex-col gap-1.5">
                 <Progress value={STEP_PROGRESS[step]} className="h-2" />
-                <p className="text-xs text-muted-foreground text-center">
-                  {STEP_LABELS[step]}
-                </p>
+                <p className="text-xs text-muted-foreground text-center">{STEP_LABELS[step]}</p>
               </div>
             )}
 
-            {/* Ações */}
-            <div className="flex gap-2">
-              {isProcessing ? (
-                <Button variant="outline" className="flex-1" onClick={handleCancel}>
-                  Cancelar
+            {/* Seletor de categoria */}
+            {step === 'categorizing' && (
+              <div className="flex flex-col gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Tipo de documento</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Classificado automaticamente. Ajuste se necessário.
+                  </p>
+                </div>
+                <div role="radiogroup" aria-label="Tipo de documento" className="flex flex-col gap-2">
+                  {CATEGORY_OPTIONS.map(({ value, label, Icon }, index) => (
+                    <button
+                      key={value}
+                      id={`category-option-${value}`}
+                      type="button"
+                      role="radio"
+                      aria-checked={selectedCategory === value}
+                      tabIndex={selectedCategory === value ? 0 : -1}
+                      onClick={() => setSelectedCategory(value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setSelectedCategory(value)
+                        } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                          e.preventDefault()
+                          const next = CATEGORY_OPTIONS[(index + 1) % CATEGORY_OPTIONS.length]
+                          setSelectedCategory(next.value)
+                          document.getElementById(`category-option-${next.value}`)?.focus()
+                        } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                          e.preventDefault()
+                          const prev =
+                            CATEGORY_OPTIONS[
+                              (index - 1 + CATEGORY_OPTIONS.length) % CATEGORY_OPTIONS.length
+                            ]
+                          setSelectedCategory(prev.value)
+                          document.getElementById(`category-option-${prev.value}`)?.focus()
+                        }
+                      }}
+                      className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                        selectedCategory === value
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-border bg-background text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" />
+                      <span className="text-sm font-medium">{label}</span>
+                    </button>
+                  ))}
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={handleConfirmCategory}
+                  disabled={isSavingCategory}
+                >
+                  {isSavingCategory ? 'Salvando...' : 'Confirmar'}
                 </Button>
-              ) : step === 'done' ? (
-                <>
-                  <Button variant="outline" className="flex-1" onClick={handleCancel}>
-                    Enviar outro
-                  </Button>
-                  <Button className="flex-1" onClick={() => router.push('/app/dashboard')}>
-                    Ir para dashboard
-                  </Button>
-                </>
-              ) : (
-                <>
+              </div>
+            )}
+
+            {/* Ações padrão */}
+            {step !== 'categorizing' && (
+              <div className="flex gap-2">
+                {isProcessing ? (
                   <Button variant="outline" className="flex-1" onClick={handleCancel}>
                     Cancelar
                   </Button>
-                  <Button className="flex-1" onClick={handleSubmit}>
-                    Enviar exame
-                  </Button>
-                </>
-              )}
-            </div>
+                ) : step === 'done' ? (
+                  <>
+                    <Button variant="outline" className="flex-1" onClick={handleCancel}>
+                      Enviar outro
+                    </Button>
+                    <Button className="flex-1" onClick={() => router.push('/app/dashboard')}>
+                      Ir para dashboard
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" className="flex-1" onClick={handleCancel}>
+                      Cancelar
+                    </Button>
+                    <Button className="flex-1" onClick={handleSubmit}>
+                      Enviar exame
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
 
             {step === 'done' && successInfo && (
               <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300">

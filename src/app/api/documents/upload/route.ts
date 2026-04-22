@@ -1,4 +1,4 @@
-import { after, NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { eq, and, ne } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
@@ -6,8 +6,6 @@ import { documents } from '@/lib/db/schema'
 import { extractMedicalDocument, hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
 import { persistFailedDocument, persistSnapshot } from '@/lib/documents/persistence'
 import { classifyDocument } from '@/lib/documents/classifier'
-import { updateBodyComposition } from '@/lib/documents/body-composition'
-import { triggerLivingAnalysis } from '@/lib/ai/orchestrator/trigger-living-analysis'
 import {
   DOCUMENT_UPLOAD_ACCEPTED_TYPES,
   DOCUMENT_UPLOAD_MAX_SIZE_BYTES,
@@ -96,38 +94,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       classifiedDocumentType: classification,
     })
 
-    // Internal: bioimpedance | blood_test | other
-    // Response type: 'body_composition' triggers body comp UI; 'lab_test' (including 'other') triggers living analysis
-    if (classification === 'bioimpedance') {
-      const userId = session.user.id
-      after(async () => {
-        try {
-          await updateBodyComposition(userId, documentId, structuredData)
-        } catch (error) {
-          console.error('[documents/upload] update body composition failed:', error)
-        }
-      })
+    const type = classification === 'bioimpedance' ? 'body_composition' : 'lab_test'
 
-      return NextResponse.json({
-        type: 'body_composition',
-        success: true,
-        documentId,
-        fileName: file.name,
+    return NextResponse.json({
+      type,
+      success: true,
+      documentId,
+      fileName: file.name,
+      category: classification,
+      ...(classification === 'bioimpedance' && {
         message: 'Dados de composição corporal detectados',
-      })
-    }
-
-    // 'lab_test' and 'other' both route to living analysis
-    const userId = session.user.id
-    after(async () => {
-      try {
-        await triggerLivingAnalysis(userId, documentId)
-      } catch (error) {
-        console.error('[documents/upload] trigger living analysis failed:', error)
-      }
+      }),
     })
-
-    return NextResponse.json({ type: 'lab_test', success: true, documentId, fileName: file.name })
   } catch (error) {
     console.error('[documents/upload] failed:', error)
     return NextResponse.json({ error: 'Erro interno ao salvar o exame.' }, { status: 500 })
