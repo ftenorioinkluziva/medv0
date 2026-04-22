@@ -180,6 +180,75 @@ export async function BodyCompositionSection({ userId }: Props) {
         />
       </div>
 
+      {/* InBody Advanced Fields */}
+      {(latest.proteinMass != null ||
+        latest.bodyWaterLiters != null ||
+        latest.waistHipRatio != null ||
+        latest.obesityDegree != null ||
+        latest.inbodyScore != null ||
+        latest.idealWeight != null) && (
+        <details className="group" data-testid="body-composition-inbody">
+          <summary className="cursor-pointer text-xs font-medium text-primary hover:underline list-none flex items-center gap-1 select-none">
+            <span className="group-open:hidden">InBody avançado</span>
+            <span className="hidden group-open:inline">Ocultar InBody avançado</span>
+          </summary>
+          <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
+            <IndicatorCell label="Proteína" value={latest.proteinMass} unit="kg" delta={null} />
+            <IndicatorCell label="Água Total" value={latest.bodyWaterLiters} unit="L" delta={null} />
+            <IndicatorCell label="Cintura-Quadril" value={latest.waistHipRatio} unit="" delta={null} />
+            <IndicatorCell label="Grau de Obesidade" value={latest.obesityDegree} unit="%" delta={null} />
+            {latest.inbodyScore != null && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground">Pontuação InBody</span>
+                <span className="text-sm font-semibold text-foreground">{latest.inbodyScore}</span>
+              </div>
+            )}
+            <IndicatorCell label="Peso Ideal" value={latest.idealWeight} unit="kg" delta={null} />
+          </div>
+        </details>
+      )}
+
+      {/* Segmental Data */}
+      {(latest.leanMassArmRight != null ||
+        latest.leanMassArmLeft != null ||
+        latest.leanMassTrunk != null ||
+        latest.leanMassLegRight != null ||
+        latest.leanMassLegLeft != null ||
+        latest.fatMassArmRight != null ||
+        latest.fatMassArmLeft != null ||
+        latest.fatMassTrunk != null ||
+        latest.fatMassLegRight != null ||
+        latest.fatMassLegLeft != null) && (
+        <details className="group" data-testid="body-composition-segmental">
+          <summary className="cursor-pointer text-xs font-medium text-primary hover:underline list-none flex items-center gap-1 select-none">
+            <span className="group-open:hidden">Dados segmentais</span>
+            <span className="hidden group-open:inline">Ocultar dados segmentais</span>
+          </summary>
+          <div className="mt-3 space-y-3">
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">Massa Magra Segmental (kg)</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                <IndicatorCell label="Braço Dir." value={latest.leanMassArmRight} unit="kg" delta={null} />
+                <IndicatorCell label="Braço Esq." value={latest.leanMassArmLeft} unit="kg" delta={null} />
+                <IndicatorCell label="Tronco" value={latest.leanMassTrunk} unit="kg" delta={null} />
+                <IndicatorCell label="Perna Dir." value={latest.leanMassLegRight} unit="kg" delta={null} />
+                <IndicatorCell label="Perna Esq." value={latest.leanMassLegLeft} unit="kg" delta={null} />
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">Massa Gorda Segmental (kg)</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                <IndicatorCell label="Braço Dir." value={latest.fatMassArmRight} unit="kg" delta={null} />
+                <IndicatorCell label="Braço Esq." value={latest.fatMassArmLeft} unit="kg" delta={null} />
+                <IndicatorCell label="Tronco" value={latest.fatMassTrunk} unit="kg" delta={null} />
+                <IndicatorCell label="Perna Dir." value={latest.fatMassLegRight} unit="kg" delta={null} />
+                <IndicatorCell label="Perna Esq." value={latest.fatMassLegLeft} unit="kg" delta={null} />
+              </div>
+            </div>
+          </div>
+        </details>
+      )}
+
       {history.length > 1 && (
         <details className="group" data-testid="body-composition-history">
           <summary className="cursor-pointer text-xs font-medium text-primary hover:underline list-none flex items-center gap-1 select-none">

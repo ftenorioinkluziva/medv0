@@ -38,6 +38,7 @@ const MedicalProfileSchema = z.object({
   sitToStandTime: z.string().optional(),
   vo2Max: z.string().optional(),
   bodyFatPercentage: z.string().optional(),
+  muscleMass: z.string().optional(),
   co2ToleranceTest: z.string().optional(),
 
   // Avançados: Sono
@@ -116,6 +117,7 @@ export async function upsertMedicalProfile(
     sitToStandTime: v.sitToStandTime,
     vo2Max: v.vo2Max,
     bodyFatPercentage: v.bodyFatPercentage,
+    muscleMass: v.muscleMass,
     co2ToleranceTest: v.co2ToleranceTest,
     sleepHours: v.sleepHours,
     sleepQuality: v.sleepQuality,
