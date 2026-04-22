@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Activity, ArrowRight } from 'lucide-react'
+import { Activity, AlertTriangle, ArrowRight } from 'lucide-react'
 import {
   getLatestBodyComposition,
   getBodyCompositionHistory,
@@ -102,14 +102,27 @@ export async function BodyCompositionSection({ userId }: Props) {
           <Activity className="size-4 text-muted-foreground" aria-hidden="true" />
           <h2 className="font-semibold text-foreground">Composição Corporal</h2>
         </div>
-        <p className="text-sm text-muted-foreground text-center py-6">
+        <p className="text-sm text-muted-foreground text-center py-4">
           Envie um exame de bioimpedância para ver seus dados de composição corporal
         </p>
+        <div className="flex justify-center">
+          <Link
+            href="/app/upload"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Enviar Bioimpedância
+          </Link>
+        </div>
       </div>
     )
   }
 
   const isSingleRecord = history.length === 1
+
+  const daysSince = Math.floor(
+    (Date.now() - new Date(latest.measuredAt + 'T00:00:00').getTime()) / 86_400_000
+  )
+  const isStale = daysSince > 30
 
   return (
     <div
@@ -120,11 +133,24 @@ export async function BodyCompositionSection({ userId }: Props) {
         <div className="flex items-center gap-2">
           <Activity className="size-4 text-muted-foreground" aria-hidden="true" />
           <h2 className="font-semibold text-foreground">Composição Corporal</h2>
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+            ⚡ InBody
+          </span>
         </div>
         <span className="text-xs text-muted-foreground shrink-0">
-          {formatDate(latest.measuredAt)}
+          Última medição: {formatDate(latest.measuredAt)}
         </span>
       </div>
+
+      {isStale && (
+        <div className="flex items-center gap-2 rounded-md bg-warning/10 px-3 py-2 text-warning text-xs">
+          <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />
+          <span>Dados desatualizados — </span>
+          <Link href="/app/upload" className="underline font-medium">
+            faça nova bioimpedância
+          </Link>
+        </div>
+      )}
 
       {isSingleRecord && (
         <p className="text-xs text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
