@@ -3,6 +3,8 @@ import { db } from '@/lib/db/client'
 import { documents, snapshots, livingAnalyses, livingAnalysisVersions } from '@/lib/db/schema'
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
 
+export type DocumentCategory = 'bioimpedance' | 'blood_test' | 'other'
+
 export type DocumentWithHistory = {
   id: string
   documentType: string
@@ -10,6 +12,7 @@ export type DocumentWithHistory = {
   examDate: string | null
   createdAt: Date
   processingStatus: string
+  category: DocumentCategory | null
   snapshot: { structuredData: SanitizedMedicalDocument } | null
   livingAnalysis: { id: string; status: string; updatedAt: Date; currentTriggerDocumentId: string | null } | null
 }
@@ -46,6 +49,7 @@ export async function getDocumentsWithHistory(userId: string): Promise<DocumentW
       examDate: documents.examDate,
       createdAt: documents.createdAt,
       processingStatus: documents.processingStatus,
+      category: documents.category,
       snapshotStructuredData: snapshots.structuredData,
     })
     .from(documents)
@@ -60,6 +64,7 @@ export async function getDocumentsWithHistory(userId: string): Promise<DocumentW
     examDate: row.examDate,
     createdAt: row.createdAt,
     processingStatus: row.processingStatus,
+    category: (row.category as DocumentCategory | null) ?? null,
     snapshot: row.snapshotStructuredData
       ? { structuredData: row.snapshotStructuredData }
       : null,
