@@ -21,7 +21,6 @@ type UploadStep =
   | 'uploading'
   | 'extracting'
   | 'saving'
-  | 'categorizing'
   | 'done'
 
 type DocumentCategory = 'bioimpedance' | 'blood_test' | 'other'
@@ -34,7 +33,6 @@ const STEP_LABELS: Record<UploadStep, string> = {
   uploading: 'Enviando...',
   extracting: 'Extraindo dados...',
   saving: 'Salvando...',
-  categorizing: '',
   done: 'Concluído!',
 }
 
@@ -44,7 +42,6 @@ const STEP_PROGRESS: Record<UploadStep, number> = {
   uploading: 40,
   extracting: 70,
   saving: 90,
-  categorizing: 100,
   done: 100,
 }
 
@@ -79,8 +76,7 @@ export function UploadForm() {
   const [preview, setPreview] = useState<FilePreview | null>(null)
   const [step, setStep] = useState<UploadStep>('idle')
   const [successInfo, setSuccessInfo] = useState<UploadSuccessInfo | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState<DocumentCategory>('other')
-  const [isSavingCategory, setIsSavingCategory] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | ''>('')
 
   useEffect(() => {
     return () => {
@@ -115,11 +111,15 @@ export function UploadForm() {
     setStep('idle')
     setPreview(null)
     setSuccessInfo(null)
-    setSelectedCategory('other')
+    setSelectedCategory('')
   }
 
   async function handleSubmit() {
     if (!preview) return
+    if (!selectedCategory) {
+      toast.error('Selecione o tipo de documento antes de enviar.')
+      return
+    }
 
     const controller = new AbortController()
     abortControllerRef.current = controller
@@ -135,6 +135,7 @@ export function UploadForm() {
 
       const formData = new FormData()
       formData.append('file', preview.file)
+      formData.append('category', selectedCategory)
 
       setStep('uploading')
       const response = await fetch('/api/documents/upload', {
@@ -169,7 +170,7 @@ export function UploadForm() {
 
       setSuccessInfo(info)
       setSelectedCategory(validCategory)
-      setStep('categorizing')
+      setStep('done')
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
       toast.error((err as Error).message ?? 'Erro inesperado. Tente novamente.')
@@ -179,87 +180,111 @@ export function UploadForm() {
     }
   }
 
-  async function handleConfirmCategory() {
-    if (!successInfo?.documentId) {
-      setStep('done')
-      return
-    }
-
-    setIsSavingCategory(true)
-    try {
-      const res = await fetch(`/api/documents/${successInfo.documentId}/category`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: selectedCategory }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error ?? 'Erro ao salvar categoria.')
-      }
-
-      const confirmedType: UploadSuccessInfo['type'] =
-        selectedCategory === 'bioimpedance' ? 'body_composition' : 'lab_test'
-      setSuccessInfo((prev) =>
-        prev ? { ...prev, category: selectedCategory, type: confirmedType } : prev,
-      )
-      toast.success('Exame processado!')
-      setStep('done')
-    } catch (err) {
-      toast.error((err as Error).message ?? 'Erro ao salvar categoria.')
-    } finally {
-      setIsSavingCategory(false)
-    }
+  function renderCategoryPicker() {
+    return (
+      <div className="flex flex-col gap-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">Tipo de documento</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Escolha o tipo antes de enviar o arquivo.
+          </p>
+        </div>
+        <div role="radiogroup" aria-label="Tipo de documento" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {CATEGORY_OPTIONS.map(({ value, label, Icon }, index) => (
+            <button
+              key={value}
+              id={`category-option-${value}`}
+              type="button"
+              role="radio"
+              aria-checked={selectedCategory === value}
+              tabIndex={selectedCategory === value ? 0 : -1}
+              onClick={() => setSelectedCategory(value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setSelectedCategory(value)
+                } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                  e.preventDefault()
+                  const next = CATEGORY_OPTIONS[(index + 1) % CATEGORY_OPTIONS.length]
+                  setSelectedCategory(next.value)
+                  document.getElementById(`category-option-${next.value}`)?.focus()
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                  e.preventDefault()
+                  const prev =
+                    CATEGORY_OPTIONS[
+                      (index - 1 + CATEGORY_OPTIONS.length) % CATEGORY_OPTIONS.length
+                    ]
+                  setSelectedCategory(prev.value)
+                  document.getElementById(`category-option-${prev.value}`)?.focus()
+                }
+              }}
+              className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                selectedCategory === value
+                  ? 'border-primary bg-primary/5 text-primary'
+                  : 'border-border bg-background text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              <span className="text-sm font-medium">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
   }
 
-  const isProcessing = step !== 'idle' && step !== 'done' && step !== 'categorizing'
+  const isProcessing = step !== 'idle' && step !== 'done'
 
   return (
     <div className="flex flex-col gap-4 w-full max-w-sm mx-auto">
       {/* Seleção de arquivo */}
       {!preview && (
-        <div className="flex flex-col gap-3">
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleInputChange}
-            aria-label="Tirar foto com câmera"
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,application/pdf"
-            className="hidden"
-            onChange={handleInputChange}
-            aria-label="Selecionar arquivo"
-          />
+        <div className="flex flex-col gap-6">
+          {renderCategoryPicker()}
 
-          <Button
-            variant="default"
-            size="lg"
-            className="w-full gap-2"
-            onClick={() => cameraInputRef.current?.click()}
-          >
-            <Camera className="h-5 w-5" />
-            Tirar foto do exame
-          </Button>
+          <div className="flex flex-col gap-3">
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleInputChange}
+              aria-label="Tirar foto com câmera"
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,application/pdf"
+              className="hidden"
+              onChange={handleInputChange}
+              aria-label="Selecionar arquivo"
+            />
 
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-full gap-2"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="h-5 w-5" />
-            Selecionar arquivo
-          </Button>
+            <Button
+              variant="default"
+              size="lg"
+              className="w-full gap-2"
+              onClick={() => cameraInputRef.current?.click()}
+            >
+              <Camera className="h-5 w-5" />
+              Tirar foto do exame
+            </Button>
 
-          <p className="text-xs text-muted-foreground text-center">
-            PDF, JPG ou PNG — máximo 20MB
-          </p>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full gap-2"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-5 w-5" />
+              Selecionar arquivo
+            </Button>
+
+            <p className="text-xs text-muted-foreground text-center">
+              PDF, JPG ou PNG — máximo 20MB
+            </p>
+          </div>
         </div>
       )}
 
@@ -289,7 +314,7 @@ export function UploadForm() {
                   {(preview.file.size / 1024 / 1024).toFixed(1)} MB
                 </p>
               </div>
-              {!isProcessing && step !== 'categorizing' && (
+              {!isProcessing && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -302,101 +327,46 @@ export function UploadForm() {
               )}
             </div>
 
+            {renderCategoryPicker()}
+
             {/* Progresso */}
-            {step !== 'idle' && step !== 'categorizing' && step !== 'done' && (
+            {step !== 'idle' && step !== 'done' && (
               <div className="flex flex-col gap-1.5">
                 <Progress value={STEP_PROGRESS[step]} className="h-2" />
                 <p className="text-xs text-muted-foreground text-center">{STEP_LABELS[step]}</p>
               </div>
             )}
 
-            {/* Seletor de categoria */}
-            {step === 'categorizing' && (
-              <div className="flex flex-col gap-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Tipo de documento</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Classificado automaticamente. Ajuste se necessário.
-                  </p>
-                </div>
-                <div role="radiogroup" aria-label="Tipo de documento" className="flex flex-col gap-2">
-                  {CATEGORY_OPTIONS.map(({ value, label, Icon }, index) => (
-                    <button
-                      key={value}
-                      id={`category-option-${value}`}
-                      type="button"
-                      role="radio"
-                      aria-checked={selectedCategory === value}
-                      tabIndex={selectedCategory === value ? 0 : -1}
-                      onClick={() => setSelectedCategory(value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          setSelectedCategory(value)
-                        } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-                          e.preventDefault()
-                          const next = CATEGORY_OPTIONS[(index + 1) % CATEGORY_OPTIONS.length]
-                          setSelectedCategory(next.value)
-                          document.getElementById(`category-option-${next.value}`)?.focus()
-                        } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-                          e.preventDefault()
-                          const prev =
-                            CATEGORY_OPTIONS[
-                              (index - 1 + CATEGORY_OPTIONS.length) % CATEGORY_OPTIONS.length
-                            ]
-                          setSelectedCategory(prev.value)
-                          document.getElementById(`category-option-${prev.value}`)?.focus()
-                        }
-                      }}
-                      className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                        selectedCategory === value
-                          ? 'border-primary bg-primary/5 text-primary'
-                          : 'border-border bg-background text-foreground hover:bg-muted/50'
-                      }`}
-                    >
-                      <Icon className="h-5 w-5 shrink-0" />
-                      <span className="text-sm font-medium">{label}</span>
-                    </button>
-                  ))}
-                </div>
-                <Button
-                  className="w-full"
-                  onClick={handleConfirmCategory}
-                  disabled={isSavingCategory}
-                >
-                  {isSavingCategory ? 'Salvando...' : 'Confirmar'}
-                </Button>
-              </div>
-            )}
-
             {/* Ações padrão */}
-            {step !== 'categorizing' && (
-              <div className="flex gap-2">
-                {isProcessing ? (
+            <div className="flex gap-2">
+              {isProcessing ? (
+                <Button variant="outline" className="flex-1" onClick={handleCancel}>
+                  Cancelar
+                </Button>
+              ) : step === 'done' ? (
+                <>
+                  <Button variant="outline" className="flex-1" onClick={handleCancel}>
+                    Enviar outro
+                  </Button>
+                  <Button className="flex-1" onClick={() => router.push('/app/dashboard')}>
+                    Ir para dashboard
+                  </Button>
+                </>
+              ) : (
+                <>
                   <Button variant="outline" className="flex-1" onClick={handleCancel}>
                     Cancelar
                   </Button>
-                ) : step === 'done' ? (
-                  <>
-                    <Button variant="outline" className="flex-1" onClick={handleCancel}>
-                      Enviar outro
-                    </Button>
-                    <Button className="flex-1" onClick={() => router.push('/app/dashboard')}>
-                      Ir para dashboard
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button variant="outline" className="flex-1" onClick={handleCancel}>
-                      Cancelar
-                    </Button>
-                    <Button className="flex-1" onClick={handleSubmit}>
-                      Enviar exame
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
+                  <Button
+                    className="flex-1"
+                    onClick={handleSubmit}
+                    disabled={!selectedCategory}
+                  >
+                    Enviar exame
+                  </Button>
+                </>
+              )}
+            </div>
 
             {step === 'done' && successInfo && (
               <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300">

@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { eq, and, ne } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { documents } from '@/lib/db/schema'
+import { documents, snapshots } from '@/lib/db/schema'
 import { extractMedicalDocument, hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
 import { persistFailedDocument, persistSnapshot } from '@/lib/documents/persistence'
 import { classifyDocument } from '@/lib/documents/classifier'
+import { updateBodyComposition } from '@/lib/documents/body-composition'
+import { triggerLivingAnalysis } from '@/lib/ai/orchestrator/trigger-living-analysis'
 import {
   DOCUMENT_UPLOAD_ACCEPTED_TYPES,
   DOCUMENT_UPLOAD_MAX_SIZE_BYTES,
@@ -14,6 +16,9 @@ import {
 export const maxDuration = 90
 
 const EXTRACTION_FAILED_MESSAGE = 'Não foi possível extrair dados utilizáveis do documento enviado.'
+const VALID_CATEGORIES = ['bioimpedance', 'blood_test', 'other'] as const
+
+type DocumentCategory = (typeof VALID_CATEGORIES)[number]
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await auth()
@@ -32,6 +37,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'Nenhum arquivo enviado.' }, { status: 400 })
   }
+
+  const rawCategory = formData.get('category')
+  const selectedCategory =
+    typeof rawCategory === 'string' && VALID_CATEGORIES.includes(rawCategory as DocumentCategory)
+      ? (rawCategory as DocumentCategory)
+      : null
 
   if (!DOCUMENT_UPLOAD_ACCEPTED_TYPES.includes(file.type)) {
     return NextResponse.json(
@@ -85,24 +96,45 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    const classification = classifyDocument(structuredData)
+    const category =
+      selectedCategory ?? classifyDocument(structuredData)
 
     const { documentId } = await persistSnapshot({
       userId: session.user.id,
       fileName: file.name,
       structuredData,
-      classifiedDocumentType: classification,
+      classifiedDocumentType: category,
     })
 
-    const type = classification === 'bioimpedance' ? 'body_composition' : 'lab_test'
+    const type = category === 'bioimpedance' ? 'body_composition' : 'lab_test'
+
+    after(async () => {
+      try {
+        if (category === 'bioimpedance') {
+          const [snapshot] = await db
+            .select({ structuredData: snapshots.structuredData })
+            .from(snapshots)
+            .where(eq(snapshots.documentId, documentId))
+            .limit(1)
+
+          if (snapshot) {
+            await updateBodyComposition(session.user.id, documentId, snapshot.structuredData)
+          }
+        } else {
+          await triggerLivingAnalysis(session.user.id, documentId)
+        }
+      } catch (error) {
+        console.error('[documents/upload] post-upload processing failed:', error)
+      }
+    })
 
     return NextResponse.json({
       type,
       success: true,
       documentId,
       fileName: file.name,
-      category: classification,
-      ...(classification === 'bioimpedance' && {
+      category,
+      ...(category === 'bioimpedance' && {
         message: 'Dados de composição corporal detectados',
       }),
     })

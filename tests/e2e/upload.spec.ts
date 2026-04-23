@@ -84,6 +84,19 @@ test.describe('Upload — Authenticated', () => {
       await expect(page.getByRole('button', { name: 'Enviar exame' })).toBeVisible()
     })
 
+    test('T-UP-05A — selecting a file shows document type picker before upload', async ({ page }) => {
+      // #given
+      const fileInput = page.locator('input[aria-label="Selecionar arquivo"]')
+
+      // #when
+      await fileInput.setInputFiles(path.join(FIXTURES_DIR, 'sample-exam.pdf'))
+
+      // #then
+      await expect(page.getByRole('radio', { name: 'Bioimpedância' })).toBeVisible()
+      await expect(page.getByRole('radio', { name: 'Exames de Sangue' })).toBeVisible()
+      await expect(page.getByRole('radio', { name: 'Outros' })).toBeVisible()
+    })
+
     test('T-UP-06 — cancel removes preview and returns to file selection', async ({ page }) => {
       // #given
       const fileInput = page.locator('input[aria-label="Selecionar arquivo"]')
@@ -116,6 +129,7 @@ test.describe('Upload — Authenticated', () => {
       )
 
       // #when
+      await page.getByRole('radio', { name: 'Outros' }).click()
       await page.getByRole('button', { name: 'Enviar exame' }).click()
 
       // #then
@@ -145,6 +159,7 @@ test.describe('Upload — Authenticated', () => {
       await fileInput.setInputFiles(path.join(FIXTURES_DIR, 'sample-exam.jpg'))
 
       // #when
+      await page.getByRole('radio', { name: 'Outros' }).click()
       await page.getByRole('button', { name: 'Enviar exame' }).click()
 
       // #then
@@ -172,6 +187,7 @@ test.describe('Upload — Authenticated', () => {
       await fileInput.setInputFiles(path.join(FIXTURES_DIR, 'sample-exam.jpg'))
 
       // #when
+      await page.getByRole('radio', { name: 'Outros' }).click()
       await page.getByRole('button', { name: 'Enviar exame' }).click()
 
       // #then
@@ -193,6 +209,7 @@ test.describe('Upload — Authenticated', () => {
       await fileInput.setInputFiles(path.join(FIXTURES_DIR, 'sample-exam.jpg'))
 
       // #when
+      await page.getByRole('radio', { name: 'Outros' }).click()
       await page.getByRole('button', { name: 'Enviar exame' }).click()
 
       // #then
@@ -215,6 +232,7 @@ test.describe('Upload — Authenticated', () => {
 
       const fileInput = page.locator('input[aria-label="Selecionar arquivo"]')
       await fileInput.setInputFiles(path.join(FIXTURES_DIR, 'sample-exam.jpg'))
+      await page.getByRole('radio', { name: 'Outros' }).click()
       await page.getByRole('button', { name: 'Enviar exame' }).click()
       await expect(page.getByText('Concluído!')).toBeVisible({ timeout: 10_000 })
 

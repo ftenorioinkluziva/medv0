@@ -9,6 +9,7 @@ const mockClassifyDocument = vi.fn()
 const mockPersistSnapshot = vi.fn()
 const mockPersistFailedDocument = vi.fn()
 const mockTriggerLivingAnalysis = vi.fn()
+const mockUpdateBodyComposition = vi.fn()
 
 vi.mock('@/lib/auth/config', () => ({
   auth: mockAuth,
@@ -27,6 +28,10 @@ vi.mock('@/lib/db/schema', () => ({
     originalFileName: 'documents.originalFileName',
     processingStatus: 'documents.processingStatus',
   },
+  snapshots: {
+    structuredData: 'snapshots.structuredData',
+    documentId: 'snapshots.documentId',
+  },
 }))
 
 vi.mock('@/lib/documents/extractor', () => ({
@@ -41,6 +46,10 @@ vi.mock('@/lib/documents/classifier', () => ({
 vi.mock('@/lib/documents/persistence', () => ({
   persistSnapshot: mockPersistSnapshot,
   persistFailedDocument: mockPersistFailedDocument,
+}))
+
+vi.mock('@/lib/documents/body-composition', () => ({
+  updateBodyComposition: mockUpdateBodyComposition,
 }))
 
 vi.mock('@/lib/ai/orchestrator/trigger-living-analysis', () => ({
@@ -82,9 +91,12 @@ const USABLE_STRUCTURED_DATA = {
   ],
 }
 
-function makeUploadRequest(fileName = 'exame.pdf') {
+function makeUploadRequest(fileName = 'exame.pdf', category?: string) {
   const formData = new FormData()
   formData.append('file', new File(['fake'], fileName, { type: 'application/pdf' }))
+  if (category) {
+    formData.append('category', category)
+  }
   return new NextRequest('http://localhost/api/documents/upload', {
     method: 'POST',
     body: formData,
@@ -121,7 +133,7 @@ describe('POST /api/documents/upload', () => {
     expect(mockTriggerLivingAnalysis).not.toHaveBeenCalled()
   })
 
-  it('classifica como blood_test: retorna type=lab_test e category sem disparar análise', async () => {
+  it('classifica como blood_test: retorna type=lab_test e dispara análise imediatamente', async () => {
     // #given
     mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
     mockHasUsableMedicalDocumentData.mockReturnValue(true)
@@ -132,7 +144,7 @@ describe('POST /api/documents/upload', () => {
     const response = await POST(makeUploadRequest('hemograma.pdf'))
     const json = await response.json()
 
-    // #then — análise só dispara após confirmação da categoria (PATCH /category)
+    // #then — análise disparada após upload
     expect(response.status).toBe(200)
     expect(json.type).toBe('lab_test')
     expect(json.documentId).toBe('doc-lab-1')
@@ -140,10 +152,31 @@ describe('POST /api/documents/upload', () => {
     expect(mockPersistSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ classifiedDocumentType: 'blood_test' }),
     )
-    expect(mockTriggerLivingAnalysis).not.toHaveBeenCalled()
+    expect(mockTriggerLivingAnalysis).toHaveBeenCalledOnce()
+    expect(mockUpdateBodyComposition).not.toHaveBeenCalled()
   })
 
-  it('classifica como other: retorna type=lab_test e category sem disparar análise', async () => {
+  it('usa o tipo selecionado enviado pelo formulário e dispara análise de laboratório', async () => {
+    // #given
+    mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
+    mockHasUsableMedicalDocumentData.mockReturnValue(true)
+    mockPersistSnapshot.mockResolvedValue({ documentId: 'doc-custom-1' })
+
+    // #when
+    const response = await POST(makeUploadRequest('hemograma.pdf', 'blood_test'))
+    const json = await response.json()
+
+    // #then
+    expect(response.status).toBe(200)
+    expect(json.category).toBe('blood_test')
+    expect(mockPersistSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ classifiedDocumentType: 'blood_test' }),
+    )
+    expect(mockTriggerLivingAnalysis).toHaveBeenCalledOnce()
+    expect(mockUpdateBodyComposition).not.toHaveBeenCalled()
+  })
+
+  it('classifica como other: retorna type=lab_test e dispara análise imediatamente', async () => {
     // #given
     mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
     mockHasUsableMedicalDocumentData.mockReturnValue(true)
@@ -154,7 +187,7 @@ describe('POST /api/documents/upload', () => {
     const response = await POST(makeUploadRequest('desconhecido.pdf'))
     const json = await response.json()
 
-    // #then — análise só dispara após confirmação da categoria (PATCH /category)
+    // #then — análise disparada após upload
     expect(response.status).toBe(200)
     expect(json.type).toBe('lab_test')
     expect(json.documentId).toBe('doc-other-1')
@@ -162,15 +195,19 @@ describe('POST /api/documents/upload', () => {
     expect(mockPersistSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ classifiedDocumentType: 'other' }),
     )
-    expect(mockTriggerLivingAnalysis).not.toHaveBeenCalled()
+    expect(mockTriggerLivingAnalysis).toHaveBeenCalledOnce()
+    expect(mockUpdateBodyComposition).not.toHaveBeenCalled()
   })
 
-  it('classifica como bioimpedance: não dispara análise e retorna mensagem diferenciada', async () => {
+  it('classifica como bioimpedance: retorna type=body_composition e atualiza composição corporal', async () => {
     // #given
     mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
     mockHasUsableMedicalDocumentData.mockReturnValue(true)
     mockClassifyDocument.mockReturnValue('bioimpedance')
     mockPersistSnapshot.mockResolvedValue({ documentId: 'doc-bio-1' })
+    mockSelect
+      .mockReturnValueOnce(makeSelectChain([]) as never)
+      .mockReturnValueOnce(makeSelectChain([{ structuredData: USABLE_STRUCTURED_DATA }]) as never)
 
     // #when
     const response = await POST(makeUploadRequest('bioimpedancia.pdf'))
@@ -186,6 +223,7 @@ describe('POST /api/documents/upload', () => {
     expect(mockPersistSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ classifiedDocumentType: 'bioimpedance' }),
     )
+    expect(mockUpdateBodyComposition).toHaveBeenCalledOnce()
     expect(mockTriggerLivingAnalysis).not.toHaveBeenCalled()
   })
 })

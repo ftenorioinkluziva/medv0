@@ -7,6 +7,10 @@
         "/^gh pr view 30 --json title,body,state,headRefName$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^pnpm vitest run tests/unit/upload-route\\.test\\.ts tests/unit/dashboard-content\\.test\\.ts$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }
