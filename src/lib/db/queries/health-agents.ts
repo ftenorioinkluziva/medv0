@@ -4,7 +4,7 @@ import { healthAgents, type HealthAgent } from '@/lib/db/schema'
 import type { PaginatedResult } from './users'
 
 export async function getActiveAgentsByRole(
-  role: 'foundation' | 'specialized' | 'none',
+  role: 'foundation' | 'specialized' | 'none' | 'product_generator',
 ): Promise<HealthAgent[]> {
   return db
     .select()

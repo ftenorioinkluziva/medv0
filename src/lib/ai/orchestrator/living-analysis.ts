@@ -5,6 +5,7 @@ import {
   analyses,
   livingAnalyses,
   livingAnalysisVersions,
+  generatedProducts,
 } from '@/lib/db/schema'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 import { analyzeWithAgent } from '@/lib/ai/agents/analyze'
@@ -54,6 +55,15 @@ Biomarcadores fora do ideal funcional, agrupados por sistema (Metabólico/Cardio
 
 const DISCLAIMER_TEXT =
   'Esta análise é gerada por IA para fins educacionais e NÃO substitui consulta médica profissional. Consulte sempre um médico qualificado.'
+
+const PRODUCT_GENERATOR_PROMPT = `Com base nas análises foundation e especializadas fornecidas, e no perfil clínico do paciente, gere o produto de saúde estruturado conforme o output_schema definido para este agente.
+
+Considere:
+- Análises foundation: visão sistêmica integrada do estado de saúde
+- Análises especializadas: insights por especialidade (nutrição, exercício, cardiologia, etc.)
+- Perfil clínico: dados biométricos, condições médicas, medicamentos, alergias, objetivos
+
+Responda EXCLUSIVAMENTE no formato JSON do output_schema. Não inclua texto fora do JSON.`
 
 function truncateText(value: string, maxChars: number): string {
   if (value.length <= maxChars) return value
@@ -218,6 +228,96 @@ export async function runLivingAnalysis(
 
     agentOutputs.push(...specializedPhase.allOutputs)
 
+    // Phase 3: Product Generators (parallel, non-blocking — failures don't affect report)
+    const productAgents = await getActiveAgentsByRole('product_generator')
+    if (productAgents.length > 0 && specializedPhase.completedOutputs.length > 0) {
+      const consolidatedContext = [
+        ...foundationPhase.completedOutputs.map((o) => `### ${o.agentName} (foundation)\n${o.content}`),
+        ...specializedPhase.completedOutputs.map((o) => `### ${o.agentName} (specialized)\n${o.content}`),
+      ].join('\n\n')
+
+      await Promise.allSettled(
+        productAgents.map(async (agent) => {
+          const [productRow] = await db
+            .insert(generatedProducts)
+            .values({
+              userId,
+              livingAnalysisVersionId: versionId,
+              agentId: agent.id,
+              productType: resolveProductType(agent.name),
+              status: 'processing',
+            })
+            .returning({ id: generatedProducts.id })
+
+          const productId = productRow?.id
+          if (!productId) return
+
+          const productTimeoutMs = readTimeoutMs('PRODUCT_GENERATOR_TIMEOUT_MS', 120_000)
+          const remainingMs = Math.max(0, globalDeadline - Date.now())
+          const timeoutMs = Math.min(productTimeoutMs, remainingMs)
+
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+          try {
+            const result = await analyzeWithAgent(
+              agent,
+              PRODUCT_GENERATOR_PROMPT,
+              {
+                snapshotContext,
+                medicalProfileContext,
+                foundationContext: consolidatedContext,
+              },
+              controller.signal,
+            )
+            clearTimeout(timeoutId)
+
+            if (result.status === 'completed' && result.content) {
+              let parsedContent: unknown
+              try {
+                parsedContent = JSON.parse(result.content)
+              } catch {
+                parsedContent = null
+              }
+
+              await db
+                .update(generatedProducts)
+                .set({
+                  content: parsedContent as Record<string, unknown>,
+                  status: parsedContent ? 'completed' : 'failed',
+                  errorMessage: parsedContent ? null : 'Invalid JSON output from agent',
+                  tokensUsed: result.tokensUsed,
+                  durationMs: result.durationMs,
+                  updatedAt: new Date(),
+                })
+                .where(eq(generatedProducts.id, productId))
+            } else {
+              await db
+                .update(generatedProducts)
+                .set({
+                  status: 'failed',
+                  errorMessage: result.errorMessage ?? `Agent status: ${result.status}`,
+                  tokensUsed: result.tokensUsed,
+                  durationMs: result.durationMs,
+                  updatedAt: new Date(),
+                })
+                .where(eq(generatedProducts.id, productId))
+            }
+          } catch (err) {
+            clearTimeout(timeoutId)
+            await db
+              .update(generatedProducts)
+              .set({
+                status: 'failed',
+                errorMessage: err instanceof Error ? err.message : String(err),
+                updatedAt: new Date(),
+              })
+              .where(eq(generatedProducts.id, productId))
+          }
+        }),
+      )
+    }
+
     if (foundationPhase.completedOutputs.length === 0) {
       throw new Error('No completed foundation output to build user-facing report')
     }
@@ -284,4 +384,12 @@ export async function runLivingAnalysis(
     console.error('[living-analysis] Error:', error)
     throw error
   }
+}
+
+function resolveProductType(agentName: string): string {
+  const lower = agentName.toLowerCase()
+  if (lower.includes('suplementa')) return 'supplementation'
+  if (lower.includes('alimentar') || lower.includes('meal')) return 'meals'
+  if (lower.includes('treino') || lower.includes('workout')) return 'workout'
+  return 'other'
 }

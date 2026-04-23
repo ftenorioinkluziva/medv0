@@ -22,6 +22,7 @@ export const analysisRoleEnum = pgEnum('analysis_role', [
   'foundation',
   'specialized',
   'none',
+  'product_generator',
 ])
 
 export const healthAgents = pgTable('health_agents', {

@@ -3,11 +3,14 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardContent } from './dashboard-content'
+import { getDashboardData } from '@/lib/db/queries/dashboard'
 import { getDocumentsWithHistory } from '@/lib/db/queries/history'
 import { getLatestBodyComposition } from '@/lib/db/queries/body-composition'
+import { getLatestProductsSummary } from '@/lib/db/queries/generated-products'
 import { computeEvolution } from '@/lib/history/evolution'
 import type { DocumentWithHistory } from '@/lib/db/queries/history'
 import type { ParameterEvolution } from '@/lib/history/evolution'
+import type { DashboardProfile, DashboardDocument, DashboardAnalysis } from '@/lib/db/queries/dashboard'
 
 export type HistoryEntry = {
   doc: DocumentWithHistory
@@ -22,11 +25,23 @@ export type BodyCompositionSummary = {
   bodyFatDelta: string | null
 }
 
+export type ProductSummaryItem = {
+  productType: string
+  createdAt: Date
+  status: string
+}
+
 export type DashboardData = {
   userName: string
+  // E12 — new sections
+  profile: DashboardProfile | null
+  recentDocs: DashboardDocument[]
+  livingAnalysis: DashboardAnalysis | null
+  // legacy — kept for existing components
   historyEntries: HistoryEntry[]
   latestDocumentId: string | null
   bodyComposition: BodyCompositionSummary | null
+  productsSummary: ProductSummaryItem[]
 }
 
 export default async function DashboardPage() {
@@ -47,12 +62,13 @@ export default async function DashboardPage() {
 }
 
 async function DashboardDataLoader({ userId, userName }: { userId: string; userName: string }) {
-  const [allDocs, bodyCompResult] = await Promise.all([
+  const [e12Data, allDocs, bodyCompResult, productsSummary] = await Promise.all([
+    getDashboardData(userId),
     getDocumentsWithHistory(userId),
     getLatestBodyComposition(userId),
+    getLatestProductsSummary(userId),
   ])
 
-  // Filtra apenas documentos do tipo 'lab_report' para análise
   const labReportDocs = allDocs.filter((doc) => doc.documentType === 'lab_report')
 
   const historyEntries: HistoryEntry[] = allDocs.slice(0, 5).map((doc, i) => {
@@ -60,7 +76,6 @@ async function DashboardDataLoader({ userId, userName }: { userId: string; userN
     return { doc, evolution: computeEvolution(doc, samePrevious) }
   })
 
-  // latestDocumentId só considera lab_report
   const latestDocumentId = labReportDocs[0]?.id ?? null
 
   const bodyComposition: BodyCompositionSummary | null = bodyCompResult.latest
@@ -74,25 +89,28 @@ async function DashboardDataLoader({ userId, userName }: { userId: string; userN
     : null
 
   return (
-    <DashboardContent data={{ userName, historyEntries, latestDocumentId, bodyComposition }} />
+    <DashboardContent
+      data={{
+        userName,
+        profile: e12Data.profile,
+        recentDocs: e12Data.recentDocs,
+        livingAnalysis: e12Data.livingAnalysis,
+        historyEntries,
+        latestDocumentId,
+        bodyComposition,
+        productsSummary,
+      }}
+    />
   )
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-5 p-4 md:p-6" aria-label="Carregando dashboard..." role="status">
-      <div className="rounded-2xl border border-foreground/10 bg-card p-5 space-y-3">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-72" />
-        <div className="flex gap-2 pt-1">
-          <Skeleton className="h-10 w-32 rounded-lg" />
-          <Skeleton className="h-10 w-36 rounded-lg" />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Skeleton className="h-64 rounded-xl" />
-        <Skeleton className="h-64 rounded-xl" />
-      </div>
+    <div className="space-y-4 p-4" aria-label="Carregando dashboard..." role="status">
+      <Skeleton className="h-28 rounded-2xl" />
+      <Skeleton className="h-40 rounded-2xl" />
+      <Skeleton className="h-48 rounded-2xl" />
+      <Skeleton className="h-32 rounded-2xl" />
     </div>
   )
 }

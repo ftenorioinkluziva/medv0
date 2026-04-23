@@ -1,6 +1,13 @@
 import { db } from '@/lib/db/client'
 import { healthAgents } from '@/lib/db/schema'
-import { AGENT_NAME_WORKOUT, AGENT_NAME_NUTRITION, AGENT_NAME_SUPPLEMENT } from '@/lib/ai/agents/names'
+import {
+  AGENT_NAME_WORKOUT,
+  AGENT_NAME_NUTRITION,
+  AGENT_NAME_SUPPLEMENT,
+  AGENT_NAME_PRODUCT_WORKOUT,
+  AGENT_NAME_PRODUCT_MEALS,
+  AGENT_NAME_PRODUCT_SUPPLEMENT,
+} from '@/lib/ai/agents/names'
 
 const MEDICINA_INTEGRATIVA_PROMPT = `Você é **Medicina Integrativa**, um agente de IA especializado em Saúde Integrativa e Holística. Sua missão é fornecer análises aprofundadas e educacionais sobre saúde, conectando corpo, mente e estilo de vida para promover um bem-estar otimizado. Você opera com base em uma filosofia que busca identificar e tratar as causas-raiz dos desequilíbrios, em vez de apenas gerenciar sintomas.
 
@@ -412,6 +419,145 @@ Especialista em cardiologia funcional e preventiva. Você interpreta o perfil ca
 
 **NÃO PODE fazer:** Diagnosticar cardiopatias, interpretar exames de imagem, prescrever medicamentos cardiovasculares, substituir avaliação cardiológica.`
 
+const PRODUCT_SUPPLEMENTATION_SCHEMA = {
+  type: 'object',
+  required: ['overview', 'supplements'],
+  properties: {
+    overview: { type: 'string' },
+    supplements: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['name', 'dosage', 'timing', 'purpose'],
+        properties: {
+          name: { type: 'string' },
+          dosage: { type: 'string' },
+          timing: { type: 'string' },
+          purpose: { type: 'string' },
+          duration: { type: 'string' },
+        },
+      },
+    },
+    hormonalSupport: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['hormone', 'strategy', 'monitoring'],
+        properties: {
+          hormone: { type: 'string' },
+          strategy: { type: 'string' },
+          monitoring: { type: 'string' },
+        },
+      },
+    },
+    nextExamRecommendations: { type: 'array', items: { type: 'string' } },
+  },
+}
+
+const PRODUCT_MEALS_SCHEMA = {
+  type: 'object',
+  required: ['overview', 'weekly_plan', 'daily_calories_avg'],
+  properties: {
+    overview: { type: 'string' },
+    daily_calories_avg: { type: 'string' },
+    weekly_plan: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['day', 'meals'],
+        properties: {
+          day: { type: 'string' },
+          meals: {
+            type: 'object',
+            properties: {
+              breakfast: { $ref: '#/definitions/meal' },
+              morning_snack: { $ref: '#/definitions/meal' },
+              lunch: { $ref: '#/definitions/meal' },
+              afternoon_snack: { $ref: '#/definitions/meal' },
+              pre_workout: { $ref: '#/definitions/meal' },
+              post_workout: { $ref: '#/definitions/meal' },
+              dinner: { $ref: '#/definitions/meal' },
+              supper: { $ref: '#/definitions/meal' },
+            },
+          },
+        },
+      },
+    },
+  },
+  definitions: {
+    meal: {
+      type: 'object',
+      required: ['name', 'ingredients', 'instructions', 'calories'],
+      properties: {
+        name: { type: 'string' },
+        calories: { type: 'string' },
+        ingredients: { type: 'array', items: { type: 'string' } },
+        instructions: { type: 'string' },
+        macros: {
+          type: 'object',
+          properties: {
+            protein: { type: 'string' },
+            carbs: { type: 'string' },
+            fats: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+}
+
+const PRODUCT_WORKOUT_SCHEMA = {
+  type: 'object',
+  required: ['overview', 'workouts'],
+  properties: {
+    overview: { type: 'string' },
+    weeklyGoal: { type: 'string' },
+    restDays: { type: 'array', items: { type: 'string' } },
+    progressionTips: { type: 'array', items: { type: 'string' } },
+    workouts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['day', 'type', 'duration', 'exercises'],
+        properties: {
+          day: { type: 'string' },
+          type: { type: 'string' },
+          duration: { type: 'string' },
+          intensity: { type: 'string' },
+          warmup: { type: 'string' },
+          cooldown: { type: 'string' },
+          exercises: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['name'],
+              properties: {
+                name: { type: 'string' },
+                sets: { type: 'string' },
+                reps: { type: 'string' },
+                duration: { type: 'string' },
+                notes: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}
+
+const PRODUCT_SUPPLEMENT_PROMPT = `Você é um especialista em suplementação esportiva e terapêutica. Com base nas análises médicas e de composição corporal fornecidas, gere um plano de suplementação personalizado e seguro. Considere interações medicamentosas, deficiências identificadas nos exames e objetivos do paciente. SEMPRE inclua a ressalva: "Consulte seu médico antes de iniciar qualquer suplementação."
+
+Responda EXCLUSIVAMENTE no formato JSON definido no output_schema. Não inclua texto fora do JSON.`
+
+const PRODUCT_MEALS_PROMPT = `Você é um nutricionista especializado em periodização nutricional. Com base no perfil metabólico (TMB, composição corporal) e nos objetivos identificados nas análises, gere um plano alimentar semanal detalhado. Calcule macros e calorias respeitando as necessidades energéticas do paciente.
+
+Responda EXCLUSIVAMENTE no formato JSON definido no output_schema. Não inclua texto fora do JSON.`
+
+const PRODUCT_WORKOUT_PROMPT = `Você é um personal trainer especializado em periodização de treinos baseada em dados fisiológicos. Com base na composição corporal segmentar, capacidade cardiorrespiratória e objetivos identificados nas análises, gere um plano de treino semanal. Respeite limitações físicas descritas no perfil.
+
+Responda EXCLUSIVAMENTE no formato JSON definido no output_schema. Não inclua texto fora do JSON.`
+
 export async function seedHealthAgents() {
   const agents = [
     {
@@ -491,6 +637,39 @@ export async function seedHealthAgents() {
       outputType: 'structured',
       outputSchema: SUPPLEMENT_PLAN_SCHEMA,
       sortOrder: 12,
+    },
+    {
+      name: AGENT_NAME_PRODUCT_SUPPLEMENT,
+      specialty: 'Suplementação esportiva e terapêutica',
+      description:
+        'Gera plano de suplementação estruturado com base nas análises foundation + specialized. Produto E13.',
+      systemPrompt: PRODUCT_SUPPLEMENT_PROMPT,
+      analysisRole: 'product_generator' as const,
+      outputType: 'structured',
+      outputSchema: PRODUCT_SUPPLEMENTATION_SCHEMA,
+      sortOrder: 20,
+    },
+    {
+      name: AGENT_NAME_PRODUCT_MEALS,
+      specialty: 'Periodização nutricional e planejamento alimentar',
+      description:
+        'Gera plano alimentar semanal detalhado com base no perfil metabólico e análises. Produto E13.',
+      systemPrompt: PRODUCT_MEALS_PROMPT,
+      analysisRole: 'product_generator' as const,
+      outputType: 'structured',
+      outputSchema: PRODUCT_MEALS_SCHEMA,
+      sortOrder: 21,
+    },
+    {
+      name: AGENT_NAME_PRODUCT_WORKOUT,
+      specialty: 'Periodização de treinos baseada em dados fisiológicos',
+      description:
+        'Gera plano de treino semanal baseado em composição corporal segmentar e capacidade cardiorrespiratória. Produto E13.',
+      systemPrompt: PRODUCT_WORKOUT_PROMPT,
+      analysisRole: 'product_generator' as const,
+      outputType: 'structured',
+      outputSchema: PRODUCT_WORKOUT_SCHEMA,
+      sortOrder: 22,
     },
   ]
 
