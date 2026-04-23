@@ -1,6 +1,20 @@
+import { Suspense, lazy } from 'react'
 import { auth } from '@/lib/auth/config'
 import { redirect } from 'next/navigation'
-import { UploadForm } from '@/components/upload/upload-form'
+import { Skeleton } from '@/components/ui/skeleton'
+
+const UploadForm = lazy(() => import('@/components/upload/upload-form').then(mod => ({ default: mod.UploadForm })))
+
+function UploadSkeleton() {
+  return (
+    <div className="w-full max-w-sm mx-auto space-y-4">
+      <Skeleton className="h-12 w-full rounded-lg" />
+      <Skeleton className="h-12 w-full rounded-lg" />
+      <Skeleton className="h-32 w-full rounded-lg" />
+      <Skeleton className="h-12 w-full rounded-lg" />
+    </div>
+  )
+}
 
 export default async function UploadPage() {
   const session = await auth()
@@ -14,7 +28,9 @@ export default async function UploadPage() {
         <p className="text-sm text-muted-foreground mb-6">
           Foto ou arquivo PDF — processado em segurança e nunca armazenado.
         </p>
-        <UploadForm />
+        <Suspense fallback={<UploadSkeleton />}>
+          <UploadForm />
+        </Suspense>
       </div>
     </main>
   )

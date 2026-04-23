@@ -1,5 +1,5 @@
 import { after, NextRequest, NextResponse } from 'next/server'
-import { eq, and, ne } from 'drizzle-orm'
+import { eq, and, ne, count, gte } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import { documents, snapshots } from '@/lib/db/schema'
@@ -17,13 +17,63 @@ export const maxDuration = 90
 
 const EXTRACTION_FAILED_MESSAGE = 'Não foi possível extrair dados utilizáveis do documento enviado.'
 const VALID_CATEGORIES = ['bioimpedance', 'blood_test', 'other'] as const
+const UPLOAD_RATE_LIMIT = 10 // uploads por hora
+const UPLOAD_RATE_WINDOW_MS = 60 * 60 * 1000 // 1 hora
 
 type DocumentCategory = (typeof VALID_CATEGORIES)[number]
+
+async function checkRateLimit(userId: string): Promise<{ allowed: boolean; retryAfterSeconds?: number }> {
+  const now = new Date()
+  const windowStart = new Date(now.getTime() - UPLOAD_RATE_WINDOW_MS)
+
+  const result = await db
+    .select({ uploadCount: count() })
+    .from(documents)
+    .where(and(eq(documents.userId, userId), gte(documents.createdAt, windowStart)))
+    .limit(1)
+
+  const uploadCount = result[0]?.uploadCount ?? 0
+
+  if (uploadCount >= UPLOAD_RATE_LIMIT) {
+    const oldestUpload = await db
+      .select({ createdAt: documents.createdAt })
+      .from(documents)
+      .where(eq(documents.userId, userId))
+      .orderBy(documents.createdAt)
+      .limit(1)
+
+    if (oldestUpload.length > 0) {
+      const oldestTime = new Date(oldestUpload[0].createdAt).getTime()
+      const nextAllowedTime = oldestTime + UPLOAD_RATE_WINDOW_MS
+      const retryAfterMs = Math.max(0, nextAllowedTime - now.getTime())
+      const retryAfterSeconds = Math.ceil(retryAfterMs / 1000)
+
+      return { allowed: false, retryAfterSeconds }
+    }
+  }
+
+  return { allowed: true }
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+  }
+
+  // Check rate limit
+  const rateLimitCheck = await checkRateLimit(session.user.id)
+  if (!rateLimitCheck.allowed) {
+    const response = NextResponse.json(
+      {
+        error: `Limite de uploads excedido. Aguarde ${rateLimitCheck.retryAfterSeconds} segundos antes de tentar novamente.`,
+      },
+      { status: 429 },
+    )
+    if (rateLimitCheck.retryAfterSeconds) {
+      response.headers.set('Retry-After', rateLimitCheck.retryAfterSeconds.toString())
+    }
+    return response
   }
 
   let formData: FormData

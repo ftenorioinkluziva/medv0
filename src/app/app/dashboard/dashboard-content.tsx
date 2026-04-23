@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import {
-  Upload, ArrowRight, TrendingUp, TrendingDown, Minus, Loader2, LogOut,
+  Upload, ArrowRight, Loader2, LogOut,
   User, FileText, Activity, ShoppingBag, Pill, UtensilsCrossed, Dumbbell,
   ChevronRight,
 } from 'lucide-react'
@@ -12,8 +12,6 @@ import { signOut } from 'next-auth/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { DashboardData, BodyCompositionSummary, ProductSummaryItem } from './page'
-import type { DocumentWithHistory } from '@/lib/db/queries/history'
-import type { ParameterEvolution } from '@/lib/history/evolution'
 import type { DashboardProfile, DashboardDocument, DashboardAnalysis } from '@/lib/db/queries/dashboard'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -390,26 +388,6 @@ function ProductsCard({ products }: { products: ProductSummaryItem[] }) {
         </div>
       </div>
     </section>
-  )
-}
-
-// ─── Legacy: EvolutionBadge (still used below) ───────────────────────────────
-
-function EvolutionBadge({ ev }: { ev: ParameterEvolution }) {
-  if (ev.direction === 'stable') {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-        <Minus className="size-2.5" />
-        {ev.name} estável
-      </span>
-    )
-  }
-  const isUp = ev.direction === 'up'
-  return (
-    <span className={cn('inline-flex items-center gap-1 text-[10px] font-medium', isUp ? 'text-red-500' : 'text-green-500')}>
-      {isUp ? <TrendingUp className="size-2.5" /> : <TrendingDown className="size-2.5" />}
-      {ev.name} {isUp ? '↑' : '↓'} {Math.abs(ev.changePercent).toFixed(1)}%
-    </span>
   )
 }
 

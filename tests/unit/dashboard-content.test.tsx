@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+/// <reference types="vitest/globals" />
 
 import { render, screen } from '@testing-library/react'
 import { ProfileCard, RecentDocsCard } from '@/app/app/dashboard/dashboard-content'
