@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Camera, Droplets, FileText, Scale, Upload, X } from 'lucide-react'
+import { Camera, CheckCircle2, Droplets, FileText, Scale, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -207,44 +207,59 @@ export function UploadForm() {
           </p>
         </div>
         <div role="radiogroup" aria-label="Tipo de documento" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {CATEGORY_OPTIONS.map(({ value, label, Icon }, index) => (
-            <button
-              key={value}
-              id={`category-option-${value}`}
-              type="button"
-              role="radio"
-              aria-checked={selectedCategory === value}
-              tabIndex={selectedCategory === value ? 0 : -1}
-              onClick={() => setSelectedCategory(value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  setSelectedCategory(value)
-                } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-                  e.preventDefault()
-                  const next = CATEGORY_OPTIONS[(index + 1) % CATEGORY_OPTIONS.length]
-                  setSelectedCategory(next.value)
-                  document.getElementById(`category-option-${next.value}`)?.focus()
-                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-                  e.preventDefault()
-                  const prev =
-                    CATEGORY_OPTIONS[
-                      (index - 1 + CATEGORY_OPTIONS.length) % CATEGORY_OPTIONS.length
-                    ]
-                  setSelectedCategory(prev.value)
-                  document.getElementById(`category-option-${prev.value}`)?.focus()
-                }
-              }}
-              className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                selectedCategory === value
-                  ? 'border-primary bg-primary/5 text-primary'
-                  : 'border-border bg-background text-foreground hover:bg-muted/50'
-              }`}
-            >
-              <Icon className="h-5 w-5 shrink-0" />
-              <span className="text-sm font-medium">{label}</span>
-            </button>
-          ))}
+          {CATEGORY_OPTIONS.map(({ value, label, Icon }, index) => {
+            const isSelected = selectedCategory === value
+
+            return (
+              <button
+                key={value}
+                id={`category-option-${value}`}
+                type="button"
+                role="radio"
+                aria-checked={isSelected}
+                tabIndex={isSelected ? 0 : -1}
+                onClick={() => setSelectedCategory(value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setSelectedCategory(value)
+                  } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                    e.preventDefault()
+                    const next = CATEGORY_OPTIONS[(index + 1) % CATEGORY_OPTIONS.length]
+                    setSelectedCategory(next.value)
+                    document.getElementById(`category-option-${next.value}`)?.focus()
+                  } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    e.preventDefault()
+                    const prev =
+                      CATEGORY_OPTIONS[
+                        (index - 1 + CATEGORY_OPTIONS.length) % CATEGORY_OPTIONS.length
+                      ]
+                    setSelectedCategory(prev.value)
+                    document.getElementById(`category-option-${prev.value}`)?.focus()
+                  }
+                }}
+                className={`relative flex items-center gap-3 rounded-lg border px-3 py-3 text-left transition-all ${
+                  isSelected
+                    ? 'border-primary bg-primary/15 text-primary shadow-sm ring-2 ring-primary/35'
+                    : 'border-border bg-background text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                    isSelected
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1 text-sm font-semibold">{label}</span>
+                {isSelected && (
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
     )

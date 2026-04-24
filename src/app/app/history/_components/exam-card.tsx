@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button-variants'
 import { cn } from '@/lib/utils'
 import { Droplets, FileText, Scale, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import type { DocumentWithHistory, DocumentCategory } from '@/lib/db/queries/history'

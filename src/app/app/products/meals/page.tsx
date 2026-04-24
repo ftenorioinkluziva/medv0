@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
-import { ArrowLeft, Clock, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Clock, AlertCircle, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { getLatestProductByType } from '@/lib/db/queries/generated-products'
 import { ProductEmptyState } from '../_components/product-empty-state'
@@ -23,6 +23,16 @@ interface MealsContent {
   daily_calories_avg: string
   weekly_plan: DayPlan[]
 }
+
+const WEEKDAY_ORDER = [
+  'Domingo',
+  'Segunda-feira',
+  'Terça-feira',
+  'Quarta-feira',
+  'Quinta-feira',
+  'Sexta-feira',
+  'Sábado',
+] as const
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : null
@@ -94,6 +104,45 @@ function normalizeMeal(value: unknown): Meal | null {
   }
 }
 
+function formatCalories(value: string): string {
+  if (!value) return ''
+  const normalized = value.trim()
+  return /kcal/i.test(normalized) ? normalized : `${normalized} kcal`
+}
+
+function mealPreview(meal: Meal): string {
+  if (meal.ingredients.length === 0) return meal.instructions
+  return meal.ingredients.slice(0, 2).join(' • ')
+}
+
+function sortDaysFromToday(days: DayPlan[]): DayPlan[] {
+  if (days.length <= 1) return days
+
+  const todayIndex = new Date().getDay()
+  const todayName = WEEKDAY_ORDER[todayIndex]
+  const startIndex = days.findIndex((day) => day.day === todayName)
+
+  if (startIndex === -1) return days
+
+  return [...days.slice(startIndex), ...days.slice(0, startIndex)]
+}
+
+function isTodayDay(dayName: string): boolean {
+  return dayName === WEEKDAY_ORDER[new Date().getDay()]
+}
+
+function getCurrentMealKey(): string | null {
+  const hour = new Date().getHours()
+
+  if (hour < 10) return 'breakfast'
+  if (hour < 12) return 'morning_snack'
+  if (hour < 15) return 'lunch'
+  if (hour < 18) return 'afternoon_snack'
+  if (hour < 22) return 'dinner'
+
+  return 'supper'
+}
+
 const MEAL_LABELS: Record<string, string> = {
   breakfast: 'Café da manhã',
   morning_snack: 'Lanche da manhã',
@@ -130,7 +179,8 @@ export default async function MealsPage() {
   }
 
   const data = product.content as MealsContent
-  const days = data.weekly_plan ?? []
+  const days = sortDaysFromToday(data.weekly_plan ?? [])
+  const currentMealKey = getCurrentMealKey()
 
   return (
     <main className="min-h-screen bg-background">
@@ -151,15 +201,14 @@ export default async function MealsPage() {
         </div>
 
         {(data.overview || data.daily_calories_avg) && (
-          <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+          <div className="rounded-3xl border border-border bg-card p-5 space-y-3 shadow-sm">
+            {data.daily_calories_avg && (
+              <div className="inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                Media diaria: {data.daily_calories_avg}
+              </div>
+            )}
             {data.overview && (
               <p className="text-sm text-muted-foreground leading-relaxed">{data.overview}</p>
-            )}
-            {data.daily_calories_avg && (
-              <p className="text-sm font-medium">
-                Média diária:{' '}
-                <span className="text-emerald-600 dark:text-emerald-400">{data.daily_calories_avg}</span>
-              </p>
             )}
           </div>
         )}
@@ -180,33 +229,99 @@ export default async function MealsPage() {
               const allMeals = [...orderedMeals, ...extraMeals]
 
               return (
-                <div key={dayIdx} className="space-y-2">
-                  <h2 className="text-sm font-semibold text-foreground/70 uppercase tracking-wide">
-                    {day.day}
-                  </h2>
-                  <div className="flex flex-col gap-2">
+                <details
+                  key={dayIdx}
+                  open={isTodayDay(day.day)}
+                  className="group rounded-3xl border border-border bg-card/80 shadow-sm backdrop-blur-sm transition-colors open:border-emerald-500/40 open:bg-card"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/70">
+                          {day.day}
+                        </h2>
+                        {isTodayDay(day.day) && (
+                          <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            Hoje
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {allMeals.length} refeicoes planejadas
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
+                        Dia {dayIdx + 1}
+                      </div>
+                      <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                    </div>
+                  </summary>
+                  <div className="flex flex-col gap-3 border-t border-border/70 p-4 pt-4">
                     {allMeals.map(({ key, meal }) => (
-                      <details key={key} className="rounded-2xl border border-border bg-card group">
-                        <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              {MEAL_LABELS[key] ?? key}
-                            </p>
-                            <p className="text-sm font-semibold leading-tight truncate">{meal.name}</p>
+                      <details
+                        key={key}
+                        open={isTodayDay(day.day) && key === currentMealKey}
+                        className={`group rounded-3xl border bg-card shadow-sm transition-colors open:bg-card/95 ${
+                          isTodayDay(day.day) && key === currentMealKey
+                            ? 'border-violet-500/50 bg-violet-500/[0.06] open:border-violet-500/60'
+                            : 'border-border open:border-emerald-500/30'
+                        }`}
+                      >
+                        <summary className="cursor-pointer list-none p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="min-w-0 flex-1 space-y-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                                  {MEAL_LABELS[key] ?? key}
+                                </span>
+                                {isTodayDay(day.day) && key === currentMealKey && (
+                                  <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold text-violet-600 dark:text-violet-400">
+                                    Agora
+                                  </span>
+                                )}
+                                {meal.calories && (
+                                  <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                                    {formatCalories(meal.calories)}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="space-y-1.5">
+                                <p className="text-sm font-semibold leading-tight text-foreground line-clamp-2">{meal.name}</p>
+                                <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">
+                                  {mealPreview(meal)}
+                                </p>
+                              </div>
+                              {meal.macros && (
+                                <div className="flex flex-wrap gap-2 pt-0.5">
+                                  {meal.macros.protein && (
+                                    <span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] text-blue-600 dark:text-blue-400">
+                                      Prot {meal.macros.protein}
+                                    </span>
+                                  )}
+                                  {meal.macros.carbs && (
+                                    <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-600 dark:text-amber-400">
+                                      Carb {meal.macros.carbs}
+                                    </span>
+                                  )}
+                                  {meal.macros.fats && (
+                                    <span className="rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] text-rose-600 dark:text-rose-400">
+                                      Gord {meal.macros.fats}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <ChevronDown className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
                           </div>
-                          {meal.calories && (
-                            <span className="shrink-0 ml-3 text-[11px] font-medium rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-600 dark:text-emerald-400">
-                              {meal.calories}
-                            </span>
-                          )}
                         </summary>
-                        <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+                        <div className="space-y-4 border-t border-border px-4 pb-4 pt-4">
                           {meal.ingredients?.length > 0 && (
-                            <div>
-                              <p className="text-[11px] font-medium text-muted-foreground mb-1.5">Ingredientes</p>
-                              <ul className="flex flex-wrap gap-1.5">
+                            <div className="rounded-2xl bg-muted/40 p-3">
+                              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Ingredientes</p>
+                              <ul className="space-y-1.5">
                                 {meal.ingredients.map((ing, i) => (
-                                  <li key={i} className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
+                                  <li key={i} className="text-xs leading-relaxed text-foreground/80">
                                     {ing}
                                   </li>
                                 ))}
@@ -214,35 +329,16 @@ export default async function MealsPage() {
                             </div>
                           )}
                           {meal.instructions && (
-                            <div>
-                              <p className="text-[11px] font-medium text-muted-foreground mb-1">Modo de preparo</p>
+                            <div className="rounded-2xl bg-muted/40 p-3">
+                              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Modo de preparo</p>
                               <p className="text-xs text-foreground/80 leading-relaxed">{meal.instructions}</p>
-                            </div>
-                          )}
-                          {meal.macros && (
-                            <div className="flex gap-2 pt-1">
-                              {meal.macros.protein && (
-                                <span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] text-blue-600 dark:text-blue-400">
-                                  P: {meal.macros.protein}
-                                </span>
-                              )}
-                              {meal.macros.carbs && (
-                                <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-600 dark:text-amber-400">
-                                  C: {meal.macros.carbs}
-                                </span>
-                              )}
-                              {meal.macros.fats && (
-                                <span className="rounded-full bg-rose-500/10 px-2.5 py-1 text-[11px] text-rose-600 dark:text-rose-400">
-                                  G: {meal.macros.fats}
-                                </span>
-                              )}
                             </div>
                           )}
                         </div>
                       </details>
                     ))}
                   </div>
-                </div>
+                </details>
               )
             })}
           </section>

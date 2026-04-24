@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
-import { getDocumentsWithHistory } from '@/lib/db/queries/history'
+import { getHistoryData } from '@/lib/db/queries/history'
 import { computeEvolution } from '@/lib/history/evolution'
 import { HistoryList } from './_components/history-list'
 import type { ParameterEvolution } from '@/lib/history/evolution'
@@ -9,7 +9,7 @@ export default async function HistoryPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/auth/login')
 
-  const docs = await getDocumentsWithHistory(session.user.id)
+  const { documents: docs, analyses } = await getHistoryData(session.user.id)
 
   const evolutionMap: Record<string, ParameterEvolution[]> = {}
   for (let i = 0; i < docs.length; i++) {
@@ -22,14 +22,15 @@ export default async function HistoryPage() {
     <main className="min-h-screen bg-background">
       <div className="p-4 space-y-4">
         <div>
-          <h1 className="text-xl font-semibold">Histórico de Exames</h1>
-          {docs.length > 0 && (
+          <h1 className="text-xl font-semibold">Histórico</h1>
+          {(docs.length > 0 || analyses.length > 0) && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              {docs.length} {docs.length === 1 ? 'exame' : 'exames'}
+              {docs.length} {docs.length === 1 ? 'exame' : 'exames'} · {analyses.length}{' '}
+              {analyses.length === 1 ? 'análise' : 'análises'}
             </p>
           )}
         </div>
-        <HistoryList documents={docs} evolutionMap={evolutionMap} />
+        <HistoryList documents={docs} analyses={analyses} evolutionMap={evolutionMap} />
       </div>
     </main>
   )

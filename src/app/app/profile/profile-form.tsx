@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Activity, FlaskConical, HeartPulse, UserRound } from 'lucide-react'
 import { upsertMedicalProfile } from '@/lib/actions/medical-profile'
 import { AdvancedForm } from './advanced-form'
 import { TagInput } from './tag-input'
@@ -144,17 +145,33 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
       )}
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="w-full">
-          <TabsTrigger value="basicos" className="flex-1 text-xs px-1">
+        <TabsList className="grid !h-auto w-full grid-cols-4 gap-1 rounded-xl border border-border/70 bg-card p-1 shadow-sm group-data-horizontal/tabs:!h-auto">
+          <TabsTrigger
+            value="basicos"
+            className="!h-12 flex-col gap-1 rounded-lg px-1 py-1.5 text-[11px] leading-none data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm"
+          >
+            <UserRound className="h-4 w-4" aria-hidden="true" />
             Básicos
           </TabsTrigger>
-          <TabsTrigger value="composicao" className="flex-1 text-xs px-1">
+          <TabsTrigger
+            value="composicao"
+            className="!h-12 flex-col gap-1 rounded-lg px-1 py-1.5 text-[11px] leading-none data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm"
+          >
+            <Activity className="h-4 w-4" aria-hidden="true" />
             Composição
           </TabsTrigger>
-          <TabsTrigger value="estilo" className="flex-1 text-xs px-1">
+          <TabsTrigger
+            value="estilo"
+            className="!h-12 flex-col gap-1 rounded-lg px-1 py-1.5 text-[11px] leading-none data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm"
+          >
+            <HeartPulse className="h-4 w-4" aria-hidden="true" />
             Estilo
           </TabsTrigger>
-          <TabsTrigger value="biomarcadores" className="flex-1 text-xs px-1">
+          <TabsTrigger
+            value="biomarcadores"
+            className="!h-12 flex-col gap-1 rounded-lg px-1 py-1.5 text-[11px] leading-none data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm"
+          >
+            <FlaskConical className="h-4 w-4" aria-hidden="true" />
             Biomarcadores
           </TabsTrigger>
         </TabsList>

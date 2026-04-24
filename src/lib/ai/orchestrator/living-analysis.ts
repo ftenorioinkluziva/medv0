@@ -72,7 +72,9 @@ Requisitos adicionais obrigatórios para plano alimentar:
 - Use obrigatoriamente o campo basalMetabolicRate (TMB) do perfil clínico como base de cálculo calórico diário.
 - Ajuste a meta calórica com base no objetivo de saúde (déficit para perda de gordura, superávit para ganho de massa, manutenção quando aplicável).
 - Reflita os achados clínicos mais relevantes das análises em escolhas alimentares e distribuição de macros.
+- O campo overview deve ser curto e objetivo, com no máximo 300 caracteres.
 - Em cada item de weekly_plan.meals, inclua no mínimo: breakfast, morning_snack, lunch, afternoon_snack e dinner.
+- Cada refeição em weekly_plan.meals deve ser um objeto completo seguindo o output_schema, com no mínimo: name, ingredients, instructions e calories.
 - Não retorne plano parcial com apenas 1-2 refeições por dia.
 `
 
@@ -95,6 +97,62 @@ function parseJsonObject(content: string): Record<string, unknown> | null {
   }
 }
 
+function isValidMealEntry(meal: unknown): boolean {
+  if (!meal || typeof meal !== 'object') return false
+
+  const record = meal as Record<string, unknown>
+
+  return (
+    typeof record.name === 'string'
+    && Array.isArray(record.ingredients)
+    && record.ingredients.every((item) => typeof item === 'string')
+    && typeof record.instructions === 'string'
+    && typeof record.calories === 'string'
+  )
+}
+
+function normalizeMealEntry(meal: unknown): unknown {
+  if (!meal || typeof meal !== 'object') return meal
+
+  const record = meal as Record<string, unknown>
+  const ingredients = record.ingredients
+
+  if (typeof ingredients !== 'string') return meal
+
+  const normalizedIngredients = ingredients
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  return {
+    ...record,
+    ingredients: normalizedIngredients,
+  }
+}
+
+function normalizeMealsProduct(content: Record<string, unknown>): Record<string, unknown> {
+  const weeklyPlan = content.weekly_plan
+  if (!Array.isArray(weeklyPlan)) return content
+
+  return {
+    ...content,
+    weekly_plan: weeklyPlan.map((day) => {
+      if (!day || typeof day !== 'object') return day
+
+      const record = day as Record<string, unknown>
+      const meals = record.meals
+      if (!meals || typeof meals !== 'object') return day
+
+      return {
+        ...record,
+        meals: Object.fromEntries(
+          Object.entries(meals as Record<string, unknown>).map(([key, meal]) => [key, normalizeMealEntry(meal)]),
+        ),
+      }
+    }),
+  }
+}
+
 function isCompleteMealsProduct(content: Record<string, unknown>): boolean {
   const weeklyPlan = content.weekly_plan
   if (!Array.isArray(weeklyPlan) || weeklyPlan.length === 0) return false
@@ -106,7 +164,7 @@ function isCompleteMealsProduct(content: Record<string, unknown>): boolean {
 
     return REQUIRED_DAILY_MEALS.every((mealKey) => {
       const meal = (meals as Record<string, unknown>)[mealKey]
-      return Boolean(meal && typeof meal === 'object')
+      return isValidMealEntry(meal)
     })
   })
 }
@@ -322,12 +380,20 @@ export async function runLivingAnalysis(
 
             if (productType === 'meals' && result.status === 'completed' && result.content) {
               const parsed = parseJsonObject(result.content)
-              const complete = parsed ? isCompleteMealsProduct(parsed) : false
+              const normalizedParsed = parsed ? normalizeMealsProduct(parsed) : null
+              const complete = normalizedParsed ? isCompleteMealsProduct(normalizedParsed) : false
+
+              if (normalizedParsed) {
+                result = {
+                  ...result,
+                  content: JSON.stringify(normalizedParsed),
+                }
+              }
 
               if (!complete) {
                 result = await analyzeWithAgent(
                   agent,
-                  `${buildProductGeneratorPrompt(productType)}\n\nTentativa de correção: a resposta anterior veio incompleta. Retorne novamente um weekly_plan completo com todas as refeições obrigatórias por dia.`,
+                  `${buildProductGeneratorPrompt(productType)}\n\nTentativa de correção: a resposta anterior veio inválida. Retorne novamente um weekly_plan completo com todas as refeições obrigatórias por dia. Cada refeição deve ser um objeto com name, ingredients, instructions e calories. Não use string simples para representar refeições. O overview deve ter no máximo 300 caracteres.`,
                   {
                     snapshotContext,
                     medicalProfileContext,
@@ -342,11 +408,14 @@ export async function runLivingAnalysis(
 
             if (result.status === 'completed' && result.content) {
               const parsedContent = parseJsonObject(result.content)
+              const normalizedContent = productType === 'meals' && parsedContent
+                ? normalizeMealsProduct(parsedContent)
+                : parsedContent
               const isMealsComplete = productType === 'meals'
-                ? Boolean(parsedContent && isCompleteMealsProduct(parsedContent))
+                ? Boolean(normalizedContent && isCompleteMealsProduct(normalizedContent))
                 : true
-              const isCompleted = Boolean(parsedContent) && isMealsComplete
-              const errorMessage = !parsedContent
+              const isCompleted = Boolean(normalizedContent) && isMealsComplete
+              const errorMessage = !normalizedContent
                 ? 'Invalid JSON output from agent'
                 : !isMealsComplete
                   ? 'Incomplete meals weekly_plan: missing required meals in one or more days'
@@ -355,7 +424,7 @@ export async function runLivingAnalysis(
               await db
                 .update(generatedProducts)
                 .set({
-                  content: parsedContent,
+                  content: normalizedContent,
                   status: isCompleted ? 'completed' : 'failed',
                   errorMessage,
                   tokensUsed: result.tokensUsed,
