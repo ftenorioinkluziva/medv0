@@ -30,6 +30,12 @@
 - 🔄 Fase 4.3 em andamento (melhorias de `aria-live` e feedback acessível em upload/análises)
 - ✅ Fase 5.1 concluída (novos testes unitários para `errorResponse`, `useErrorHandler`, fluxo de análise e upload)
 - 🔄 Fase 5.2 em andamento
+- ✅ Ajustes de dashboard concluídos (Altura e Massa Magra no perfil, badge de status "Processado" padronizada, "Ver exame" em Últimos Documentos)
+- ✅ Card "Estado de Saúde" ajustado para exibir apenas seção Resumo + link "Ver última análise"
+- ✅ Tela de análise com rastreabilidade de origem (exibe `Arquivo-base` da versão atual)
+- ✅ Robustez do produto de refeições: parser tolerante no frontend + validação de completude e retry automático no backend
+- ✅ Timeout de upload ampliado (`maxDuration=180s`, extração `120s`, timeout cliente `+20s`)
+- ✅ Novos ajustes commitados e enviados para `origin/feat/improvements-phase1` (`be5931e`)
 - ⚠️ Pendência técnica: investigar e corrigir `tests/unit/analyses-run-page.test.tsx` (atualmente excluído em `vitest.config.ts` para manter pipeline estável)
 - ⏳ Fases 6 e 7 pendentes
 
@@ -55,6 +61,12 @@
 - Melhorias de UX/A11y no upload e no fluxo de iniciar análise (retry, `aria-live`, `aria-busy`, feedback inline)
 - `useErrorHandler` adicionado e coberto por teste unitário
 - Estabilização da suíte Vitest: `pnpm test` encerra normalmente com exclusão temporária do teste problemático de `analyses-run-page`
+- Dashboard atualizado com métricas de composição corporal (Altura e Massa Magra), resumo de saúde focado e links de navegação corretos
+- Página `/app/analyses/[id]` agora mostra o nome do arquivo de origem da versão atual para facilitar rastreio
+- Plano Alimentar: renderização tolerante a formatos reais do payload (`foods`, `macros` string, `fat/fats`) em `src/app/app/products/meals/page.tsx`
+- Geração de produto `meals` fortalecida em `src/lib/ai/orchestrator/living-analysis.ts` com verificação de refeições obrigatórias e segunda tentativa automática em resposta incompleta
+- Configuração de timeout centralizada em `src/lib/documents/upload-config.ts` e aplicada na rota `src/app/api/documents/upload/route.ts`
+- Diagnóstico de consistência no banco: prompts/schemas de `product_generator` divergentes do código local identificados e documentados para correção manual
 
 ---
 
@@ -358,9 +370,9 @@ pnpm add @sentry/nextjs
 
 ### 🎯 **Próximos Passos Imediatos**
 
-1. **Hoje:** Consolidar Fase 4 (loading states, padronização de erro e acessibilidade em telas restantes)
-2. **Amanhã:** Avançar Fase 5.2 com fluxos de integração (upload → processamento → análise)
-3. **Esta semana:** Expandir Fase 5.3 (cenários E2E de erro e acessibilidade)
+1. **Hoje:** Atualizar no banco os `systemPrompt` e `outputSchema` dos três agentes `product_generator` (Alimentar, Suplementação, Treino), priorizando correção do `Gerador de Plano Alimentar`
+2. **Amanhã:** Validar fluxo ponta a ponta do Plano Alimentar (upload → análise → produto) com payload real e sem `Incomplete meals weekly_plan`
+3. **Esta semana:** Avançar Fase 5.2 com testes de integração cobrindo cenários de timeout e retry em upload/análise
 4. **Próxima semana:** Iniciar Fase 6 (component splitting e hooks reutilizáveis)
 
 **Comando para iniciar:**
