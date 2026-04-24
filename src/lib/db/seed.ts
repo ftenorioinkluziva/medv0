@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { seedAdmin } from '@/lib/db/seed/admin'
 import { seedHealthAgents } from '@/lib/db/seed/health-agents'
+import { logger } from '@/lib/observability/logger'
 
 async function seed() {
   await seedAdmin()
@@ -9,10 +10,10 @@ async function seed() {
 
 seed()
   .then(() => {
-    console.log('✅ Done')
+    logger.info('✅ Done')
     process.exit(0)
   })
   .catch((error) => {
-    console.error('❌ Seed failed:', error)
+    logger.error('❌ Seed failed', error)
     process.exit(1)
   })

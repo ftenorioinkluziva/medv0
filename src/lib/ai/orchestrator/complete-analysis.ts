@@ -9,6 +9,7 @@ import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
 import { analyzeWithAgent } from '@/lib/ai/agents/analyze'
 import { resolveAgentPrompt } from '@/lib/ai/agents/prompts'
 import { validateReportSections } from '@/lib/ai/utils/validate-report-sections'
+import { logger } from '@/lib/observability/logger'
 import {
   readTimeoutMs,
   buildMedicalProfileContext,
@@ -210,7 +211,7 @@ export async function runCompleteAnalysis(
       })
       .where(eq(completeAnalyses.id, completeAnalysisId))
 
-    console.error('[complete-analysis] Error:', error)
+    logger.error('[complete-analysis] Error', error)
     throw error
   }
 }

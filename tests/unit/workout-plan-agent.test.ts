@@ -94,7 +94,7 @@ beforeEach(() => {
 })
 
 describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
-  it('deve inserir 8 agentes no total incluindo Plano de Exercícios', async () => {
+  it('deve inserir 11 agentes no total incluindo Plano de Exercícios', async () => {
     // #given
     buildInsertChain()
 
@@ -102,7 +102,7 @@ describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
     await seedHealthAgents()
 
     // #then
-    expect(db.insert).toHaveBeenCalledTimes(8)
+    expect(db.insert).toHaveBeenCalledTimes(11)
   })
 
   it('deve configurar "Plano de Exercícios" com outputType structured', async () => {
@@ -125,7 +125,7 @@ describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
     expect(workoutEntry).toBeDefined()
     expect(workoutEntry?.outputType).toBe('structured')
     expect(workoutEntry?.analysisRole).toBe('specialized')
-    expect(insertCalls).toHaveLength(8)
+    expect(insertCalls).toHaveLength(11)
   })
 
   it('deve definir outputSchema com propriedades obrigatórias', async () => {

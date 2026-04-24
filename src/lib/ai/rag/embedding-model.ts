@@ -1,5 +1,6 @@
 import { google } from '@ai-sdk/google'
 import { aiGatewayProvider } from '@/lib/ai/core/ai-gateway'
+import { logger } from '@/lib/observability/logger'
 
 export const KNOWLEDGE_EMBEDDING_MODEL_NAME = resolveEmbeddingModel(
   process.env.GOOGLE_EMBEDDING_MODEL,
@@ -22,7 +23,7 @@ export function getKnowledgeEmbeddingModel() {
   if (normalizedName.includes('/')) {
     const [provider, slug] = normalizedName.split('/')
     if (provider !== 'google' || !slug) {
-      console.warn(
+      logger.warn(
         `[embedding] Unsupported provider "${provider}"; falling back to gemini-embedding-001`,
       )
       return google.textEmbeddingModel('gemini-embedding-001')
@@ -41,7 +42,7 @@ function resolveEmbeddingModel(rawModel?: string): string {
   const slashIndex = normalized.indexOf('/')
 
   if (slashIndex === 0 || slashIndex === normalized.length - 1) {
-    console.warn(
+    logger.warn(
       `[embedding] Invalid GOOGLE_EMBEDDING_MODEL "${rawModel}", falling back to ${fallback}`,
     )
     return fallback

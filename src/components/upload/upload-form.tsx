@@ -14,6 +14,7 @@ import {
   DOCUMENT_UPLOAD_CLIENT_TIMEOUT_MS,
   DOCUMENT_UPLOAD_MAX_SIZE_BYTES,
 } from '@/lib/documents/upload-config'
+import { useErrorHandler } from '@/hooks/use-error-handler'
 
 type UploadStep =
   | 'idle'
@@ -77,6 +78,7 @@ export function UploadForm() {
   const [step, setStep] = useState<UploadStep>('idle')
   const [successInfo, setSuccessInfo] = useState<UploadSuccessInfo | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | ''>('')
+  const { errorMessage, handleError, clearError } = useErrorHandler()
 
   useEffect(() => {
     return () => {
@@ -86,12 +88,19 @@ export function UploadForm() {
 
   function handleFileSelected(file: File) {
     if (preview?.previewUrl) URL.revokeObjectURL(preview.previewUrl)
+    clearError()
+
     if (!DOCUMENT_UPLOAD_ACCEPTED_TYPES.includes(file.type)) {
-      toast.error('Tipo não suportado. Use PDF, JPG ou PNG.')
+      const message = 'Tipo não suportado. Use PDF, JPG ou PNG.'
+      handleError(message)
+      toast.error(message)
       return
     }
+
     if (file.size > DOCUMENT_UPLOAD_MAX_SIZE_BYTES) {
-      toast.error('Arquivo muito grande. Máximo: 20MB.')
+      const message = 'Arquivo muito grande. Máximo: 20MB.'
+      handleError(message)
+      toast.error(message)
       return
     }
 
@@ -112,12 +121,15 @@ export function UploadForm() {
     setPreview(null)
     setSuccessInfo(null)
     setSelectedCategory('')
+    clearError()
   }
 
   async function handleSubmit() {
     if (!preview) return
     if (!selectedCategory) {
-      toast.error('Selecione o tipo de documento antes de enviar.')
+      const message = 'Selecione o tipo de documento antes de enviar.'
+      handleError(message)
+      toast.error(message)
       return
     }
 
@@ -126,11 +138,14 @@ export function UploadForm() {
 
     const timeout = setTimeout(() => {
       controller.abort()
-      toast.error('Tempo esgotado. Tente novamente.')
+      const message = 'Tempo esgotado. Tente novamente.'
+      handleError(message)
+      toast.error(message)
       setStep('idle')
     }, DOCUMENT_UPLOAD_CLIENT_TIMEOUT_MS)
 
     try {
+      clearError()
       setStep('preparing')
 
       const formData = new FormData()
@@ -173,7 +188,9 @@ export function UploadForm() {
       setStep('done')
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
-      toast.error((err as Error).message ?? 'Erro inesperado. Tente novamente.')
+      const message = (err as Error).message ?? 'Erro inesperado. Tente novamente.'
+      handleError(message)
+      toast.error(message)
       setStep('idle')
     } finally {
       clearTimeout(timeout)
@@ -264,6 +281,7 @@ export function UploadForm() {
             <Button
               variant="default"
               size="lg"
+              type="button"
               className="w-full gap-2"
               onClick={() => cameraInputRef.current?.click()}
             >
@@ -274,6 +292,7 @@ export function UploadForm() {
             <Button
               variant="outline"
               size="lg"
+              type="button"
               className="w-full gap-2"
               onClick={() => fileInputRef.current?.click()}
             >
@@ -291,7 +310,7 @@ export function UploadForm() {
       {/* Preview + envio */}
       {preview && (
         <Card>
-          <CardContent className="p-4 flex flex-col gap-4">
+          <CardContent className="p-4 flex flex-col gap-4" aria-busy={isProcessing}>
             {/* Preview */}
             <div className="flex items-center gap-3">
               {preview.previewUrl ? (
@@ -300,6 +319,7 @@ export function UploadForm() {
                   alt="Preview do exame"
                   width={64}
                   height={64}
+                  sizes="64px"
                   className="h-16 w-16 rounded object-cover shrink-0"
                   unoptimized
                 />
@@ -318,6 +338,7 @@ export function UploadForm() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  type="button"
                   className="shrink-0"
                   onClick={handleCancel}
                   aria-label="Remover arquivo"
@@ -329,9 +350,15 @@ export function UploadForm() {
 
             {renderCategoryPicker()}
 
+            {errorMessage && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" aria-live="polite">
+                {errorMessage}
+              </div>
+            )}
+
             {/* Progresso */}
             {step !== 'idle' && step !== 'done' && (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5" role="status" aria-live="polite">
                 <Progress value={STEP_PROGRESS[step]} className="h-2" />
                 <p className="text-xs text-muted-foreground text-center">{STEP_LABELS[step]}</p>
               </div>
@@ -345,19 +372,20 @@ export function UploadForm() {
                 </Button>
               ) : step === 'done' ? (
                 <>
-                  <Button variant="outline" className="flex-1" onClick={handleCancel}>
+                  <Button variant="outline" type="button" className="flex-1" onClick={handleCancel}>
                     Enviar outro
                   </Button>
-                  <Button className="flex-1" onClick={() => router.push('/app/dashboard')}>
+                  <Button type="button" className="flex-1" onClick={() => router.push('/app/dashboard')}>
                     Ir para dashboard
                   </Button>
                 </>
               ) : (
                 <>
-                  <Button variant="outline" className="flex-1" onClick={handleCancel}>
+                  <Button variant="outline" type="button" className="flex-1" onClick={handleCancel}>
                     Cancelar
                   </Button>
                   <Button
+                    type="button"
                     className="flex-1"
                     onClick={handleSubmit}
                     disabled={!selectedCategory}
@@ -369,7 +397,7 @@ export function UploadForm() {
             </div>
 
             {step === 'done' && successInfo && (
-              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300">
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300" role="status" aria-live="polite">
                 {successInfo.type === 'body_composition' ? (
                   <>
                     <p className="font-medium">Dados de composição corporal atualizados no seu perfil.</p>

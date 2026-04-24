@@ -1,6 +1,13 @@
+import dynamic from 'next/dynamic'
 import { getAllUsersForAdmin } from '@/lib/db/queries/users'
-import { UsersTable } from './_components/users-table'
 import { Pagination } from '@/components/ui/pagination'
+
+const UsersTable = dynamic(
+  () => import('./_components/users-table').then((module) => module.UsersTable),
+  {
+    loading: () => <div className="rounded-md border p-4 text-sm text-muted-foreground">Carregando usuários...</div>,
+  },
+)
 
 const PAGE_SIZE = 20
 

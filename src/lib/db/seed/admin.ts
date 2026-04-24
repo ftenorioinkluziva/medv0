@@ -1,13 +1,14 @@
 import bcryptjs from 'bcryptjs'
 import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema'
+import { logger } from '@/lib/observability/logger'
 
 export async function seedAdmin() {
   const email = process.env.ADMIN_EMAIL ?? 'admin@sami.local'
   const password = process.env.ADMIN_PASSWORD
 
   if (!password) {
-    console.warn('⚠️  ADMIN_PASSWORD not set — skipping admin seed')
+    logger.warn('⚠️  ADMIN_PASSWORD not set — skipping admin seed')
     return
   }
 
@@ -24,5 +25,5 @@ export async function seedAdmin() {
     })
     .onConflictDoNothing()
 
-  console.log(`✅ Admin seed: ${email}`)
+  logger.info(`✅ Admin seed: ${email}`)
 }

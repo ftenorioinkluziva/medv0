@@ -11,6 +11,8 @@ import { resolveModel } from '@/lib/ai/core/resolve-model'
 import { buildChatSystemPrompt } from './helpers'
 import { classifyIntent } from './intent'
 import { buildPatientContext } from './patient-context'
+import { logger } from '@/lib/observability/logger'
+import { errorResponse } from '@/lib/api/error-response'
 
 export const maxDuration = 60
 
@@ -42,7 +44,7 @@ async function checkRateLimit(userId: string): Promise<boolean> {
 export async function POST(request: NextRequest): Promise<Response> {
   const session = await auth()
   if (!session?.user?.id) {
-    return Response.json({ error: 'Não autorizado.' }, { status: 401 })
+    return errorResponse('Não autorizado.', 401)
   }
 
   const userId = session.user.id
@@ -51,25 +53,19 @@ export async function POST(request: NextRequest): Promise<Response> {
   try {
     body = await request.json()
   } catch {
-    return Response.json({ error: 'Payload inválido.' }, { status: 400 })
+    return errorResponse('Payload inválido.', 400)
   }
 
   const parsed = ChatSchema.safeParse(body)
   if (!parsed.success) {
-    return Response.json(
-      { error: 'Validação falhou.', details: parsed.error.flatten() },
-      { status: 400 },
-    )
+    return errorResponse('Validação falhou.', 400, parsed.error.flatten())
   }
 
   const { sessionId, agentId, message } = parsed.data
 
   const withinLimit = await checkRateLimit(userId)
   if (!withinLimit) {
-    return Response.json(
-      { error: 'Limite de mensagens atingido. Tente novamente em breve.' },
-      { status: 429 },
-    )
+    return errorResponse('Limite de mensagens atingido. Tente novamente em breve.', 429)
   }
 
   const [agent] = await db
@@ -79,7 +75,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     .limit(1)
 
   if (!agent) {
-    return Response.json({ error: 'Agente não encontrado.' }, { status: 404 })
+    return errorResponse('Agente não encontrado.', 404)
   }
 
   let activeSessionId: string
@@ -94,7 +90,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   } else {
     const sessionRecord = await getSessionWithAgent(sessionId)
     if (!sessionRecord || sessionRecord.userId !== userId) {
-      return Response.json({ error: 'Sessão não encontrada.' }, { status: 404 })
+      return errorResponse('Sessão não encontrada.', 404)
     }
     activeSessionId = sessionId
   }
@@ -164,7 +160,7 @@ export async function POST(request: NextRequest): Promise<Response> {
             .where(eq(chatSessions.id, activeSessionId)),
         ])
       } catch (error) {
-        console.error('[chat/onFinish] failed to persist assistant message', {
+        logger.error('[chat/onFinish] failed to persist assistant message', {
           sessionId: activeSessionId,
           error,
         })

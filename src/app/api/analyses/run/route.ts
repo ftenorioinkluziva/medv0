@@ -13,6 +13,8 @@ import {
 import { hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
 import { runLivingAnalysis } from '@/lib/ai/orchestrator/living-analysis'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
+import { logger } from '@/lib/observability/logger'
+import { errorResponse } from '@/lib/api/error-response'
 
 export const maxDuration = 60
 
@@ -75,7 +77,7 @@ async function checkAnalysisRateLimit(userId: string): Promise<{ allowed: boolea
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return errorResponse('Não autorizado.', 401)
   }
 
   // Check rate limit
@@ -97,15 +99,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 })
+    return errorResponse('Payload inválido.', 400)
   }
 
   const parsed = RunAnalysisSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Validação falhou.', details: parsed.error.flatten() },
-      { status: 400 },
-    )
+    return errorResponse('Validação falhou.', 400, parsed.error.flatten())
   }
 
   const { documentId } = parsed.data
@@ -118,7 +117,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .limit(1)
 
   if (!doc) {
-    return NextResponse.json({ error: 'Documento não encontrado.' }, { status: 404 })
+    return errorResponse('Documento não encontrado.', 404)
   }
 
   const [triggerSnapshot] = await db
@@ -128,21 +127,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .limit(1)
 
   if (!hasUsableMedicalDocumentData(triggerSnapshot?.structuredData ?? null)) {
-    return NextResponse.json(
-      { error: 'Não há dados extraídos suficientes para gerar a análise deste documento.' },
-      { status: 409 },
-    )
+    return errorResponse('Não há dados extraídos suficientes para gerar a análise deste documento.', 409)
   }
 
   const foundationAgents = await getActiveAgentsByRole('foundation')
 
   if (foundationAgents.length === 0) {
-    return NextResponse.json(
-      {
-        error:
-          'Configuração incompleta de agentes. É necessário pelo menos 1 agente foundation ativo.',
-      },
-      { status: 409 },
+    return errorResponse(
+      'Configuração incompleta de agentes. É necessário pelo menos 1 agente foundation ativo.',
+      409,
     )
   }
 
@@ -196,7 +189,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
       await runLivingAnalysis(userId, documentId, livingAnalysisId, version.id)
     } catch (error) {
-      console.error('[analyses/run] Background analysis failed:', error)
+      logger.error('[analyses/run] Background analysis failed', error)
     }
   })
 
