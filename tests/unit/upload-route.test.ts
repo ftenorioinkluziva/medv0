@@ -10,6 +10,7 @@ const mockPersistSnapshot = vi.fn()
 const mockPersistFailedDocument = vi.fn()
 const mockTriggerLivingAnalysis = vi.fn()
 const mockUpdateBodyComposition = vi.fn()
+const mockValidateUpload = vi.fn()
 
 vi.mock('@/lib/auth/config', () => ({
   auth: mockAuth,
@@ -56,6 +57,10 @@ vi.mock('@/lib/ai/orchestrator/trigger-living-analysis', () => ({
   triggerLivingAnalysis: mockTriggerLivingAnalysis,
 }))
 
+vi.mock('@/lib/documents/upload-validation', () => ({
+  validateUpload: mockValidateUpload,
+}))
+
 vi.mock('next/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/server')>()
   return {
@@ -67,6 +72,7 @@ vi.mock('next/server', async (importOriginal) => {
 })
 
 const { POST } = await import('@/app/api/documents/upload/route')
+const { DOCUMENT_UPLOAD_EXTRACTION_TIMEOUT_MS } = await import('@/lib/documents/upload-config')
 
 function makeSelectChain(rows: unknown[]) {
   return {
@@ -108,6 +114,12 @@ describe('POST /api/documents/upload', () => {
     vi.clearAllMocks()
     mockAuth.mockResolvedValue({ user: { id: 'user-1' } })
     mockSelect.mockReturnValue(makeSelectChain([]) as never)
+    // Default: arquivo válido
+    mockValidateUpload.mockReturnValue({
+      valid: true,
+      sanitizedFileName: 'exame.pdf',
+      mimeType: 'application/pdf',
+    })
   })
 
   it('persiste documento como failed e não dispara análise quando a extração não produz dados úteis', async () => {
@@ -176,6 +188,55 @@ describe('POST /api/documents/upload', () => {
     expect(mockUpdateBodyComposition).not.toHaveBeenCalled()
   })
 
+  it('usa nome sanitizado no processamento, persistência e resposta', async () => {
+    // #given
+    mockValidateUpload.mockReturnValue({
+      valid: true,
+      sanitizedFileName: 'exame_sujo.pdf',
+      mimeType: 'application/pdf',
+    })
+    mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
+    mockHasUsableMedicalDocumentData.mockReturnValue(true)
+    mockClassifyDocument.mockReturnValue('blood_test')
+    mockPersistSnapshot.mockResolvedValue({ documentId: 'doc-sanitized-1' })
+
+    // #when
+    const response = await POST(makeUploadRequest('exame sujo?.pdf'))
+    const json = await response.json()
+
+    // #then
+    expect(response.status).toBe(200)
+    expect(mockExtractMedicalDocument).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      'exame_sujo.pdf',
+      'application/pdf',
+    )
+    expect(mockPersistSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ fileName: 'exame_sujo.pdf' }),
+    )
+    expect(json.fileName).toBe('exame_sujo.pdf')
+  })
+
+  it('retorna 408 quando extração excede timeout', async () => {
+    // #given
+    vi.useFakeTimers()
+    mockExtractMedicalDocument.mockImplementation(() => new Promise(() => {}))
+
+    try {
+      // #when
+      const responsePromise = POST(makeUploadRequest('demorado.pdf'))
+      await vi.advanceTimersByTimeAsync(DOCUMENT_UPLOAD_EXTRACTION_TIMEOUT_MS + 1)
+      const response = await responsePromise
+      const json = await response.json()
+
+      // #then
+      expect(response.status).toBe(408)
+      expect(json.error).toContain('tempo limite')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('classifica como other: retorna type=lab_test e dispara análise imediatamente', async () => {
     // #given
     mockExtractMedicalDocument.mockResolvedValue(USABLE_STRUCTURED_DATA)
@@ -206,8 +267,11 @@ describe('POST /api/documents/upload', () => {
     mockClassifyDocument.mockReturnValue('bioimpedance')
     mockPersistSnapshot.mockResolvedValue({ documentId: 'doc-bio-1' })
     mockSelect
+      .mockReturnValueOnce(makeSelectChain([{ uploadCount: 0 }]) as never)
       .mockReturnValueOnce(makeSelectChain([]) as never)
-      .mockReturnValueOnce(makeSelectChain([{ structuredData: USABLE_STRUCTURED_DATA }]) as never)
+      .mockReturnValueOnce(
+        makeSelectChain([{ structuredData: USABLE_STRUCTURED_DATA }]) as never,
+      )
 
     // #when
     const response = await POST(makeUploadRequest('bioimpedancia.pdf'))

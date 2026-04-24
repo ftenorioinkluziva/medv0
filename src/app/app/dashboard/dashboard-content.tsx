@@ -53,6 +53,24 @@ function truncateWords(text: string, maxWords: number): { truncated: string; was
   return { truncated: words.slice(0, end).join(' '), wasTruncated: true }
 }
 
+function extractSummarySection(markdown: string): string {
+  const normalized = markdown.replace(/\r\n/g, '\n').trim()
+  if (!normalized) return ''
+
+  const summaryHeadingRegex = /^##\s*(?:📋\s*)?(?:Resumo(?: Executivo)?)(?:\s*:)?\s*$/im
+  const match = summaryHeadingRegex.exec(normalized)
+  if (!match || match.index == null) return ''
+
+  const sectionStart = match.index + match[0].length
+  const sectionBody = normalized.slice(sectionStart).trimStart()
+  const nextHeadingMatch = /^##\s+/m.exec(sectionBody)
+  const rawSummary = nextHeadingMatch
+    ? sectionBody.slice(0, nextHeadingMatch.index)
+    : sectionBody
+
+  return rawSummary.trim()
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   bioimpedance: 'Bioimpedância',
   blood_test: 'Exames de Sangue',
@@ -83,7 +101,7 @@ const DOC_STATUS_LABELS: Record<string, string> = {
 const DOC_STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700 dark:text-amber-300',
   processing: 'bg-sky-100 text-sky-700 dark:text-sky-300',
-  completed: 'bg-emerald-100 text-emerald-700 dark:text-emerald-300',
+  completed: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   failed: 'bg-rose-100 text-rose-700 dark:text-rose-300',
   default: 'bg-muted text-muted-foreground',
 }
@@ -120,8 +138,10 @@ function ProfileCard({
   const bmi = profile ? calcBmi(profile.weight, profile.height) : null
   const weight = bodyComposition?.weight ?? profile?.weight ?? null
   const bodyFat = bodyComposition?.bodyFat ?? profile?.bodyFatPercentage ?? null
+  const muscleMass = bodyComposition?.muscleMass ?? profile?.muscleMass ?? null
   const weightDelta = formatDelta(bodyComposition?.weightDelta ?? null)
   const bodyFatDelta = formatDelta(bodyComposition?.bodyFatDelta ?? null)
+  const muscleMassDelta = formatDelta(bodyComposition?.muscleMassDelta ?? null)
 
   return (
     <section aria-labelledby="profile-heading" data-testid="profile-card">
@@ -153,20 +173,33 @@ function ProfileCard({
             Complete seu perfil para ver seus dados de saúde aqui.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Peso</p>
-              <p className="text-sm font-semibold">{weight ? `${parseFloat(weight).toFixed(1)} kg` : '—'}</p>
-              {weightDelta && <p className="text-[10px] text-muted-foreground">{weightDelta}</p>}
-            </div>
-
-            {bodyFat && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">% Gordura</p>
-                <p className="text-sm font-semibold">{parseFloat(bodyFat).toFixed(1)}%</p>
-                {bodyFatDelta && <p className="text-[10px] text-muted-foreground">{bodyFatDelta}</p>}
+                <p className="text-xs text-muted-foreground">Altura</p>
+                <p className="text-sm font-semibold">{profile.height} cm</p>
               </div>
-            )}
+
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">Peso</p>
+                <p className="text-sm font-semibold">{weight ? `${parseFloat(weight).toFixed(1)} kg` : '—'}</p>
+                {weightDelta && <p className="text-[10px] text-muted-foreground">{weightDelta}</p>}
+              </div>
+
+              {bodyFat && (
+                <div className="space-y-0.5">
+                  <p className="text-xs text-muted-foreground">% Gordura</p>
+                  <p className="text-sm font-semibold">{parseFloat(bodyFat).toFixed(1)}%</p>
+                  {bodyFatDelta && <p className="text-[10px] text-muted-foreground">{bodyFatDelta}</p>}
+                </div>
+              )}
+
+              {muscleMass && (
+                <div className="space-y-0.5">
+                  <p className="text-xs text-muted-foreground">Massa Magra</p>
+                  <p className="text-sm font-semibold">{parseFloat(muscleMass).toFixed(1)} kg</p>
+                  {muscleMassDelta && <p className="text-[10px] text-muted-foreground">{muscleMassDelta}</p>}
+                </div>
+              )}
 
             {bmi && (
               <div className="space-y-0.5">
@@ -193,10 +226,8 @@ function ProfileCard({
 
 function RecentDocsCard({
   docs,
-  livingAnalysisId,
 }: {
   docs: DashboardDocument[]
-  livingAnalysisId: string | null
 }) {
   return (
     <section aria-labelledby="docs-heading" data-testid="recent-docs-card">
@@ -255,14 +286,12 @@ function RecentDocsCard({
                       <span className="text-[10px] text-muted-foreground">{date}</span>
                     </div>
                   </div>
-                  {livingAnalysisId && (
-                    <Link
-                      href={`/app/analyses/${livingAnalysisId}`}
-                      className="shrink-0 text-[11px] font-medium text-primary hover:underline"
-                    >
-                      Ver análise
-                    </Link>
-                  )}
+                  <Link
+                    href={`/app/documents/${doc.id}`}
+                    className="shrink-0 text-[11px] font-medium text-primary hover:underline"
+                  >
+                    Ver exame
+                  </Link>
                 </div>
               )
             })}
@@ -299,7 +328,9 @@ function HealthSummaryCard({ analysis }: { analysis: DashboardAnalysis | null })
     )
   }
 
-  const { truncated, wasTruncated } = truncateWords(analysis.reportMarkdown, 300)
+  const summarySection = extractSummarySection(analysis.reportMarkdown)
+  const summaryText = summarySection || 'Resumo não identificado na análise completa mais recente.'
+  const { truncated } = truncateWords(summaryText, 220)
 
   const updatedDate = analysis.updatedAt.toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -320,14 +351,12 @@ function HealthSummaryCard({ analysis }: { analysis: DashboardAnalysis | null })
           {truncated}
         </p>
 
-        {wasTruncated && (
-          <Link
-            href={`/app/analyses/${analysis.id}`}
-            className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
-          >
-            Ver análise completa <ArrowRight className="size-3" aria-hidden="true" />
-          </Link>
-        )}
+        <Link
+          href={`/app/analyses/${analysis.id}`}
+          className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
+        >
+          Ver última análise <ArrowRight className="size-3" aria-hidden="true" />
+        </Link>
       </div>
     </section>
   )
@@ -471,7 +500,6 @@ export function DashboardContent({ data }: DashboardContentProps) {
       {/* E12 — Seção 2: Últimos Documentos */}
       <RecentDocsCard
         docs={recentDocs}
-        livingAnalysisId={livingAnalysis?.id ?? legacyLivingAnalysis?.id ?? null}
       />
 
       {/* E12 — Seção 3: Resumo de Saúde */}

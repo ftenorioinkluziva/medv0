@@ -7,6 +7,7 @@ import { db } from '@/lib/db/client'
 import type { AgentAnalysisResult } from '@/lib/ai/agents/analyze'
 import type { HealthAgent } from '@/lib/db/schema'
 import { medicalProfiles } from '@/lib/db/schema'
+import { logger } from '@/lib/observability/logger'
 
 export interface AgentOutput {
   agentId: string
@@ -222,7 +223,7 @@ function resolveSynthesisModel(rawModel?: string): string {
   const slashIndex = normalized.indexOf('/')
 
   if (slashIndex <= 0 || slashIndex === normalized.length - 1) {
-    console.warn(
+    logger.warn(
       `[synthesis] Invalid SYNTHESIS_MODEL "${rawModel}", falling back to ${DEFAULT_SYNTHESIS_MODEL}`,
     )
     return DEFAULT_SYNTHESIS_MODEL
@@ -245,11 +246,18 @@ export async function buildMedicalProfileContext(userId: string): Promise<string
     gender: profile.gender,
     height: profile.height,
     weight: profile.weight,
+    bodyFatPercentage: profile.bodyFatPercentage,
+    muscleMass: profile.muscleMass,
+    basalMetabolicRate: profile.basalMetabolicRate,
+    currentDiet: profile.currentDiet,
+    dailyWaterIntake: profile.dailyWaterIntake,
     systolicPressure: profile.systolicPressure,
     diastolicPressure: profile.diastolicPressure,
     restingHeartRate: profile.restingHeartRate,
     healthObjectives: profile.healthObjectives,
     medicalConditions: profile.medicalConditions,
+    medications: profile.medications,
+    allergies: profile.allergies,
     exerciseActivities: profile.exerciseActivities,
     exerciseFrequency: profile.exerciseFrequency,
     exerciseDuration: profile.exerciseDuration,

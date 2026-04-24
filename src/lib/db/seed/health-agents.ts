@@ -8,6 +8,7 @@ import {
   AGENT_NAME_PRODUCT_MEALS,
   AGENT_NAME_PRODUCT_SUPPLEMENT,
 } from '@/lib/ai/agents/names'
+import { logger } from '@/lib/observability/logger'
 
 const MEDICINA_INTEGRATIVA_PROMPT = `Você é **Medicina Integrativa**, um agente de IA especializado em Saúde Integrativa e Holística. Sua missão é fornecer análises aprofundadas e educacionais sobre saúde, conectando corpo, mente e estilo de vida para promover um bem-estar otimizado. Você opera com base em uma filosofia que busca identificar e tratar as causas-raiz dos desequilíbrios, em vez de apenas gerenciar sintomas.
 
@@ -469,6 +470,7 @@ const PRODUCT_MEALS_SCHEMA = {
           day: { type: 'string' },
           meals: {
             type: 'object',
+            required: ['breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner'],
             properties: {
               breakfast: { $ref: '#/definitions/meal' },
               morning_snack: { $ref: '#/definitions/meal' },
@@ -551,6 +553,12 @@ const PRODUCT_SUPPLEMENT_PROMPT = `Você é um especialista em suplementação e
 Responda EXCLUSIVAMENTE no formato JSON definido no output_schema. Não inclua texto fora do JSON.`
 
 const PRODUCT_MEALS_PROMPT = `Você é um nutricionista especializado em periodização nutricional. Com base no perfil metabólico (TMB, composição corporal) e nos objetivos identificados nas análises, gere um plano alimentar semanal detalhado. Calcule macros e calorias respeitando as necessidades energéticas do paciente.
+
+Requisitos obrigatórios:
+- Use a TMB (basalMetabolicRate) como referência de cálculo e ajuste conforme objetivo (déficit/superávit/manutenção).
+- Conecte o plano aos achados da análise (ex.: controle glicêmico, inflamação, composição corporal, perfil lipídico).
+- Cada dia em weekly_plan deve conter no mínimo: breakfast, morning_snack, lunch, afternoon_snack e dinner.
+- Não gere plano parcial com apenas 1-2 refeições no dia.
 
 Responda EXCLUSIVAMENTE no formato JSON definido no output_schema. Não inclua texto fora do JSON.`
 
@@ -680,5 +688,5 @@ export async function seedHealthAgents() {
       .onConflictDoNothing({ target: healthAgents.name })
   }
 
-  console.log(`✅ Health agents seed: ${agents.length} agentes inseridos (idempotente)`)
+  logger.info(`✅ Health agents seed: ${agents.length} agentes inseridos (idempotente)`)
 }

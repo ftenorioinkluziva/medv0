@@ -1,5 +1,6 @@
 import { after, NextRequest, NextResponse } from 'next/server'
 import { eq, and, ne, count, gte } from 'drizzle-orm'
+import { z } from 'zod'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import { documents, snapshots } from '@/lib/db/schema'
@@ -8,19 +9,41 @@ import { persistFailedDocument, persistSnapshot } from '@/lib/documents/persiste
 import { classifyDocument } from '@/lib/documents/classifier'
 import { updateBodyComposition } from '@/lib/documents/body-composition'
 import { triggerLivingAnalysis } from '@/lib/ai/orchestrator/trigger-living-analysis'
+import { validateUpload } from '@/lib/documents/upload-validation'
 import {
-  DOCUMENT_UPLOAD_ACCEPTED_TYPES,
-  DOCUMENT_UPLOAD_MAX_SIZE_BYTES,
+  DOCUMENT_UPLOAD_EXTRACTION_TIMEOUT_MS,
+  DOCUMENT_UPLOAD_SERVER_MAX_DURATION_SECONDS,
 } from '@/lib/documents/upload-config'
+import { logger } from '@/lib/observability/logger'
+import { errorResponse } from '@/lib/api/error-response'
 
-export const maxDuration = 90
+export const maxDuration = DOCUMENT_UPLOAD_SERVER_MAX_DURATION_SECONDS
 
 const EXTRACTION_FAILED_MESSAGE = 'Não foi possível extrair dados utilizáveis do documento enviado.'
+const EXTRACTION_TIMEOUT_MESSAGE = 'Processamento do arquivo excedeu o tempo limite. Tente novamente.'
 const VALID_CATEGORIES = ['bioimpedance', 'blood_test', 'other'] as const
+const CategorySchema = z.enum(VALID_CATEGORIES)
 const UPLOAD_RATE_LIMIT = 10 // uploads por hora
 const UPLOAD_RATE_WINDOW_MS = 60 * 60 * 1000 // 1 hora
+class UploadProcessingTimeoutError extends Error {}
 
-type DocumentCategory = (typeof VALID_CATEGORIES)[number]
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new UploadProcessingTimeoutError(EXTRACTION_TIMEOUT_MESSAGE))
+    }, timeoutMs)
+
+    promise
+      .then((value) => {
+        clearTimeout(timeout)
+        resolve(value)
+      })
+      .catch((error) => {
+        clearTimeout(timeout)
+        reject(error)
+      })
+  })
+}
 
 async function checkRateLimit(userId: string): Promise<{ allowed: boolean; retryAfterSeconds?: number }> {
   const now = new Date()
@@ -58,7 +81,7 @@ async function checkRateLimit(userId: string): Promise<{ allowed: boolean; retry
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return errorResponse('Não autorizado.', 401)
   }
 
   // Check rate limit
@@ -80,38 +103,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     formData = await request.formData()
   } catch {
-    return NextResponse.json({ error: 'Erro ao processar arquivo.' }, { status: 400 })
+    return errorResponse('Erro ao processar arquivo.', 400)
   }
 
   const file = formData.get('file')
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'Nenhum arquivo enviado.' }, { status: 400 })
+    return errorResponse('Nenhum arquivo enviado.', 400)
   }
 
   const rawCategory = formData.get('category')
-  const selectedCategory =
-    typeof rawCategory === 'string' && VALID_CATEGORIES.includes(rawCategory as DocumentCategory)
-      ? (rawCategory as DocumentCategory)
-      : null
-
-  if (!DOCUMENT_UPLOAD_ACCEPTED_TYPES.includes(file.type)) {
-    return NextResponse.json(
-      { error: 'Tipo de arquivo não suportado. Use PDF, JPG ou PNG.' },
-      { status: 422 },
-    )
-  }
-
-  if (file.size > DOCUMENT_UPLOAD_MAX_SIZE_BYTES) {
-    return NextResponse.json(
-      { error: 'Arquivo muito grande. Tamanho máximo: 20MB.' },
-      { status: 422 },
-    )
-  }
+  const parsedCategory = CategorySchema.safeParse(rawCategory)
+  const selectedCategory = parsedCategory.success ? parsedCategory.data : null
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    const structuredData = await extractMedicalDocument(buffer, file.name, file.type)
+    // Validar arquivo (tamanho, MIME type, signature, nome)
+    const validation = validateUpload(file, buffer)
+    if (!validation.valid) {
+      return errorResponse(validation.error ?? 'Arquivo inválido.', 422)
+    }
+
+    const uploadFileName = validation.sanitizedFileName || file.name
+    const uploadMimeType = validation.mimeType || file.type
+
+    const structuredData = await withTimeout(
+      extractMedicalDocument(buffer, uploadFileName, uploadMimeType),
+      DOCUMENT_UPLOAD_EXTRACTION_TIMEOUT_MS,
+    )
 
     const [existingDoc] = await db
       .select({ id: documents.id })
@@ -119,29 +138,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .where(
         and(
           eq(documents.userId, session.user.id),
-          eq(documents.originalFileName, file.name),
+          eq(documents.originalFileName, uploadFileName),
           ne(documents.processingStatus, 'failed'),
         ),
       )
       .limit(1)
 
     if (existingDoc) {
-      return NextResponse.json(
-        { error: 'Este documento já foi enviado anteriormente.' },
-        { status: 409 },
-      )
+      return errorResponse('Este documento já foi enviado anteriormente.', 409)
     }
 
     if (!hasUsableMedicalDocumentData(structuredData)) {
       const { documentId } = await persistFailedDocument({
         userId: session.user.id,
-        fileName: file.name,
+        fileName: uploadFileName,
         structuredData,
         processingError: EXTRACTION_FAILED_MESSAGE,
       })
 
       return NextResponse.json(
-        { error: EXTRACTION_FAILED_MESSAGE, documentId, fileName: file.name },
+        { error: EXTRACTION_FAILED_MESSAGE, documentId, fileName: uploadFileName },
         { status: 422 },
       )
     }
@@ -151,7 +167,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const { documentId } = await persistSnapshot({
       userId: session.user.id,
-      fileName: file.name,
+      fileName: uploadFileName,
       structuredData,
       classifiedDocumentType: category,
     })
@@ -174,7 +190,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           await triggerLivingAnalysis(session.user.id, documentId)
         }
       } catch (error) {
-        console.error('[documents/upload] post-upload processing failed:', error)
+        logger.error('[documents/upload] post-upload processing failed', error)
       }
     })
 
@@ -182,14 +198,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       type,
       success: true,
       documentId,
-      fileName: file.name,
+      fileName: uploadFileName,
       category,
       ...(category === 'bioimpedance' && {
         message: 'Dados de composição corporal detectados',
       }),
     })
   } catch (error) {
-    console.error('[documents/upload] failed:', error)
-    return NextResponse.json({ error: 'Erro interno ao salvar o exame.' }, { status: 500 })
+    if (error instanceof UploadProcessingTimeoutError) {
+      return errorResponse(EXTRACTION_TIMEOUT_MESSAGE, 408)
+    }
+
+    logger.error('[documents/upload] failed', error)
+    return errorResponse('Erro interno ao salvar o exame.', 500)
   }
 }

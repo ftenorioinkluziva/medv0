@@ -24,6 +24,76 @@ interface MealsContent {
   weekly_plan: DayPlan[]
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : null
+}
+
+function toStringValue(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return ''
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean)
+}
+
+function normalizeMacros(value: unknown): Meal['macros'] {
+  let raw: unknown = value
+
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw)
+    } catch {
+      raw = null
+    }
+  }
+
+  const record = asRecord(raw)
+  if (!record) return undefined
+
+  const protein = toStringValue(record.protein)
+  const carbs = toStringValue(record.carbs)
+  const fats = toStringValue(record.fats ?? record.fat)
+
+  if (!protein && !carbs && !fats) return undefined
+  return { protein, carbs, fats }
+}
+
+function normalizeMeal(value: unknown): Meal | null {
+  const record = asRecord(value)
+  if (!record) return null
+
+  const foods = toStringArray(record.foods)
+  const ingredients = toStringArray(record.ingredients)
+  const normalizedIngredients = ingredients.length > 0 ? ingredients : foods
+
+  const name =
+    toStringValue(record.name) ||
+    toStringValue(record.title) ||
+    toStringValue(record.meal) ||
+    normalizedIngredients[0] ||
+    'Refeição'
+
+  const instructions =
+    toStringValue(record.instructions) ||
+    toStringValue(record.preparation) ||
+    toStringValue(record.notes)
+
+  const calories = toStringValue(record.calories)
+
+  return {
+    name,
+    calories,
+    ingredients: normalizedIngredients,
+    instructions,
+    macros: normalizeMacros(record.macros),
+  }
+}
+
 const MEAL_LABELS: Record<string, string> = {
   breakfast: 'Café da manhã',
   morning_snack: 'Lanche da manhã',
@@ -99,11 +169,13 @@ export default async function MealsPage() {
             {days.map((day, dayIdx) => {
               const orderedMeals = MEAL_ORDER
                 .filter((key) => day.meals?.[key])
-                .map((key) => ({ key, meal: day.meals[key] }))
+                .map((key) => ({ key, meal: normalizeMeal(day.meals[key]) }))
+                .filter((item): item is { key: string; meal: Meal } => Boolean(item.meal))
 
               const extraMeals = Object.entries(day.meals ?? {})
                 .filter(([key]) => !MEAL_ORDER.includes(key))
-                .map(([key, meal]) => ({ key, meal }))
+                .map(([key, meal]) => ({ key, meal: normalizeMeal(meal) }))
+                .filter((item): item is { key: string; meal: Meal } => Boolean(item.meal))
 
               const allMeals = [...orderedMeals, ...extraMeals]
 

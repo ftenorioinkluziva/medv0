@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { analyses, healthAgents, livingAnalyses, livingAnalysisVersions } from '@/lib/db/schema'
+import { analyses, documents, healthAgents, livingAnalyses, livingAnalysisVersions } from '@/lib/db/schema'
 import { and, asc, eq } from 'drizzle-orm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnalysisStatusCard } from './analysis-status-card'
@@ -93,7 +93,10 @@ async function AnalysisContent({ id }: { id: string }) {
   }
 
   const [currentVersionRow] = await db
-    .select({ id: livingAnalysisVersions.id })
+    .select({
+      id: livingAnalysisVersions.id,
+      triggerDocumentId: livingAnalysisVersions.triggerDocumentId,
+    })
     .from(livingAnalysisVersions)
     .where(
       and(
@@ -105,6 +108,7 @@ async function AnalysisContent({ id }: { id: string }) {
 
   let foundationAgentName: string | undefined
   let foundationGeneratedAt: Date | undefined
+  let sourceFileName: string | undefined
   let specializedTotal = 0
   let specializedCompleted = 0
   let specializedTimeout = 0
@@ -113,6 +117,14 @@ async function AnalysisContent({ id }: { id: string }) {
   let specializedTextAnalyses: Array<{ agentName: string; specialty: string; content: string; createdAt: Date }> = []
 
   if (currentVersionRow) {
+    const [triggerDocument] = await db
+      .select({ originalFileName: documents.originalFileName })
+      .from(documents)
+      .where(eq(documents.id, currentVersionRow.triggerDocumentId))
+      .limit(1)
+
+    sourceFileName = triggerDocument?.originalFileName
+
     const [foundationRow] = await db
       .select({
         agentName: analyses.agentName,
@@ -203,6 +215,7 @@ async function AnalysisContent({ id }: { id: string }) {
       reportMarkdown={row.reportMarkdown}
       version={row.currentVersion}
       createdAt={row.createdAt}
+      sourceFileName={sourceFileName}
       foundationAgentName={foundationAgentName}
       foundationGeneratedAt={foundationGeneratedAt}
       specializedTotal={specializedTotal}

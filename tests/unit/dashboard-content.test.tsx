@@ -21,23 +21,29 @@ describe('Dashboard content components', () => {
         bodyComposition={{
           weight: '72.5',
           bodyFat: '24.3',
+          muscleMass: '42.1',
           measuredAt: '2026-04-22T10:00:00.000Z',
           weightDelta: '-0.5',
           bodyFatDelta: 'estável',
+          muscleMassDelta: '+0.8',
         }}
       />,
     )
 
     expect(screen.getByText('Maria')).toBeInTheDocument()
     expect(screen.getByText('33 anos • Feminino')).toBeInTheDocument()
+    expect(screen.getByText('Altura')).toBeInTheDocument()
+    expect(screen.getByText('165 cm')).toBeInTheDocument()
     expect(screen.getByText('72.5 kg')).toBeInTheDocument()
     expect(screen.getByText('-0.5 vs último registro')).toBeInTheDocument()
     expect(screen.getByText('24.3%')).toBeInTheDocument()
     expect(screen.getByText('Estável vs último registro')).toBeInTheDocument()
+    expect(screen.getByText('Massa Magra')).toBeInTheDocument()
+    expect(screen.getByText('+0.8 vs último registro')).toBeInTheDocument()
     expect(screen.getByText('InBody Score')).toBeInTheDocument()
   })
 
-  it('renders recent documents with category badge, status and analysis link', () => {
+  it('renders recent documents with category badge, status and exam link', () => {
     render(
       <RecentDocsCard
         docs={[
@@ -50,16 +56,15 @@ describe('Dashboard content components', () => {
             createdAt: new Date('2026-04-20T08:00:00.000Z'),
           },
         ]}
-        livingAnalysisId="analysis-123"
       />,
     )
 
     expect(screen.getByText('Hemograma Abril.pdf')).toBeInTheDocument()
     expect(screen.getByText('Exames de Sangue')).toBeInTheDocument()
     expect(screen.getByText('Processado')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ver análise' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Ver exame' })).toHaveAttribute(
       'href',
-      '/app/analyses/analysis-123',
+      '/app/documents/doc-1',
     )
   })
 })

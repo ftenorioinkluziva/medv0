@@ -24,6 +24,7 @@ interface ReportViewProps {
   reportMarkdown: string
   version: number
   createdAt: Date
+  sourceFileName?: string
   foundationAgentName?: string
   foundationGeneratedAt?: Date
   specializedTotal: number
@@ -207,6 +208,7 @@ export function ReportView({
   reportMarkdown,
   version,
   createdAt,
+  sourceFileName,
   foundationAgentName,
   foundationGeneratedAt,
   specializedTotal,
@@ -245,6 +247,12 @@ export function ReportView({
         <span className="rounded-full border px-2 py-0.5 text-[11px]">v{version}</span>
         <span>{formattedDate}</span>
       </div>
+
+      {sourceFileName && (
+        <p className="text-[11px] text-muted-foreground truncate" title={sourceFileName}>
+          Arquivo-base: {sourceFileName}
+        </p>
+      )}
 
       <div className="flex gap-2">
         <AgentStatusBadge

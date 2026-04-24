@@ -21,9 +21,11 @@ export type HistoryEntry = {
 export type BodyCompositionSummary = {
   weight: string | null
   bodyFat: string | null
+  muscleMass: string | null
   measuredAt: string
   weightDelta: string | null
   bodyFatDelta: string | null
+  muscleMassDelta: string | null
 }
 
 export type ProductSummaryItem = {
@@ -83,9 +85,11 @@ async function DashboardDataLoader({ userId, userName }: { userId: string; userN
     ? {
         weight: bodyCompResult.latest.weight,
         bodyFat: bodyCompResult.latest.bodyFat,
+        muscleMass: bodyCompResult.latest.muscleMass,
         measuredAt: bodyCompResult.latest.measuredAt,
         weightDelta: bodyCompResult.delta?.weight ?? null,
         bodyFatDelta: bodyCompResult.delta?.bodyFat ?? null,
+        muscleMassDelta: bodyCompResult.delta?.muscleMass ?? null,
       }
     : null
 
