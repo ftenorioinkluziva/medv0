@@ -102,7 +102,7 @@ export default async function WorkoutPage() {
         {(data.overview || data.weeklyGoal) && (
           <div className="rounded-3xl border border-border bg-card p-5 space-y-3 shadow-sm">
             {data.weeklyGoal && (
-              <div className="inline-flex rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
+              <div className="inline-flex rounded-lg bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
                 Meta semanal: {data.weeklyGoal}
               </div>
             )}
@@ -112,42 +112,38 @@ export default async function WorkoutPage() {
           </div>
         )}
 
-        {data.restDays && data.restDays.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            <span className="text-xs text-muted-foreground">Descanso:</span>
-            {data.restDays.map((day, i) => (
-              <span key={i} className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
-                {day}
-              </span>
-            ))}
-          </div>
-        )}
-
         {workouts.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground/70 uppercase tracking-wide">
-              Treinos ({workouts.length})
-            </h2>
+            {data.restDays && data.restDays.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 pb-1">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Descanso</span>
+                {data.restDays.map((day, i) => (
+                  <span key={i} className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
+                    {day}
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="flex flex-col gap-3">
               {workouts.map((workout, i) => (
                 <details
                   key={i}
                   open={isTodayDay(workout.day)}
-                  className={`group rounded-3xl border bg-card shadow-sm transition-colors open:bg-card/95 ${
+                  className={`group rounded-3xl border bg-card shadow-sm ${
                     isTodayDay(workout.day)
-                      ? 'border-violet-500/50 bg-violet-500/[0.06] open:border-violet-500/60'
-                      : 'border-border open:border-blue-500/30'
+                      ? 'border-violet-500/40 bg-violet-500/4'
+                      : 'border-border hover:border-border/80'
                   }`}
                 >
-                  <summary className="cursor-pointer list-none p-4">
+                  <summary className="cursor-pointer list-none p-4 hover:bg-muted/30 rounded-3xl group-open:rounded-b-none transition-colors">
                     <div className="flex items-start gap-3">
-                      <div className="min-w-0 flex-1 space-y-3">
+                      <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${isTodayDay(workout.day) ? 'bg-violet-500/10 text-violet-700 dark:text-violet-300' : 'bg-muted text-muted-foreground'}`}>
                             {workout.day}
                           </span>
                           {isTodayDay(workout.day) && (
-                            <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold text-violet-600 dark:text-violet-400">
+                            <span className="rounded-full bg-violet-500/20 px-2.5 py-1 text-[11px] font-bold text-violet-700 dark:text-violet-300">
                               Hoje
                             </span>
                           )}
@@ -162,17 +158,14 @@ export default async function WorkoutPage() {
                             </span>
                           )}
                         </div>
-                        <div className="space-y-1.5">
+                        <div>
                           <p className="text-sm font-semibold leading-tight text-foreground">{workout.type}</p>
-                          <p className="text-xs leading-relaxed text-muted-foreground">
-                            {workout.exercises.length} exercicios planejados
-                          </p>
                         </div>
                       </div>
-                      <ChevronDown className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                      <ChevronDown className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
                     </div>
                   </summary>
-                  <div className="space-y-4 border-t border-border px-4 pb-4 pt-4">
+                  <div className="space-y-4 border-t border-border/60 px-4 pb-4 pt-4">
                     {workout.warmup && (
                       <div className="rounded-2xl bg-muted/40 p-3">
                         <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Aquecimento</p>
@@ -183,17 +176,17 @@ export default async function WorkoutPage() {
                     {workout.exercises?.length > 0 && (
                       <div>
                         <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">
-                          Exercícios ({workout.exercises.length})
+                          Exercícios
                         </p>
                         <div className="flex flex-col gap-2">
                           {workout.exercises.map((ex, j) => (
                             <div key={j} className="flex items-start gap-3 rounded-xl bg-muted/50 p-3">
-                              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-foreground/60">
                                 {j + 1}
                               </span>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium leading-tight">{ex.name}</p>
-                                <div className="flex flex-wrap gap-1.5 mt-1">
+                                <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
                                   {ex.sets && (
                                     <span className="text-[11px] text-muted-foreground">{ex.sets} séries</span>
                                   )}
@@ -205,7 +198,7 @@ export default async function WorkoutPage() {
                                   )}
                                 </div>
                                 {ex.notes && (
-                                  <p className="text-[11px] text-muted-foreground/70 mt-1 italic">{ex.notes}</p>
+                                  <p className="text-[11px] text-muted-foreground/60 mt-1.5 leading-relaxed">{ex.notes}</p>
                                 )}
                               </div>
                             </div>
@@ -228,16 +221,16 @@ export default async function WorkoutPage() {
         )}
 
         {data.progressionTips && data.progressionTips.length > 0 && (
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold text-foreground/70 uppercase tracking-wide">
-              Progressão
-            </h2>
-            <div className="rounded-2xl border border-border bg-card p-4">
-              <ul className="space-y-2">
+          <section>
+            <div className="rounded-3xl border border-border bg-card p-5 space-y-3 shadow-sm">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Progressão</p>
+              <ul className="space-y-3">
                 {data.progressionTips.map((tip, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <span className="mt-0.5 size-1.5 shrink-0 rounded-full bg-blue-500" aria-hidden="true" />
-                    {tip}
+                  <li key={i} className="flex items-start gap-3 text-sm">
+                    <span className="mt-1 flex size-4 shrink-0 items-center justify-center rounded-full bg-blue-500/15 text-[9px] font-bold text-blue-600 dark:text-blue-400" aria-hidden="true">
+                      {i + 1}
+                    </span>
+                    <span className="leading-relaxed text-foreground/80">{tip}</span>
                   </li>
                 ))}
               </ul>

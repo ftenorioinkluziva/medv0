@@ -203,8 +203,8 @@ export default async function MealsPage() {
         {(data.overview || data.daily_calories_avg) && (
           <div className="rounded-3xl border border-border bg-card p-5 space-y-3 shadow-sm">
             {data.daily_calories_avg && (
-              <div className="inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                Media diaria: {data.daily_calories_avg}
+              <div className="inline-flex rounded-lg bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                Média diária: {data.daily_calories_avg}
               </div>
             )}
             {data.overview && (
@@ -232,43 +232,38 @@ export default async function MealsPage() {
                 <details
                   key={dayIdx}
                   open={isTodayDay(day.day)}
-                  className="group rounded-3xl border border-border bg-card/80 shadow-sm backdrop-blur-sm transition-colors open:border-emerald-500/40 open:bg-card"
+                  className={`group rounded-3xl border bg-card shadow-sm ${isTodayDay(day.day) ? 'border-emerald-500/40' : 'border-border'}`}
                 >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 hover:bg-muted/30 rounded-3xl group-open:rounded-b-none transition-colors">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/70">
+                        <h2 className={`text-sm font-semibold ${isTodayDay(day.day) ? 'text-foreground' : 'text-foreground/70'}`}>
                           {day.day}
                         </h2>
                         {isTodayDay(day.day) && (
-                          <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
                             Hoje
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {allMeals.length} refeicoes planejadas
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {allMeals.length} refeições
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
-                        Dia {dayIdx + 1}
-                      </div>
-                      <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-                    </div>
+                    <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
                   </summary>
                   <div className="flex flex-col gap-3 border-t border-border/70 p-4 pt-4">
                     {allMeals.map(({ key, meal }) => (
                       <details
                         key={key}
                         open={isTodayDay(day.day) && key === currentMealKey}
-                        className={`group rounded-3xl border bg-card shadow-sm transition-colors open:bg-card/95 ${
+                        className={`group rounded-3xl border bg-card shadow-sm ${
                           isTodayDay(day.day) && key === currentMealKey
-                            ? 'border-violet-500/50 bg-violet-500/[0.06] open:border-violet-500/60'
-                            : 'border-border open:border-emerald-500/30'
+                            ? 'border-violet-500/40 bg-violet-500/4'
+                            : 'border-border'
                         }`}
                       >
-                        <summary className="cursor-pointer list-none p-4">
+                        <summary className="cursor-pointer list-none p-4 hover:bg-muted/30 rounded-3xl group-open:rounded-b-none transition-colors">
                           <div className="flex items-start gap-3">
                             <div className="min-w-0 flex-1 space-y-3">
                               <div className="flex flex-wrap items-center gap-2">
@@ -276,7 +271,7 @@ export default async function MealsPage() {
                                   {MEAL_LABELS[key] ?? key}
                                 </span>
                                 {isTodayDay(day.day) && key === currentMealKey && (
-                                  <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold text-violet-600 dark:text-violet-400">
+                                  <span className="rounded-full bg-violet-500/20 px-2.5 py-1 text-[11px] font-bold text-violet-700 dark:text-violet-300">
                                     Agora
                                   </span>
                                 )}
