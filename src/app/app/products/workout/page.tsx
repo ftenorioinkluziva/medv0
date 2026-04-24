@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
-import { ArrowLeft, Clock, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Clock, AlertCircle, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { getLatestProductByType } from '@/lib/db/queries/generated-products'
 import { ProductEmptyState } from '../_components/product-empty-state'
@@ -31,6 +31,31 @@ interface WorkoutContent {
   workouts: Workout[]
 }
 
+const WEEKDAY_ORDER = [
+  'Domingo',
+  'Segunda-feira',
+  'Terça-feira',
+  'Quarta-feira',
+  'Quinta-feira',
+  'Sexta-feira',
+  'Sábado',
+] as const
+
+function sortWorkoutsFromToday(workouts: Workout[]): Workout[] {
+  if (workouts.length <= 1) return workouts
+
+  const todayName = WEEKDAY_ORDER[new Date().getDay()]
+  const startIndex = workouts.findIndex((workout) => workout.day === todayName)
+
+  if (startIndex === -1) return workouts
+
+  return [...workouts.slice(startIndex), ...workouts.slice(0, startIndex)]
+}
+
+function isTodayDay(dayName: string): boolean {
+  return dayName === WEEKDAY_ORDER[new Date().getDay()]
+}
+
 export default async function WorkoutPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/auth/login')
@@ -54,6 +79,7 @@ export default async function WorkoutPage() {
   }
 
   const data = product.content as WorkoutContent
+  const workouts = sortWorkoutsFromToday(data.workouts ?? [])
 
   return (
     <main className="min-h-screen bg-background">
@@ -74,15 +100,14 @@ export default async function WorkoutPage() {
         </div>
 
         {(data.overview || data.weeklyGoal) && (
-          <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+          <div className="rounded-3xl border border-border bg-card p-5 space-y-3 shadow-sm">
+            {data.weeklyGoal && (
+              <div className="inline-flex rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                Meta semanal: {data.weeklyGoal}
+              </div>
+            )}
             {data.overview && (
               <p className="text-sm text-muted-foreground leading-relaxed">{data.overview}</p>
-            )}
-            {data.weeklyGoal && (
-              <p className="text-sm font-medium">
-                Meta semanal:{' '}
-                <span className="text-blue-600 dark:text-blue-400">{data.weeklyGoal}</span>
-              </p>
             )}
           </div>
         )}
@@ -98,43 +123,66 @@ export default async function WorkoutPage() {
           </div>
         )}
 
-        {data.workouts?.length > 0 && (
+        {workouts.length > 0 && (
           <section className="space-y-3">
             <h2 className="text-sm font-semibold text-foreground/70 uppercase tracking-wide">
-              Treinos ({data.workouts.length})
+              Treinos ({workouts.length})
             </h2>
             <div className="flex flex-col gap-3">
-              {data.workouts.map((workout, i) => (
-                <details key={i} className="rounded-2xl border border-border bg-card group">
-                  <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground">{workout.day}</p>
-                      <p className="text-sm font-semibold leading-tight">{workout.type}</p>
-                    </div>
-                    <div className="shrink-0 flex gap-2 ml-3">
-                      {workout.duration && (
-                        <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">
-                          {workout.duration}
-                        </span>
-                      )}
-                      {workout.intensity && (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground hidden sm:inline">
-                          {workout.intensity}
-                        </span>
-                      )}
+              {workouts.map((workout, i) => (
+                <details
+                  key={i}
+                  open={isTodayDay(workout.day)}
+                  className={`group rounded-3xl border bg-card shadow-sm transition-colors open:bg-card/95 ${
+                    isTodayDay(workout.day)
+                      ? 'border-violet-500/50 bg-violet-500/[0.06] open:border-violet-500/60'
+                      : 'border-border open:border-blue-500/30'
+                  }`}
+                >
+                  <summary className="cursor-pointer list-none p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                            {workout.day}
+                          </span>
+                          {isTodayDay(workout.day) && (
+                            <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold text-violet-600 dark:text-violet-400">
+                              Hoje
+                            </span>
+                          )}
+                          {workout.duration && (
+                            <span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                              {workout.duration}
+                            </span>
+                          )}
+                          {workout.intensity && (
+                            <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
+                              {workout.intensity}
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-1.5">
+                          <p className="text-sm font-semibold leading-tight text-foreground">{workout.type}</p>
+                          <p className="text-xs leading-relaxed text-muted-foreground">
+                            {workout.exercises.length} exercicios planejados
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronDown className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
                     </div>
                   </summary>
-                  <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+                  <div className="space-y-4 border-t border-border px-4 pb-4 pt-4">
                     {workout.warmup && (
-                      <div>
-                        <p className="text-[11px] font-medium text-muted-foreground mb-1">Aquecimento</p>
+                      <div className="rounded-2xl bg-muted/40 p-3">
+                        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Aquecimento</p>
                         <p className="text-xs text-foreground/80">{workout.warmup}</p>
                       </div>
                     )}
 
                     {workout.exercises?.length > 0 && (
                       <div>
-                        <p className="text-[11px] font-medium text-muted-foreground mb-2">
+                        <p className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wide">
                           Exercícios ({workout.exercises.length})
                         </p>
                         <div className="flex flex-col gap-2">
@@ -167,8 +215,8 @@ export default async function WorkoutPage() {
                     )}
 
                     {workout.cooldown && (
-                      <div>
-                        <p className="text-[11px] font-medium text-muted-foreground mb-1">Desaquecimento</p>
+                      <div className="rounded-2xl bg-muted/40 p-3">
+                        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Desaquecimento</p>
                         <p className="text-xs text-foreground/80">{workout.cooldown}</p>
                       </div>
                     )}
