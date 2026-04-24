@@ -52,7 +52,7 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
 
   return (
     <div className="space-y-4">
-      <Card className="p-4 space-y-4">
+      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
         <div>
           <h2 className="font-semibold text-foreground">Testes Funcionais</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -115,7 +115,7 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
         </div>
       </Card>
 
-      <Card className="p-4 space-y-4">
+      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-foreground">Atividade Física</h2>
           <Button type="button" variant="outline" size="sm" onClick={addActivity}>
@@ -128,7 +128,7 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
         )}
 
         {activities.map((activity, index) => (
-          <div key={activity._id} className="rounded-md border border-border p-3 space-y-3">
+          <div key={activity._id} className="rounded-xl border border-foreground/10 p-3 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Atividade {index + 1}</span>
               <button
@@ -174,7 +174,7 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
                 <select
                   value={activity.intensity}
                   onChange={(e) => updateActivity(activity._id, 'intensity', e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-2 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="h-8 w-full bg-transparent border border-input rounded-lg px-2.5 text-sm text-foreground focus:outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                 >
                   <option value="leve">Leve</option>
                   <option value="moderada">Moderada</option>

@@ -15,8 +15,11 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
   return (
     <div className="space-y-4">
       {/* Sono */}
-      <Card className="p-4 space-y-4">
-        <h2 className="font-semibold text-foreground">Sono</h2>
+      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
+        <div>
+          <h2 className="font-semibold text-foreground">Sono</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Qualidade e padrões de sono.</p>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
@@ -83,8 +86,11 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
       </Card>
 
       {/* Hábitos */}
-      <Card className="p-4 space-y-4">
-        <h2 className="font-semibold text-foreground">Hábitos</h2>
+      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
+        <div>
+          <h2 className="font-semibold text-foreground">Hábitos</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Alimentação, substâncias e bem-estar.</p>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
@@ -120,7 +126,7 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
               id="smokingStatus"
               name="smokingStatus"
               defaultValue={initialData?.smokingStatus ?? ''}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-8 w-full bg-transparent border border-input rounded-lg px-2.5 text-sm text-foreground focus:outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
             >
               <option value="">Selecione</option>
               <option value="nunca_fumou">Nunca fumou</option>
@@ -145,7 +151,7 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
             id="alcoholConsumption"
             name="alcoholConsumption"
             defaultValue={initialData?.alcoholConsumption ?? ''}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-8 w-full bg-transparent border border-input rounded-lg px-2.5 text-sm text-foreground focus:outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
           >
             <option value="">Selecione</option>
             <option value="nunca">Nunca</option>
@@ -185,9 +191,11 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
       </Card>
 
       {/* Cronobiologia */}
-      <Card className="p-4 space-y-4">
-        <h2 className="font-semibold text-foreground">Cronobiologia</h2>
-        <p className="text-xs text-muted-foreground">Horários no formato HH:MM</p>
+      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
+        <div>
+          <h2 className="font-semibold text-foreground">Cronobiologia</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Horários no formato HH:MM.</p>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">

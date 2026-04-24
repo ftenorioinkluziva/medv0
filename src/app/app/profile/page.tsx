@@ -11,17 +11,19 @@ export default async function ProfilePage() {
   if (!session?.user?.id) redirect('/auth/login')
 
   return (
-    <main className="min-h-screen bg-background p-4">
-      <div className="mx-auto max-w-lg space-y-6">
-        <div>
-          <h1 className="mb-1 text-2xl font-bold text-foreground">Meu Perfil</h1>
-          <p className="text-sm text-muted-foreground">
-            Preencha seus dados de saúde para personalizar as análises.
-          </p>
+    <main className="min-h-screen bg-background">
+      <div className="p-4 pb-20">
+        <div className="mx-auto max-w-lg space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Meu Perfil</h1>
+            <p className="text-sm text-muted-foreground">
+              Preencha seus dados de saúde para personalizar as análises.
+            </p>
+          </div>
+          <Suspense fallback={<ProfileSkeleton />}>
+            <ProfileDataLoader userId={session.user.id} />
+          </Suspense>
         </div>
-        <Suspense fallback={<ProfileSkeleton />}>
-          <ProfileDataLoader userId={session.user.id} />
-        </Suspense>
       </div>
     </main>
   )
