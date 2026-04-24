@@ -7,7 +7,11 @@ import { documents, snapshots } from '@/lib/db/schema'
 import { extractMedicalDocument, hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
 import { persistFailedDocument, persistSnapshot } from '@/lib/documents/persistence'
 import { classifyDocument } from '@/lib/documents/classifier'
-import { updateBodyComposition } from '@/lib/documents/body-composition'
+import {
+  extractBodyCompositionMetrics,
+  persistBodyComposition,
+  type BodyCompositionMetrics,
+} from '@/lib/documents/body-composition'
 import { triggerLivingAnalysis } from '@/lib/ai/orchestrator/trigger-living-analysis'
 import { validateUpload } from '@/lib/documents/upload-validation'
 import {
@@ -174,19 +178,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const type = category === 'bioimpedance' ? 'body_composition' : 'lab_test'
 
+    let bodyCompositionMetrics: BodyCompositionMetrics | undefined
+    if (category === 'bioimpedance') {
+      bodyCompositionMetrics = extractBodyCompositionMetrics(structuredData)
+    }
+
     after(async () => {
       try {
-        if (category === 'bioimpedance') {
-          const [snapshot] = await db
-            .select({ structuredData: snapshots.structuredData })
-            .from(snapshots)
-            .where(eq(snapshots.documentId, documentId))
-            .limit(1)
-
-          if (snapshot) {
-            await updateBodyComposition(session.user.id, documentId, snapshot.structuredData)
-          }
-        } else {
+        if (category === 'bioimpedance' && bodyCompositionMetrics) {
+          await persistBodyComposition(session.user.id, documentId, bodyCompositionMetrics)
+        } else if (category !== 'bioimpedance') {
           await triggerLivingAnalysis(session.user.id, documentId)
         }
       } catch (error) {
@@ -200,8 +201,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       documentId,
       fileName: uploadFileName,
       category,
-      ...(category === 'bioimpedance' && {
-        message: 'Dados de composição corporal detectados',
+      ...(category === 'bioimpedance' && bodyCompositionMetrics && {
+        metrics: bodyCompositionMetrics,
       }),
     })
   } catch (error) {

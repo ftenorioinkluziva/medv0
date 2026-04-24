@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq, isNotNull } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import { healthAgents } from '@/lib/db/schema'
@@ -20,7 +20,7 @@ export default async function ChatPage() {
         description: healthAgents.description,
       })
       .from(healthAgents)
-      .where(eq(healthAgents.isActive, true))
+      .where(and(eq(healthAgents.isActive, true), isNotNull(healthAgents.chatPrompt)))
       .orderBy(asc(healthAgents.sortOrder), asc(healthAgents.name)),
     getChatSessionsWithAgent(session.user.id),
   ])

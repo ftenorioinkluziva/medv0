@@ -61,11 +61,66 @@ interface FilePreview {
   previewUrl: string | null
 }
 
+interface BodyMetrics {
+  weight?: number
+  bodyFat?: number
+  muscleMass?: number
+  visceralFat?: number
+  boneMass?: number
+  bmr?: number
+  bodyWater?: number
+  bodyWaterLiters?: number
+  proteinMass?: number
+  waistHipRatio?: number
+  obesityDegree?: number
+  inbodyScore?: number
+  idealWeight?: number
+}
+
 interface UploadSuccessInfo {
   fileName: string
   type?: 'lab_test' | 'body_composition'
   documentId?: string
   category?: DocumentCategory
+  metrics?: BodyMetrics
+}
+
+const METRIC_LABELS: Array<{ key: keyof BodyMetrics; label: string; unit: string }> = [
+  { key: 'weight', label: 'Peso', unit: 'kg' },
+  { key: 'bodyFat', label: 'Gordura corporal', unit: '%' },
+  { key: 'muscleMass', label: 'Massa muscular', unit: 'kg' },
+  { key: 'visceralFat', label: 'Gordura visceral', unit: 'nível' },
+  { key: 'boneMass', label: 'Massa óssea', unit: 'kg' },
+  { key: 'bmr', label: 'Taxa metabólica basal', unit: 'kcal' },
+  { key: 'bodyWater', label: 'Água corporal', unit: '%' },
+  { key: 'bodyWaterLiters', label: 'Água corporal', unit: 'L' },
+  { key: 'proteinMass', label: 'Massa proteica', unit: 'kg' },
+  { key: 'waistHipRatio', label: 'Relação cintura/quadril', unit: '' },
+  { key: 'obesityDegree', label: 'Grau de obesidade', unit: '%' },
+  { key: 'inbodyScore', label: 'InBody score', unit: '' },
+  { key: 'idealWeight', label: 'Peso ideal', unit: 'kg' },
+]
+
+function BodyCompositionSummary({ metrics }: { metrics: BodyMetrics }) {
+  const rows = METRIC_LABELS.filter(({ key }) => metrics[key] !== undefined)
+  if (rows.length === 0) return null
+
+  return (
+    <div className="mt-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 overflow-hidden">
+      <table className="w-full text-xs">
+        <tbody>
+          {rows.map(({ key, label, unit }) => (
+            <tr key={key} className="border-b border-emerald-500/10 last:border-0">
+              <td className="px-2 py-1 text-emerald-700/70 dark:text-emerald-400/70">{label}</td>
+              <td className="px-2 py-1 text-right font-medium tabular-nums">
+                {metrics[key]}{unit ? ` ${unit}` : ''}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 export function UploadForm() {
@@ -181,6 +236,7 @@ export function UploadForm() {
         type: payload.type,
         documentId: payload.documentId,
         category: validCategory,
+        metrics: payload.metrics,
       }
 
       setSuccessInfo(info)
@@ -415,11 +471,13 @@ export function UploadForm() {
               <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300" role="status" aria-live="polite">
                 {successInfo.type === 'body_composition' ? (
                   <>
-                    <p className="font-medium">Dados de composição corporal atualizados no seu perfil.</p>
-                    <p className="mt-1 break-all">Documento: {successInfo.fileName}</p>
-                    <p className="mt-1">
+                    <p className="font-medium">Composição corporal atualizada no seu perfil.</p>
+                    {successInfo.metrics && (
+                      <BodyCompositionSummary metrics={successInfo.metrics} />
+                    )}
+                    <p className="mt-2">
                       <Link href="/app/profile" className="underline underline-offset-2">
-                        Visualizar perfil atualizado
+                        Ver perfil completo
                       </Link>
                     </p>
                   </>

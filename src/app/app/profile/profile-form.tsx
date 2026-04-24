@@ -1,23 +1,188 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Activity, FlaskConical, HeartPulse, UserRound } from 'lucide-react'
+import { Activity, Dumbbell, HeartPulse, UserRound, Check, AlertCircle } from 'lucide-react'
 import { upsertMedicalProfile } from '@/lib/actions/medical-profile'
 import { AdvancedForm } from './advanced-form'
 import { TagInput } from './tag-input'
-import type { MedicalProfile, ExerciseActivity } from '@/lib/db/schema'
+import { PerformanceForm } from './performance-form'
+import type { MedicalProfile, ExerciseActivity, BodyCompositionHistoryRecord } from '@/lib/db/schema'
+import type { BodyCompositionDelta } from '@/lib/db/queries/body-composition'
 
 interface ProfileFormProps {
   initialData: MedicalProfile | null
-  children: React.ReactNode
+  latestBodyComposition: BodyCompositionHistoryRecord | null
+  bodyCompositionDelta: BodyCompositionDelta | null
 }
 
-export function ProfileForm({ initialData, children }: ProfileFormProps) {
+function parseStr(val: string | null | undefined): string {
+  if (val == null) return ''
+  const n = parseFloat(val)
+  return isNaN(n) ? '' : String(n)
+}
+
+/* ─── primitives ──────────────────────────────────────────── */
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 mb-5">
+      <span className="text-[11px] font-semibold tracking-[0.12em] uppercase text-[var(--profile-accent)] opacity-80">
+        {children}
+      </span>
+      <div className="flex-1 h-px bg-border/40" />
+    </div>
+  )
+}
+
+function FieldRow({ children, cols = 2 }: { children: React.ReactNode; cols?: number }) {
+  return (
+    <div className={`grid gap-4 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+      {children}
+    </div>
+  )
+}
+
+function Field({
+  id,
+  label,
+  unit,
+  badge,
+  delta,
+  children,
+}: {
+  id?: string
+  label: string
+  unit?: string
+  badge?: boolean
+  delta?: string | null
+  children: React.ReactNode
+}) {
+  const isUp = delta?.startsWith('↑')
+  return (
+    <div className="group/field space-y-1.5">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <label
+          htmlFor={id}
+          className="text-xs font-medium text-muted-foreground tracking-wide cursor-pointer"
+        >
+          {label}
+        </label>
+        {unit && (
+          <span className="text-[10px] text-muted-foreground/50">{unit}</span>
+        )}
+        {badge && (
+          <span className="inline-flex items-center gap-0.5 rounded-sm bg-[var(--profile-accent)]/10 border border-[var(--profile-accent)]/20 px-1.5 py-0.5 text-[9px] font-semibold tracking-wider text-[var(--profile-accent)] uppercase">
+            ⚡ InBody
+          </span>
+        )}
+        {delta && delta !== 'estável' && (
+          <span className={`text-[10px] font-medium tabular-nums ${isUp ? 'text-red-400' : 'text-emerald-400'}`}>
+            {delta}
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function StyledInput(props: React.ComponentProps<typeof Input> & { readOnly?: boolean }) {
+  return (
+    <Input
+      {...props}
+      className={`
+        h-9 bg-transparent border-0 border-b border-border/50 rounded-none
+        px-0 text-sm font-medium text-foreground
+        placeholder:text-muted-foreground/30
+        focus-visible:ring-0 focus-visible:border-b-[var(--profile-accent)]
+        transition-colors duration-150
+        ${props.readOnly ? 'text-muted-foreground cursor-default select-none' : ''}
+        ${props.className ?? ''}
+      `}
+    />
+  )
+}
+
+function StyledSelect({
+  id,
+  name,
+  required,
+  defaultValue,
+  children,
+}: {
+  id: string
+  name: string
+  required?: boolean
+  defaultValue?: string
+  children: React.ReactNode
+}) {
+  return (
+    <select
+      id={id}
+      name={name}
+      required={required}
+      defaultValue={defaultValue ?? ''}
+      className="
+        h-9 w-full bg-transparent border-0 border-b border-border/50 rounded-none
+        px-0 text-sm font-medium text-foreground
+        focus:outline-none focus:border-b-[var(--profile-accent)]
+        transition-colors duration-150
+        appearance-none cursor-pointer
+        [&>option]:bg-[var(--card)] [&>option]:text-foreground
+      "
+    >
+      {children}
+    </select>
+  )
+}
+
+function StyledTextarea({
+  id,
+  name,
+  required,
+  rows,
+  defaultValue,
+  placeholder,
+}: {
+  id: string
+  name: string
+  required?: boolean
+  rows?: number
+  defaultValue?: string
+  placeholder?: string
+}) {
+  return (
+    <textarea
+      id={id}
+      name={name}
+      required={required}
+      rows={rows ?? 3}
+      defaultValue={defaultValue ?? ''}
+      placeholder={placeholder}
+      className="
+        w-full bg-transparent border-0 border-b border-border/50 rounded-none
+        px-0 py-1.5 text-sm font-medium text-foreground resize-none
+        placeholder:text-muted-foreground/30
+        focus:outline-none focus:border-b-[var(--profile-accent)]
+        transition-colors duration-150
+      "
+    />
+  )
+}
+
+function Hint({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] text-muted-foreground/50 -mt-1 mb-4">
+      {children}
+    </p>
+  )
+}
+
+/* ─── main component ──────────────────────────────────────── */
+
+export function ProfileForm({ initialData, latestBodyComposition, bodyCompositionDelta }: ProfileFormProps) {
   const [isPending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [activeTab, setActiveTab] = useState('basicos')
@@ -34,22 +199,16 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
   const [activities, setActivities] = useState<ExerciseActivity[]>(
     (initialData?.exerciseActivities as ExerciseActivity[] | null) ?? [],
   )
-  const [medicalConditions, setMedicalConditions] = useState<string[]>(
-    initialData?.medicalConditions ?? [],
-  )
+  const [medicalConditions, setMedicalConditions] = useState<string[]>(initialData?.medicalConditions ?? [])
   const [medications, setMedications] = useState<string[]>(initialData?.medications ?? [])
   const [allergies, setAllergies] = useState<string[]>(initialData?.allergies ?? [])
   const [surgeries, setSurgeries] = useState<string[]>(initialData?.surgeries ?? [])
-  const [supplementation, setSupplementation] = useState<string[]>(
-    initialData?.supplementation ?? [],
-  )
+  const [supplementation, setSupplementation] = useState<string[]>(initialData?.supplementation ?? [])
 
   function handleTabChange(tab: string) {
     scrollRef.current[activeTab] = window.scrollY
     setActiveTab(tab)
-    requestAnimationFrame(() => {
-      window.scrollTo(0, scrollRef.current[tab] ?? 0)
-    })
+    requestAnimationFrame(() => window.scrollTo(0, scrollRef.current[tab] ?? 0))
   }
 
   function showToast(type: 'success' | 'error', message: string) {
@@ -60,7 +219,6 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
-
     startTransition(async () => {
       const result = await upsertMedicalProfile({
         age: Number(fd.get('age')),
@@ -79,6 +237,10 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
         notes: (fd.get('notes') as string) || undefined,
         bodyFatPercentage: (fd.get('bodyFatPercentage') as string) || undefined,
         muscleMass: (fd.get('muscleMass') as string) || undefined,
+        visceralFatLevel: (fd.get('visceralFatLevel') as string) || undefined,
+        boneMass: (fd.get('boneMass') as string) || undefined,
+        basalMetabolicRate: Number(fd.get('basalMetabolicRate')) || undefined,
+        bodyWaterPercentage: (fd.get('bodyWaterPercentage') as string) || undefined,
         handgripStrength: (fd.get('handgripStrength') as string) || undefined,
         sitToStandTime: (fd.get('sitToStandTime') as string) || undefined,
         vo2Max: (fd.get('vo2Max') as string) || undefined,
@@ -91,434 +253,363 @@ export function ProfileForm({ initialData, children }: ProfileFormProps) {
         dailyWaterIntake: (fd.get('dailyWaterIntake') as string) || undefined,
         stressLevel: Number(fd.get('stressLevel')) || undefined,
         stressManagement: (fd.get('stressManagement') as string) || undefined,
-        smokingStatus:
-          (fd.get('smokingStatus') as 'nunca_fumou' | 'ex-fumante' | 'fumante') || undefined,
+        smokingStatus: (fd.get('smokingStatus') as 'nunca_fumou' | 'ex-fumante' | 'fumante') || undefined,
         smokingDetails: (fd.get('smokingDetails') as string) || undefined,
-        alcoholConsumption:
-          (fd.get('alcoholConsumption') as
-            | 'nunca'
-            | 'social'
-            | 'regular'
-            | 'frequente') || undefined,
+        alcoholConsumption: (fd.get('alcoholConsumption') as 'nunca' | 'social' | 'regular' | 'frequente') || undefined,
         supplementation: supplementation.length > 0 ? supplementation : undefined,
         currentDiet: (fd.get('currentDiet') as string) || undefined,
         exerciseActivities: activities.length > 0 ? activities : undefined,
         physicalLimitations: (fd.get('physicalLimitations') as string) || undefined,
-        firstSunlightExposureTime:
-          (fd.get('firstSunlightExposureTime') as string) || undefined,
+        firstSunlightExposureTime: (fd.get('firstSunlightExposureTime') as string) || undefined,
         lastMealTime: (fd.get('lastMealTime') as string) || undefined,
-        artificialLightExposureStart:
-          (fd.get('artificialLightExposureStart') as string) || undefined,
-        artificialLightExposureEnd:
-          (fd.get('artificialLightExposureEnd') as string) || undefined,
-        artificialLightExposureTime:
-          (fd.get('artificialLightExposureTime') as string) || undefined,
+        artificialLightExposureStart: (fd.get('artificialLightExposureStart') as string) || undefined,
+        artificialLightExposureEnd: (fd.get('artificialLightExposureEnd') as string) || undefined,
+        artificialLightExposureTime: (fd.get('artificialLightExposureTime') as string) || undefined,
       })
-
-      if (result.success) {
-        showToast('success', 'Perfil salvo com sucesso!')
-      } else {
-        showToast('error', result.error)
-      }
+      if (result.success) showToast('success', 'Perfil salvo com sucesso!')
+      else showToast('error', result.error)
     })
   }
 
-  const biomarkers = initialData?.latestBiomarkers as Record<string, unknown> | null | undefined
-
-  const selectCls =
-    'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-  const textareaCls =
-    'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none'
+  const inb = latestBodyComposition
+  const hasInBody = inb != null
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`rounded-md px-4 py-3 text-sm font-medium ${
-            toast.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
+    <>
+      {/* profile-scoped accent color: teal-cyan, medical feel */}
+      <style>{`
+        .profile-root {
+          --profile-accent: oklch(0.72 0.14 196);
+          --profile-accent-dim: oklch(0.72 0.14 196 / 0.12);
+        }
+        .dark .profile-root {
+          --profile-accent: oklch(0.78 0.13 196);
+          --profile-accent-dim: oklch(0.78 0.13 196 / 0.1);
+        }
+      `}</style>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid !h-auto w-full grid-cols-4 gap-1 rounded-xl border border-border/70 bg-card p-1 shadow-sm group-data-horizontal/tabs:!h-auto">
-          <TabsTrigger
-            value="basicos"
-            className="!h-12 flex-col gap-1 rounded-lg px-1 py-1.5 text-[11px] leading-none data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm"
-          >
-            <UserRound className="h-4 w-4" aria-hidden="true" />
-            Básicos
-          </TabsTrigger>
-          <TabsTrigger
-            value="composicao"
-            className="!h-12 flex-col gap-1 rounded-lg px-1 py-1.5 text-[11px] leading-none data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm"
-          >
-            <Activity className="h-4 w-4" aria-hidden="true" />
-            Composição
-          </TabsTrigger>
-          <TabsTrigger
-            value="estilo"
-            className="!h-12 flex-col gap-1 rounded-lg px-1 py-1.5 text-[11px] leading-none data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm"
-          >
-            <HeartPulse className="h-4 w-4" aria-hidden="true" />
-            Estilo
-          </TabsTrigger>
-          <TabsTrigger
-            value="biomarcadores"
-            className="!h-12 flex-col gap-1 rounded-lg px-1 py-1.5 text-[11px] leading-none data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm"
-          >
-            <FlaskConical className="h-4 w-4" aria-hidden="true" />
-            Biomarcadores
-          </TabsTrigger>
-        </TabsList>
+      <div className="profile-root">
+        <form onSubmit={handleSubmit} className="space-y-5">
 
-        {/* Tab 1: Dados básicos, cardiovasculares, histórico médico, composição básica */}
-        <TabsContent value="basicos" keepMounted className="space-y-4 mt-4">
-          <Card className="p-4 space-y-4">
-            <h2 className="font-semibold text-foreground">Dados Básicos</h2>
+          {/* Toast */}
+          {toast && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`
+                flex items-center gap-2.5 rounded-lg px-4 py-3 text-sm font-medium
+                border animate-in fade-in slide-in-from-top-2 duration-200
+                ${toast.type === 'success'
+                  ? 'bg-emerald-500/8 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-red-500/8 border-red-500/20 text-red-600 dark:text-red-400'
+                }
+              `}
+            >
+              {toast.type === 'success'
+                ? <Check className="h-4 w-4 shrink-0" />
+                : <AlertCircle className="h-4 w-4 shrink-0" />
+              }
+              {toast.message}
+            </div>
+          )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="age">Idade</Label>
-                <Input
-                  id="age"
-                  name="age"
-                  type="number"
-                  required
-                  min={0}
-                  max={150}
-                  defaultValue={initialData?.age ?? ''}
-                  placeholder="Ex: 35"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="gender">Sexo</Label>
-                <select
-                  id="gender"
-                  name="gender"
-                  required
-                  defaultValue={initialData?.gender ?? ''}
-                  className={selectCls}
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            <TabsList className="
+              grid w-full grid-cols-4 !h-auto gap-0.5 p-0.5
+              rounded-xl bg-muted/50 border border-border/40
+            ">
+              {[
+                { value: 'basicos', label: 'Básicos', Icon: UserRound },
+                { value: 'composicao', label: 'Composição', Icon: Activity },
+                { value: 'desempenho', label: 'Desempenho', Icon: Dumbbell },
+                { value: 'habitos', label: 'Hábitos', Icon: HeartPulse },
+              ].map(({ value, label, Icon }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="
+                    !h-11 flex-col gap-1 rounded-[10px] px-1 py-1.5
+                    text-[10px] font-medium leading-none tracking-wide
+                    text-muted-foreground transition-all duration-150
+                    data-[state=active]:bg-background
+                    data-[state=active]:text-[var(--profile-accent)]
+                    data-[state=active]:shadow-sm
+                    data-[state=active]:border-b-2
+                    data-[state=active]:border-b-[var(--profile-accent)]
+                  "
                 >
-                  <option value="" disabled>
-                    Selecione
-                  </option>
-                  <option value="masculino">Masculino</option>
-                  <option value="feminino">Feminino</option>
-                  <option value="outro">Outro</option>
-                </select>
-              </div>
-            </div>
+                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="height">Altura (cm)</Label>
-                <Input
-                  id="height"
-                  name="height"
-                  type="number"
-                  required
-                  min={1}
-                  max={300}
-                  value={height || ''}
-                  onChange={(e) => setHeight(Number(e.target.value))}
-                  placeholder="Ex: 175"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="weight">Peso (kg)</Label>
-                <Input
-                  id="weight"
-                  name="weight"
-                  type="number"
-                  required
-                  step="0.01"
-                  min={1}
-                  value={weightStr}
-                  onChange={(e) => setWeightStr(e.target.value)}
-                  placeholder="Ex: 72.5"
-                />
-              </div>
-            </div>
+            {/* ── Tab Básicos ───────────────────────────────── */}
+            <TabsContent value="basicos" keepMounted className="mt-6 space-y-8">
 
-            {bmi && (
-              <p className="text-sm text-muted-foreground">
-                IMC:{' '}
-                <span className="font-semibold text-foreground">{bmi}</span>
-              </p>
-            )}
-          </Card>
+              <section>
+                <SectionTitle>Identificação</SectionTitle>
+                <FieldRow>
+                  <Field id="age" label="Idade" unit="anos">
+                    <StyledInput id="age" name="age" type="number" required min={0} max={150}
+                      defaultValue={initialData?.age ?? ''} placeholder="35" />
+                  </Field>
+                  <Field id="gender" label="Sexo biológico">
+                    <StyledSelect id="gender" name="gender" required defaultValue={initialData?.gender ?? ''}>
+                      <option value="" disabled>Selecione</option>
+                      <option value="masculino">Masculino</option>
+                      <option value="feminino">Feminino</option>
+                      <option value="outro">Outro</option>
+                    </StyledSelect>
+                  </Field>
+                </FieldRow>
 
-          <Card className="p-4 space-y-4">
-            <h2 className="font-semibold text-foreground">Dados Cardiovasculares</h2>
+                <div className="mt-4" />
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="systolicPressure">PA Sistólica</Label>
-                <Input
-                  id="systolicPressure"
-                  name="systolicPressure"
-                  type="number"
-                  required
-                  min={1}
-                  max={300}
-                  defaultValue={initialData?.systolicPressure ?? ''}
-                  placeholder="120"
-                />
-                <p className="text-xs text-muted-foreground">mmHg</p>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="diastolicPressure">PA Diastólica</Label>
-                <Input
-                  id="diastolicPressure"
-                  name="diastolicPressure"
-                  type="number"
-                  required
-                  min={1}
-                  max={200}
-                  defaultValue={initialData?.diastolicPressure ?? ''}
-                  placeholder="80"
-                />
-                <p className="text-xs text-muted-foreground">mmHg</p>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="restingHeartRate">FC Repouso</Label>
-                <Input
-                  id="restingHeartRate"
-                  name="restingHeartRate"
-                  type="number"
-                  required
-                  min={1}
-                  defaultValue={initialData?.restingHeartRate ?? ''}
-                  placeholder="70"
-                />
-                <p className="text-xs text-muted-foreground">bpm</p>
-              </div>
-            </div>
-          </Card>
+                <FieldRow>
+                  <Field id="height" label="Altura" unit="cm">
+                    <StyledInput id="height" name="height" type="number" required min={1} max={300}
+                      value={height || ''} onChange={(e) => setHeight(Number(e.target.value))} placeholder="175" />
+                  </Field>
+                  <Field id="weight" label="Peso" unit="kg">
+                    <StyledInput id="weight" name="weight" type="number" required step="0.01" min={1}
+                      value={weightStr} onChange={(e) => setWeightStr(e.target.value)} placeholder="72.5" />
+                  </Field>
+                </FieldRow>
 
-          <Card className="p-4 space-y-4">
-            <h2 className="font-semibold text-foreground">Objetivos e Histórico</h2>
-
-            <div className="space-y-1">
-              <Label htmlFor="healthObjectives">Objetivos de Saúde</Label>
-              <textarea
-                id="healthObjectives"
-                name="healthObjectives"
-                required
-                rows={3}
-                defaultValue={initialData?.healthObjectives ?? ''}
-                placeholder="Ex: Perder peso, controlar pressão arterial, melhorar condicionamento físico"
-                className={`min-h-20 ${textareaCls}`}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="familyHistory">Histórico Familiar (opcional)</Label>
-              <textarea
-                id="familyHistory"
-                name="familyHistory"
-                rows={2}
-                defaultValue={initialData?.familyHistory ?? ''}
-                placeholder="Ex: Diabetes tipo 2 no pai, hipertensão na mãe"
-                className={`min-h-[60px] ${textareaCls}`}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="notes">Observações (opcional)</Label>
-              <textarea
-                id="notes"
-                name="notes"
-                rows={2}
-                defaultValue={initialData?.notes ?? ''}
-                placeholder="Outras informações relevantes"
-                className={`min-h-[60px] ${textareaCls}`}
-              />
-            </div>
-          </Card>
-
-          <Card className="p-4 space-y-4">
-            <h2 className="font-semibold text-foreground">Histórico Médico</h2>
-            <p className="text-xs text-muted-foreground">
-              Opcional — todos os campos aceitam múltiplos itens.
-            </p>
-            <TagInput
-              id="medicalConditions"
-              label="Condições médicas"
-              placeholder="Ex: hipertensão, diabetes"
-              initialValues={initialData?.medicalConditions}
-              onChange={setMedicalConditions}
-            />
-            <TagInput
-              id="medications"
-              label="Medicamentos em uso"
-              placeholder="Ex: metformina 500mg, losartana"
-              initialValues={initialData?.medications}
-              onChange={setMedications}
-            />
-            <TagInput
-              id="allergies"
-              label="Alergias"
-              placeholder="Ex: penicilina, látex"
-              initialValues={initialData?.allergies}
-              onChange={setAllergies}
-            />
-            <TagInput
-              id="surgeries"
-              label="Cirurgias"
-              placeholder="Ex: apendicectomia 2015"
-              initialValues={initialData?.surgeries}
-              onChange={setSurgeries}
-            />
-          </Card>
-
-          <Card className="p-4 space-y-4">
-            <h2 className="font-semibold text-foreground">Composição Corporal Básica</h2>
-            <p className="text-xs text-muted-foreground">
-              Opcional — dados de bioimpedância ou DEXA.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="bodyFatPercentage">Gordura corporal (%)</Label>
-                <Input
-                  id="bodyFatPercentage"
-                  name="bodyFatPercentage"
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  max={100}
-                  defaultValue={initialData?.bodyFatPercentage ?? ''}
-                  placeholder="Ex: 18.5"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="muscleMass">Massa muscular (kg)</Label>
-                <Input
-                  id="muscleMass"
-                  name="muscleMass"
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  defaultValue={initialData?.muscleMass ?? ''}
-                  placeholder="Ex: 32.0"
-                />
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* Tab 2: Composição — display-only InBody data */}
-        <TabsContent value="composicao" keepMounted className="mt-4">
-          {children}
-        </TabsContent>
-
-        {/* Tab 3: Estilo de vida — physical performance + AdvancedForm */}
-        <TabsContent value="estilo" keepMounted className="space-y-4 mt-4">
-          <Card className="p-4 space-y-4">
-            <h2 className="font-semibold text-foreground">Desempenho Físico</h2>
-            <p className="text-xs text-muted-foreground">
-              Opcional — testes de capacidade funcional.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="handgripStrength">Força de preensão (kgf)</Label>
-                <Input
-                  id="handgripStrength"
-                  name="handgripStrength"
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  defaultValue={initialData?.handgripStrength ?? ''}
-                  placeholder="Ex: 42.5"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="sitToStandTime">Sentar-levantar (s)</Label>
-                <Input
-                  id="sitToStandTime"
-                  name="sitToStandTime"
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  defaultValue={initialData?.sitToStandTime ?? ''}
-                  placeholder="Ex: 12.3"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="vo2Max">VO2 máx</Label>
-                <Input
-                  id="vo2Max"
-                  name="vo2Max"
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  defaultValue={initialData?.vo2Max ?? ''}
-                  placeholder="Ex: 45.0"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="co2ToleranceTest">Tolerância CO2 (s)</Label>
-                <Input
-                  id="co2ToleranceTest"
-                  name="co2ToleranceTest"
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  defaultValue={initialData?.co2ToleranceTest ?? ''}
-                  placeholder="Ex: 40"
-                />
-              </div>
-            </div>
-          </Card>
-
-          <AdvancedForm
-            initialData={initialData}
-            onActivitiesChange={setActivities}
-            onSupplementationChange={setSupplementation}
-          />
-        </TabsContent>
-
-        {/* Tab 4: Biomarcadores — display-only latestBiomarkers jsonb */}
-        <TabsContent value="biomarcadores" keepMounted className="mt-4">
-          <Card className="p-4 space-y-4">
-            <h2 className="font-semibold text-foreground">Últimos Biomarcadores</h2>
-            {biomarkers && Object.keys(biomarkers).length > 0 ? (
-              <dl className="space-y-2">
-                {Object.entries(biomarkers).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex justify-between border-b border-border/40 pb-1"
-                  >
-                    <dt className="text-sm text-muted-foreground capitalize">
-                      {key.replace(/_/g, ' ')}
-                    </dt>
-                    <dd className="text-sm font-medium text-foreground">
-                      {value == null
-                        ? '—'
-                        : typeof value === 'object'
-                          ? JSON.stringify(value)
-                          : String(value)}
-                    </dd>
+                {bmi && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">IMC</span>
+                    <span className="text-sm font-semibold text-foreground tabular-nums">{bmi}</span>
+                    <span className="text-xs text-muted-foreground/50">kg/m²</span>
                   </div>
-                ))}
-              </dl>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Nenhum biomarcador registrado. Envie um documento laboratorial para análise.
-              </p>
-            )}
-          </Card>
-        </TabsContent>
-      </Tabs>
+                )}
+              </section>
 
-      <Button type="submit" disabled={isPending} className="w-full">
-        {isPending ? 'Salvando...' : 'Salvar Perfil'}
-      </Button>
-    </form>
+              <section>
+                <SectionTitle>Cardiovascular</SectionTitle>
+                <FieldRow cols={3}>
+                  <Field id="systolicPressure" label="PA Sistólica" unit="mmHg">
+                    <StyledInput id="systolicPressure" name="systolicPressure" type="number" required min={1} max={300}
+                      defaultValue={initialData?.systolicPressure ?? ''} placeholder="120" />
+                  </Field>
+                  <Field id="diastolicPressure" label="PA Diastólica" unit="mmHg">
+                    <StyledInput id="diastolicPressure" name="diastolicPressure" type="number" required min={1} max={200}
+                      defaultValue={initialData?.diastolicPressure ?? ''} placeholder="80" />
+                  </Field>
+                  <Field id="restingHeartRate" label="FC Repouso" unit="bpm">
+                    <StyledInput id="restingHeartRate" name="restingHeartRate" type="number" required min={1}
+                      defaultValue={initialData?.restingHeartRate ?? ''} placeholder="70" />
+                  </Field>
+                </FieldRow>
+              </section>
+
+              <section>
+                <SectionTitle>Objetivos</SectionTitle>
+                <Field id="healthObjectives" label="Objetivos de saúde">
+                  <StyledTextarea id="healthObjectives" name="healthObjectives" required rows={3}
+                    defaultValue={initialData?.healthObjectives ?? ''}
+                    placeholder="Perder peso, controlar pressão, melhorar condicionamento..." />
+                </Field>
+                <div className="mt-4" />
+                <Field id="familyHistory" label="Histórico familiar">
+                  <StyledTextarea id="familyHistory" name="familyHistory" rows={2}
+                    defaultValue={initialData?.familyHistory ?? ''}
+                    placeholder="Diabetes no pai, hipertensão na mãe..." />
+                </Field>
+                <div className="mt-4" />
+                <Field id="notes" label="Observações">
+                  <StyledTextarea id="notes" name="notes" rows={2}
+                    defaultValue={initialData?.notes ?? ''} placeholder="Outras informações relevantes..." />
+                </Field>
+              </section>
+
+              <section>
+                <SectionTitle>Histórico Médico</SectionTitle>
+                <Hint>Pressione Enter ou vírgula para adicionar itens.</Hint>
+                <div className="space-y-5">
+                  <TagInput id="medicalConditions" label="Condições médicas"
+                    placeholder="hipertensão, diabetes..." initialValues={initialData?.medicalConditions} onChange={setMedicalConditions} />
+                  <TagInput id="medications" label="Medicamentos"
+                    placeholder="metformina 500mg..." initialValues={initialData?.medications} onChange={setMedications} />
+                  <TagInput id="allergies" label="Alergias"
+                    placeholder="penicilina, látex..." initialValues={initialData?.allergies} onChange={setAllergies} />
+                  <TagInput id="surgeries" label="Cirurgias"
+                    placeholder="apendicectomia 2015..." initialValues={initialData?.surgeries} onChange={setSurgeries} />
+                </div>
+              </section>
+            </TabsContent>
+
+            {/* ── Tab Composição ────────────────────────────── */}
+            <TabsContent value="composicao" keepMounted className="mt-6">
+              {hasInBody ? (
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-sm bg-[var(--profile-accent)]/10 border border-[var(--profile-accent)]/20 px-2 py-1 text-[10px] font-semibold tracking-wider text-[var(--profile-accent)] uppercase">
+                      ⚡ InBody
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(inb.measuredAt + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <a href="/app/upload" className="text-xs text-[var(--profile-accent)] hover:opacity-70 transition-opacity">
+                    Atualizar →
+                  </a>
+                </div>
+              ) : (
+                <div className="mb-6 rounded-lg border border-dashed border-border/50 px-4 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    Sem dados de bioimpedância.{' '}
+                    <a href="/app/upload" className="text-[var(--profile-accent)] hover:opacity-70 transition-opacity">
+                      Envie um exame
+                    </a>{' '}
+                    ou preencha manualmente.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-8">
+                <section>
+                  <SectionTitle>Composição Corporal</SectionTitle>
+                  <FieldRow>
+                    <Field id="bodyFatPercentage" label="Gordura corporal" unit="%"
+                      badge={hasInBody && inb.bodyFat != null}
+                      delta={hasInBody ? (bodyCompositionDelta?.bodyFat ?? null) : null}>
+                      <StyledInput id="bodyFatPercentage" name="bodyFatPercentage" type="number" step="0.1" min={0} max={100}
+                        defaultValue={hasInBody && inb.bodyFat != null ? parseStr(inb.bodyFat) : (initialData?.bodyFatPercentage ?? '')}
+                        placeholder="18.5" />
+                    </Field>
+                    <Field id="muscleMass" label="Massa muscular" unit="kg"
+                      badge={hasInBody && inb.muscleMass != null}
+                      delta={hasInBody ? (bodyCompositionDelta?.muscleMass ?? null) : null}>
+                      <StyledInput id="muscleMass" name="muscleMass" type="number" step="0.1" min={0}
+                        defaultValue={hasInBody && inb.muscleMass != null ? parseStr(inb.muscleMass) : (initialData?.muscleMass ?? '')}
+                        placeholder="32.0" />
+                    </Field>
+                  </FieldRow>
+
+                  <div className="mt-4" />
+
+                  <FieldRow>
+                    <Field id="visceralFatLevel" label="Gordura visceral" unit="nível"
+                      badge={hasInBody && inb.visceralFat != null}
+                      delta={hasInBody ? (bodyCompositionDelta?.visceralFat ?? null) : null}>
+                      <StyledInput id="visceralFatLevel" name="visceralFatLevel" type="number" step="0.1" min={0}
+                        defaultValue={hasInBody && inb.visceralFat != null ? parseStr(inb.visceralFat) : (initialData?.visceralFatLevel ?? '')}
+                        placeholder="8" />
+                    </Field>
+                    <Field id="boneMass" label="Massa óssea" unit="kg"
+                      badge={hasInBody && inb.boneMass != null}>
+                      <StyledInput id="boneMass" name="boneMass" type="number" step="0.1" min={0}
+                        defaultValue={hasInBody && inb.boneMass != null ? parseStr(inb.boneMass) : (initialData?.boneMass ?? '')}
+                        placeholder="2.8" />
+                    </Field>
+                  </FieldRow>
+
+                  <div className="mt-4" />
+
+                  <FieldRow>
+                    <Field id="basalMetabolicRate" label="TMB" unit="kcal"
+                      badge={hasInBody && inb.bmr != null}>
+                      <StyledInput id="basalMetabolicRate" name="basalMetabolicRate" type="number" min={0}
+                        defaultValue={hasInBody && inb.bmr != null ? String(inb.bmr) : (initialData?.basalMetabolicRate ?? '')}
+                        placeholder="1650" />
+                    </Field>
+                    <Field id="bodyWaterPercentage" label="Água corporal" unit="%"
+                      badge={hasInBody && inb.bodyWater != null}
+                      delta={hasInBody ? (bodyCompositionDelta?.bodyWater ?? null) : null}>
+                      <StyledInput id="bodyWaterPercentage" name="bodyWaterPercentage" type="number" step="0.1" min={0} max={100}
+                        defaultValue={hasInBody && inb.bodyWater != null ? parseStr(inb.bodyWater) : (initialData?.bodyWaterPercentage ?? '')}
+                        placeholder="55.0" />
+                    </Field>
+                  </FieldRow>
+                </section>
+
+                {hasInBody && (inb.proteinMass != null || inb.bodyWaterLiters != null || inb.waistHipRatio != null || inb.idealWeight != null || inb.inbodyScore != null || inb.obesityDegree != null) && (
+                  <section>
+                    <details className="group">
+                      <summary className="cursor-pointer list-none select-none">
+                        <SectionTitle>
+                          <span className="flex items-center gap-1.5">
+                            InBody Avançado
+                            <span className="text-muted-foreground/40 font-normal normal-case tracking-normal text-[10px] group-open:hidden">(expandir)</span>
+                            <span className="text-muted-foreground/40 font-normal normal-case tracking-normal text-[10px] hidden group-open:inline">(recolher)</span>
+                          </span>
+                        </SectionTitle>
+                      </summary>
+                      <div className="grid grid-cols-2 gap-4 mt-2">
+                        {inb.proteinMass != null && (
+                          <Field label="Proteína" unit="kg" badge>
+                            <StyledInput type="number" step="0.1" min={0} defaultValue={parseStr(inb.proteinMass)} readOnly />
+                          </Field>
+                        )}
+                        {inb.bodyWaterLiters != null && (
+                          <Field label="Água total" unit="L" badge>
+                            <StyledInput type="number" step="0.1" min={0} defaultValue={parseStr(inb.bodyWaterLiters)} readOnly />
+                          </Field>
+                        )}
+                        {inb.waistHipRatio != null && (
+                          <Field label="Cintura / Quadril" badge>
+                            <StyledInput type="number" step="0.01" min={0} defaultValue={parseStr(inb.waistHipRatio)} readOnly />
+                          </Field>
+                        )}
+                        {inb.idealWeight != null && (
+                          <Field label="Peso ideal" unit="kg" badge>
+                            <StyledInput type="number" step="0.1" min={0} defaultValue={parseStr(inb.idealWeight)} readOnly />
+                          </Field>
+                        )}
+                        {inb.inbodyScore != null && (
+                          <Field label="InBody score" badge>
+                            <StyledInput type="number" defaultValue={String(inb.inbodyScore)} readOnly />
+                          </Field>
+                        )}
+                        {inb.obesityDegree != null && (
+                          <Field label="Grau de obesidade" unit="%" badge>
+                            <StyledInput type="number" step="0.1" defaultValue={parseStr(inb.obesityDegree)} readOnly />
+                          </Field>
+                        )}
+                      </div>
+                    </details>
+                  </section>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* ── Tab Desempenho ────────────────────────────── */}
+            <TabsContent value="desempenho" keepMounted className="mt-6">
+              <PerformanceForm initialData={initialData} onActivitiesChange={setActivities} />
+            </TabsContent>
+
+            {/* ── Tab Hábitos ───────────────────────────────── */}
+            <TabsContent value="habitos" keepMounted className="mt-6">
+              <AdvancedForm initialData={initialData} onSupplementationChange={setSupplementation} />
+            </TabsContent>
+          </Tabs>
+
+          {/* Save button */}
+          <button
+            type="submit"
+            disabled={isPending}
+            className="
+              relative w-full h-11 rounded-xl overflow-hidden
+              bg-[var(--profile-accent)] text-white
+              text-sm font-semibold tracking-wide
+              transition-all duration-200
+              hover:opacity-90 active:scale-[0.99]
+              disabled:opacity-40 disabled:cursor-not-allowed
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--profile-accent)] focus-visible:ring-offset-2
+            "
+          >
+            {isPending ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                Salvando...
+              </span>
+            ) : 'Salvar perfil'}
+          </button>
+        </form>
+      </div>
+    </>
   )
 }

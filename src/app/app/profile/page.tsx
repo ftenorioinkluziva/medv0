@@ -1,10 +1,10 @@
-import { Suspense } from 'react'
 import { auth } from '@/lib/auth/config'
 import { redirect } from 'next/navigation'
 import { getMedicalProfile } from '@/lib/actions/medical-profile'
+import { getLatestBodyComposition } from '@/lib/db/queries/body-composition'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProfileForm } from './profile-form'
-import { BodyCompositionSection } from './body-composition-section'
+import { Suspense } from 'react'
 
 export default async function ProfilePage() {
   const session = await auth()
@@ -28,29 +28,17 @@ export default async function ProfilePage() {
 }
 
 async function ProfileDataLoader({ userId }: { userId: string }) {
-  const profile = await getMedicalProfile()
-  return (
-    <ProfileForm initialData={profile}>
-      <Suspense fallback={<BodyCompositionSkeleton />}>
-        <BodyCompositionSection userId={userId} />
-      </Suspense>
-    </ProfileForm>
-  )
-}
+  const [profile, { latest: latestBodyComposition, delta }] = await Promise.all([
+    getMedicalProfile(),
+    getLatestBodyComposition(userId),
+  ])
 
-function BodyCompositionSkeleton() {
   return (
-    <div className="rounded-xl border border-foreground/10 bg-card p-4 shadow-sm" role="status" aria-label="Carregando composição corporal...">
-      <Skeleton className="h-5 w-44 mb-4" />
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="space-y-1">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-5 w-16" />
-          </div>
-        ))}
-      </div>
-    </div>
+    <ProfileForm
+      initialData={profile}
+      latestBodyComposition={latestBodyComposition}
+      bodyCompositionDelta={delta}
+    />
   )
 }
 
