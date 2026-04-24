@@ -17,7 +17,7 @@ import {
 import { logger } from '@/lib/observability/logger'
 import { errorResponse } from '@/lib/api/error-response'
 
-export const maxDuration = DOCUMENT_UPLOAD_SERVER_MAX_DURATION_SECONDS
+export const maxDuration = 180
 
 const EXTRACTION_FAILED_MESSAGE = 'Não foi possível extrair dados utilizáveis do documento enviado.'
 const EXTRACTION_TIMEOUT_MESSAGE = 'Processamento do arquivo excedeu o tempo limite. Tente novamente.'
