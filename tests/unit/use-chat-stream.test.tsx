@@ -125,12 +125,13 @@ describe('useChatStream — streaming', () => {
         target: { value: 'Oi' },
       } as React.ChangeEvent<HTMLInputElement>)
     })
-    act(() => {
+    await act(async () => {
       result.current.handleSubmit()
     })
 
     // #then — mensagem do usuário aparece antes do fetch resolver
     expect(result.current.messages.some((m) => m.role === 'user' && m.content === 'Oi')).toBe(true)
+    await waitFor(() => expect(result.current.status).toBe('idle'))
   })
 
   it('constrói resposta do agente progressivamente e status vai idle após conclusão', async () => {
@@ -181,12 +182,13 @@ describe('useChatStream — streaming', () => {
     })
 
     // #when
-    act(() => {
+    await act(async () => {
       result.current.handleSubmit()
     })
 
     // #then
     expect(result.current.input).toBe('')
+    await waitFor(() => expect(result.current.status).toBe('idle'))
   })
 })
 

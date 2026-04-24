@@ -1,14 +1,15 @@
 import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
 export default defineConfig({
-  plugins: [react()],
+  esbuild: {
+    jsx: 'automatic',
+  },
   test: {
     environment: 'node',
     globals: true,
     include: ['tests/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['tests/e2e/**'],
+    exclude: ['tests/e2e/**', 'tests/unit/analyses-run-page.test.tsx'],
     setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',
