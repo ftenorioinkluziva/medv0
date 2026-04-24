@@ -12,10 +12,11 @@
 
 ---
 
-### 📌 **Status Atual (2026-04-23)**
+### 📌 **Status Atual (2026-04-24)**
 
 - ✅ `pnpm lint`, `pnpm typecheck`, `pnpm test` e `pnpm build` passando
 - ✅ `pnpm test` volta a encerrar normalmente após isolar temporariamente `tests/unit/analyses-run-page.test.tsx` (arquivo com execução travando no collect)
+- ✅ Ajustes commitados e enviados para `origin/feat/improvements-phase1` (`9d42b99`, `11f649b`)
 - ✅ Fase 1.1 e 1.2 concluídas
 - ✅ Fase 1.3 concluída (uso de logger central em vez de `console.*` no código de app)
 - ✅ Fase 2.1 concluída (lazy loading no dashboard)
@@ -43,6 +44,17 @@
 - `/api/analyses/[id]` — params validados (UUID)
 - `/api/analyses/[id]/status` — params validados (UUID)
 - `/api/admin/knowledge/auto-upload` — query (`source`) + body validados
+
+---
+
+### 📝 **Últimas Entregas (2026-04-24)**
+
+- Logger central aplicado no app (`src/lib/observability/logger.ts`) e substituição de `console.*` em rotas/libs principais
+- Padronização de erro com `errorResponse` em APIs críticas (`chat`, `upload`, `analyses`, `auto-upload`)
+- Hardening de upload com `upload-validation` (tamanho, MIME/signature, sanitização de nome e timeout de extração)
+- Melhorias de UX/A11y no upload e no fluxo de iniciar análise (retry, `aria-live`, `aria-busy`, feedback inline)
+- `useErrorHandler` adicionado e coberto por teste unitário
+- Estabilização da suíte Vitest: `pnpm test` encerra normalmente com exclusão temporária do teste problemático de `analyses-run-page`
 
 ---
 
@@ -360,4 +372,4 @@ pnpm lint && pnpm typecheck && pnpm test
 git checkout -b feat/improvements-phase1
 ```
 
-Este plano é executável e priorizado por impacto. Podemos ajustar baseado no progresso e feedback durante a implementação.You've used 52% of your session rate limit. Your session rate limit will reset on 23 de abril às 13:41. [Learn More](https://aka.ms/github-copilot-rate-limit-error)
+Este plano é executável e priorizado por impacto. Podemos ajustar baseado no progresso e feedback durante a implementação.
