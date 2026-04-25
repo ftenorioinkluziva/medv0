@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import type { MedicalProfile, ExerciseActivity } from '@/lib/db/schema'
 
 interface PerformanceFormProps {
@@ -171,15 +172,19 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
               </div>
               <div className="space-y-1">
                 <Label>Intensidade</Label>
-                <select
+                <Select
                   value={activity.intensity}
-                  onChange={(e) => updateActivity(activity._id, 'intensity', e.target.value)}
-                  className="h-8 w-full bg-transparent border border-input rounded-lg px-2.5 text-sm text-foreground focus:outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                  onValueChange={(v) => updateActivity(activity._id, 'intensity', v ?? 'moderada')}
                 >
-                  <option value="leve">Leve</option>
-                  <option value="moderada">Moderada</option>
-                  <option value="intensa">Intensa</option>
-                </select>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="leve">Leve</SelectItem>
+                    <SelectItem value="moderada">Moderada</SelectItem>
+                    <SelectItem value="intensa">Intensa</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

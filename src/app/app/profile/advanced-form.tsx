@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { TagInput } from './tag-input'
 import type { MedicalProfile } from '@/lib/db/schema'
 
@@ -12,6 +14,8 @@ interface AdvancedFormProps {
 }
 
 export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedFormProps) {
+  const [smokingStatus, setSmokingStatus] = useState(initialData?.smokingStatus ?? '')
+  const [alcoholConsumption, setAlcoholConsumption] = useState(initialData?.alcoholConsumption ?? '')
   return (
     <div className="space-y-4">
       {/* Sono */}
@@ -122,17 +126,16 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label htmlFor="smokingStatus">Tabagismo</Label>
-            <select
-              id="smokingStatus"
-              name="smokingStatus"
-              defaultValue={initialData?.smokingStatus ?? ''}
-              className="h-8 w-full bg-transparent border border-input rounded-lg px-2.5 text-sm text-foreground focus:outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-            >
-              <option value="">Selecione</option>
-              <option value="nunca_fumou">Nunca fumou</option>
-              <option value="ex-fumante">Ex-fumante</option>
-              <option value="fumante">Fumante</option>
-            </select>
+            <Select name="smokingStatus" value={smokingStatus} onValueChange={(v) => setSmokingStatus(v ?? '')}>
+              <SelectTrigger id="smokingStatus">
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nunca_fumou">Nunca fumou</SelectItem>
+                <SelectItem value="ex-fumante">Ex-fumante</SelectItem>
+                <SelectItem value="fumante">Fumante</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <Label htmlFor="smokingDetails">Detalhes (tabagismo)</Label>
@@ -147,18 +150,17 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
 
         <div className="space-y-1">
           <Label htmlFor="alcoholConsumption">Álcool</Label>
-          <select
-            id="alcoholConsumption"
-            name="alcoholConsumption"
-            defaultValue={initialData?.alcoholConsumption ?? ''}
-            className="h-8 w-full bg-transparent border border-input rounded-lg px-2.5 text-sm text-foreground focus:outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-          >
-            <option value="">Selecione</option>
-            <option value="nunca">Nunca</option>
-            <option value="social">Social</option>
-            <option value="regular">Regular</option>
-            <option value="frequente">Frequente</option>
-          </select>
+          <Select name="alcoholConsumption" value={alcoholConsumption} onValueChange={(v) => setAlcoholConsumption(v ?? '')}>
+            <SelectTrigger id="alcoholConsumption">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nunca">Nunca</SelectItem>
+              <SelectItem value="social">Social</SelectItem>
+              <SelectItem value="regular">Regular</SelectItem>
+              <SelectItem value="frequente">Frequente</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1">

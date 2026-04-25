@@ -5,6 +5,8 @@ import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { completeOnboarding } from '@/lib/actions/onboarding'
 
 interface ProfileStepProps {
@@ -15,6 +17,7 @@ export function ProfileStep({ onNext }: ProfileStepProps) {
   const { update } = useSession()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [gender, setGender] = useState('')
 
   async function handleSubmit(formData: FormData) {
     setError(null)
@@ -68,18 +71,16 @@ export function ProfileStep({ onNext }: ProfileStepProps) {
 
           <div className="space-y-1.5">
             <Label htmlFor="gender">Sexo biológico</Label>
-            <select
-              id="gender"
-              name="gender"
-              required
-              defaultValue=""
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="" disabled>Selecionar</option>
-              <option value="masculino">Masculino</option>
-              <option value="feminino">Feminino</option>
-              <option value="outro">Outro</option>
-            </select>
+            <Select name="gender" value={gender} onValueChange={(v) => setGender(v ?? '')}>
+              <SelectTrigger id="gender">
+                <SelectValue placeholder="Selecionar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="masculino">Masculino</SelectItem>
+                <SelectItem value="feminino">Feminino</SelectItem>
+                <SelectItem value="outro">Outro</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
@@ -110,13 +111,12 @@ export function ProfileStep({ onNext }: ProfileStepProps) {
 
         <div className="space-y-1.5">
           <Label htmlFor="healthObjectives">Objetivos de saúde</Label>
-          <textarea
+          <Textarea
             id="healthObjectives"
             name="healthObjectives"
             required
             rows={3}
             placeholder="Descreva seus objetivos de saúde (ex: perder peso, melhorar condicionamento...)"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
           />
         </div>
 

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { TagInput } from './tag-input'
 import type { MedicalProfile } from '@/lib/db/schema'
 
@@ -25,6 +26,7 @@ export function BasicForm({
 }: BasicFormProps) {
   const [height, setHeight] = useState<number | null>(initialData?.height ?? null)
   const [weightStr, setWeightStr] = useState(parseStr(initialData?.weight))
+  const [gender, setGender] = useState(initialData?.gender ?? '')
 
   function parseStr(val: string | null | undefined): string {
     if (val == null) return ''
@@ -62,18 +64,16 @@ export function BasicForm({
           </div>
           <div className="space-y-1">
             <Label htmlFor="gender">Sexo biológico</Label>
-            <select
-              id="gender"
-              name="gender"
-              required
-              defaultValue={initialData?.gender ?? ''}
-              className="h-8 w-full bg-transparent border border-input rounded-lg px-2.5 text-sm text-foreground focus:outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-            >
-              <option value="" disabled>Selecione</option>
-              <option value="masculino">Masculino</option>
-              <option value="feminino">Feminino</option>
-              <option value="outro">Outro</option>
-            </select>
+            <Select name="gender" value={gender} onValueChange={(v) => setGender(v ?? '')}>
+              <SelectTrigger id="gender">
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="masculino">Masculino</SelectItem>
+                <SelectItem value="feminino">Feminino</SelectItem>
+                <SelectItem value="outro">Outro</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
