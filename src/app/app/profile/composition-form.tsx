@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Activity, TrendingUp, TrendingDown, Minus, Plus } from 'lucide-react'
 import type { MedicalProfile, BodyCompositionHistoryRecord } from '@/lib/db/schema'
 import type { BodyCompositionDelta } from '@/lib/db/queries/body-composition'
