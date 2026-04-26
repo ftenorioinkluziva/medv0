@@ -24,26 +24,33 @@ export default async function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="p-4 pb-20">
-        <div className="mx-auto max-w-lg space-y-6">
-          <div className="flex flex-col items-center gap-3 pt-2">
-            <div
-              className="flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground text-xl font-bold select-none"
-              aria-hidden="true"
-            >
-              {initials}
-            </div>
-            <div className="text-center">
-              <h1 className="text-lg font-bold text-foreground">{session.user.name ?? 'Meu Perfil'}</h1>
-              {session.user.email && (
-                <p className="text-sm text-muted-foreground">{session.user.email}</p>
-              )}
-            </div>
+      {/* topbar */}
+      <div className="flex items-center justify-between h-14 px-4 bg-background">
+        <p className="font-heading text-[18px] font-medium leading-[1.4286] text-foreground">
+          Meu Perfil
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 px-4 pb-24">
+        {/* avatar section */}
+        <div className="flex flex-col items-center gap-2 py-2">
+          <div
+            className="flex size-18 items-center justify-center rounded-full bg-primary select-none"
+            aria-hidden="true"
+          >
+            <span className="font-heading text-[24px] font-medium text-foreground">{initials}</span>
           </div>
-          <Suspense fallback={<ProfileSkeleton />}>
-            <ProfileDataLoader userId={session.user.id} />
-          </Suspense>
+          <p className="font-heading text-[16px] font-medium leading-[1.4286] text-foreground">
+            {session.user.name ?? 'Meu Perfil'}
+          </p>
+          {session.user.email && (
+            <p className="text-[13px] font-medium text-muted-foreground">{session.user.email}</p>
+          )}
         </div>
+
+        <Suspense fallback={<ProfileSkeleton />}>
+          <ProfileDataLoader userId={session.user.id} />
+        </Suspense>
       </div>
     </main>
   )

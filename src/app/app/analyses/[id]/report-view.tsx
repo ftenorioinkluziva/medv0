@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { ChevronDown, ChevronUp, Brain, Stethoscope, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
+import { ChevronDown, ChevronUp, Stethoscope } from 'lucide-react'
+
 import { ReportAccordion } from './report-accordion'
 import { getStructuredComponent } from '@/components/structured-outputs/registry'
 
@@ -21,6 +23,7 @@ interface SpecializedTextAnalysis {
 }
 
 interface ReportViewProps {
+  analysisId: string
   reportMarkdown: string
   version: number
   createdAt: Date
@@ -35,45 +38,16 @@ interface ReportViewProps {
   specializedTextAnalyses?: SpecializedTextAnalysis[]
 }
 
-function AgentStatusBadge({
-  icon,
-  label,
-  sublabel,
-  status,
-  count,
-}: {
-  icon: React.ReactNode
-  label: string
-  sublabel?: string
-  status: 'ok' | 'partial' | 'error'
-  count?: number
-}) {
-  const statusColor = {
-    ok: 'text-emerald-500',
-    partial: 'text-amber-500',
-    error: 'text-destructive',
-  }[status]
-
-  const StatusIcon = {
-    ok: CheckCircle2,
-    partial: Clock,
-    error: AlertCircle,
-  }[status]
-
-  return (
-    <div className="flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 flex-1 min-w-0">
-      <div className="text-muted-foreground shrink-0">{icon}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-foreground truncate">{label}</p>
-        {sublabel && <p className="text-[11px] text-muted-foreground truncate">{sublabel}</p>}
-      </div>
-      <div className={`flex items-center gap-1 shrink-0 ${statusColor}`}>
-        <StatusIcon className="w-3.5 h-3.5" />
-        {count !== undefined && <span className="text-[11px] font-medium">{count}</span>}
-      </div>
-    </div>
-  )
+function extractSection(markdown: string, keyword: string): string {
+  const normalized = markdown.replace(/\r\n/g, '\n')
+  const regex = new RegExp(`^##\\s*(?:📋\\s*|💡\\s*)?${keyword}[^\\n]*$`, 'im')
+  const match = regex.exec(normalized)
+  if (!match || match.index == null) return ''
+  const body = normalized.slice(match.index + match[0].length).trimStart()
+  const next = /^##\s+/m.exec(body)
+  return (next ? body.slice(0, next.index) : body).trim()
 }
+
 
 function SpecialistMarkdown({ content }: { content: string }) {
   return (
@@ -205,93 +179,129 @@ function StructuredCard({ item }: { item: StructuredAnalysis }) {
 }
 
 export function ReportView({
+  analysisId,
   reportMarkdown,
   version,
   createdAt,
   sourceFileName,
   foundationAgentName,
-  foundationGeneratedAt,
+  foundationGeneratedAt: _foundationGeneratedAt,
   specializedTotal,
   specializedCompleted,
-  specializedTimeout,
-  specializedError,
+  specializedTimeout: _specializedTimeout,
+  specializedError: _specializedError,
   structuredAnalyses = [],
   specializedTextAnalyses = [],
 }: ReportViewProps) {
   const formattedDate = new Date(createdAt).toLocaleDateString('pt-BR', {
     day: '2-digit',
-    month: 'long',
+    month: 'short',
     year: 'numeric',
   })
 
-  const foundationDate = foundationGeneratedAt
-    ? new Date(foundationGeneratedAt).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      })
-    : null
-
-  const specializedStatus =
-    specializedError > 0
-      ? 'error'
-      : specializedTimeout > 0 || specializedCompleted < specializedTotal
-        ? 'partial'
-        : 'ok'
-
-  const hasSpecialists = specializedTextAnalyses.length > 0 || structuredAnalyses.length > 0
+  const summaryText = extractSection(reportMarkdown, 'Resumo')
+  const agentSlug = (name: string) => encodeURIComponent(name)
+  const allAgents = [
+    ...(foundationAgentName
+      ? [{ name: foundationAgentName, sublabel: 'Análise completa realizada', href: `/app/analyses/${analysisId}/agent/${agentSlug(foundationAgentName)}` }]
+      : []),
+    ...specializedTextAnalyses.map((a) => ({
+      name: a.agentName,
+      sublabel: a.specialty,
+      href: `/app/analyses/${analysisId}/agent/${agentSlug(a.agentName)}`,
+    })),
+    ...structuredAnalyses.map((a) => ({
+      name: a.agentName,
+      sublabel: a.specialty,
+      href: `/app/analyses/${analysisId}/agent/${agentSlug(a.agentName)}`,
+    })),
+  ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="rounded-full border px-2 py-0.5 text-[11px]">v{version}</span>
-        <span>{formattedDate}</span>
+    <div className="flex flex-col gap-3">
+      {/* header */}
+      <div className="flex h-14 items-center justify-between">
+        <Link
+          href="/app/dashboard"
+          className="font-heading text-[15px] font-semibold leading-[1.4286] text-foreground hover:opacity-80"
+        >
+          ← Análise Completa
+        </Link>
+        <span className="text-[11px] font-medium text-muted-foreground">{formattedDate}</span>
       </div>
 
-      {sourceFileName && (
-        <p className="text-[11px] text-muted-foreground truncate" title={sourceFileName}>
-          Arquivo-base: {sourceFileName}
-        </p>
+      {/* resumo card */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="flex h-13 items-center px-5">
+          <p className="font-heading text-sm font-semibold leading-[1.4286] text-foreground">
+            📋 Resumo Executivo
+          </p>
+        </div>
+        <div className="px-5 pb-4">
+          {summaryText ? (
+            <p className="text-[13px] font-medium leading-[1.4286] text-foreground">
+              {summaryText.replace(/\*\*/g, '').replace(/^#+\s*/gm, '')}
+            </p>
+          ) : (
+            <div className="text-[13px] leading-[1.4286] text-foreground">
+              <ReportAccordion markdown={reportMarkdown} />
+            </div>
+          )}
+          {sourceFileName && (
+            <p className="mt-2 text-[11px] font-medium text-muted-foreground truncate">
+              v{version} · {sourceFileName}
+            </p>
+          )}
+        </div>
+      </div>
+
+
+      {/* análise base completa (accordion) — quando não há resumo extraído */}
+      {!summaryText && (
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="flex h-13 items-center px-5">
+            <p className="font-heading text-sm font-semibold text-foreground">📄 Análise Completa</p>
+          </div>
+          <div className="px-5 pb-4">
+            <ReportAccordion markdown={reportMarkdown} />
+          </div>
+        </div>
       )}
 
-      <div className="flex gap-2">
-        <AgentStatusBadge
-          icon={<Brain className="w-4 h-4" />}
-          label={foundationAgentName ?? 'Foundation'}
-          sublabel={foundationDate ? `Gerado em ${foundationDate}` : undefined}
-          status="ok"
-        />
-        <AgentStatusBadge
-          icon={<Stethoscope className="w-4 h-4" />}
-          label="Especialistas"
-          sublabel={`${specializedCompleted} de ${specializedTotal} concluídos`}
-          status={specializedStatus}
-          count={specializedTotal}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide px-0.5">
-          Análise de Base
-        </p>
-        <ReportAccordion markdown={reportMarkdown} />
-      </div>
-
-      {hasSpecialists && (
-        <div className="space-y-1.5">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide px-0.5">
-            Análises Especializadas
-          </p>
-          <div className="space-y-2">
-            {specializedTextAnalyses.map((item) => (
-              <SpecialistCard key={`special-${item.agentName}`} item={item} />
-            ))}
-            {structuredAnalyses.map((item) => (
-              <StructuredCard key={`structured-${item.agentName}`} item={item} />
+      {/* agentes card */}
+      {allAgents.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="flex h-13 items-center justify-between px-5">
+            <p className="font-heading text-sm font-semibold leading-[1.4286] text-foreground">
+              🤖 Agentes
+            </p>
+            {specializedTotal > 0 && (
+              <p className="text-[11px] font-medium text-muted-foreground">
+                {specializedCompleted}/{specializedTotal} concluídos
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 px-5 pb-4">
+            {allAgents.map((agent) => (
+              <Link
+                key={agent.name}
+                href={agent.href}
+                className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2.5 hover:bg-muted/70 transition-colors"
+              >
+                <div className="h-2 w-2 shrink-0 rounded-full bg-[#22c55e]" />
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                  <p className="font-heading text-[13px] font-semibold leading-[1.4286] text-foreground">
+                    {agent.name}
+                  </p>
+                  <p className="text-[11px] font-medium text-muted-foreground">{agent.sublabel}</p>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 -rotate-90" />
+              </Link>
             ))}
           </div>
         </div>
       )}
+
     </div>
   )
 }

@@ -16,17 +16,18 @@ interface AdvancedFormProps {
 export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedFormProps) {
   const [smokingStatus, setSmokingStatus] = useState(initialData?.smokingStatus ?? '')
   const [alcoholConsumption, setAlcoholConsumption] = useState(initialData?.alcoholConsumption ?? '')
+
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3">
       {/* Sono */}
-      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
-        <div>
-          <h2 className="font-semibold text-foreground">Sono</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Qualidade e padrões de sono.</p>
+      <Card className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground">Sono</h2>
+          <p className="text-[12px] font-medium text-muted-foreground">Qualidade e padrões de sono.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="sleepHours">Horas de sono</Label>
             <Input
               id="sleepHours"
@@ -36,10 +37,10 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
               min={0}
               max={24}
               defaultValue={initialData?.sleepHours ?? ''}
-              placeholder="Ex: 7.5"
+              placeholder="7.5"
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="sleepQuality">Qualidade (1-10)</Label>
             <Input
               id="sleepQuality"
@@ -48,13 +49,13 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
               min={1}
               max={10}
               defaultValue={initialData?.sleepQuality ?? ''}
-              placeholder="Ex: 7"
+              placeholder="8"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="timeInBed">Tempo na cama (h)</Label>
             <Input
               id="timeInBed"
@@ -64,40 +65,40 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
               min={0}
               max={24}
               defaultValue={initialData?.timeInBed ?? ''}
-              placeholder="Ex: 8.0"
+              placeholder="8.0"
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="sleepRegularity">Regularidade</Label>
             <Input
               id="sleepRegularity"
               name="sleepRegularity"
               defaultValue={initialData?.sleepRegularity ?? ''}
-              placeholder="Ex: regular"
+              placeholder="regular"
             />
           </div>
         </div>
 
-        <div className="space-y-1">
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="sleepIssues">Problemas de sono</Label>
           <Input
             id="sleepIssues"
             name="sleepIssues"
             defaultValue={initialData?.sleepIssues ?? ''}
-            placeholder="Ex: insônia, roncos"
+            placeholder="insônia, roncos"
           />
         </div>
       </Card>
 
       {/* Hábitos */}
-      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
-        <div>
-          <h2 className="font-semibold text-foreground">Hábitos</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Alimentação, substâncias e bem-estar.</p>
+      <Card className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground">Hábitos</h2>
+          <p className="text-[12px] font-medium text-muted-foreground">Alimentação, substâncias e bem-estar.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="dailyWaterIntake">Água/dia (litros)</Label>
             <Input
               id="dailyWaterIntake"
@@ -106,11 +107,11 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
               step="0.1"
               min={0}
               defaultValue={initialData?.dailyWaterIntake ?? ''}
-              placeholder="Ex: 2.0"
+              placeholder="2.0"
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="stressLevel">Nível de estresse (1-10)</Label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="stressLevel">Nível de estresse</Label>
             <Input
               id="stressLevel"
               name="stressLevel"
@@ -118,13 +119,13 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
               min={1}
               max={10}
               defaultValue={initialData?.stressLevel ?? ''}
-              placeholder="Ex: 6"
+              placeholder="5"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="smokingStatus">Tabagismo</Label>
             <Select name="smokingStatus" value={smokingStatus} onValueChange={(v) => setSmokingStatus(v ?? '')}>
               <SelectTrigger id="smokingStatus">
@@ -137,70 +138,63 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="smokingDetails">Detalhes (tabagismo)</Label>
-            <Input
-              id="smokingDetails"
-              name="smokingDetails"
-              defaultValue={initialData?.smokingDetails ?? ''}
-              placeholder="Ex: 5 cigarros/dia"
-            />
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="alcoholConsumption">Álcool</Label>
+            <Select name="alcoholConsumption" value={alcoholConsumption} onValueChange={(v) => setAlcoholConsumption(v ?? '')}>
+              <SelectTrigger id="alcoholConsumption">
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nunca">Nunca</SelectItem>
+                <SelectItem value="social">Social</SelectItem>
+                <SelectItem value="regular">Regular</SelectItem>
+                <SelectItem value="frequente">Frequente</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        <div className="space-y-1">
-          <Label htmlFor="alcoholConsumption">Álcool</Label>
-          <Select name="alcoholConsumption" value={alcoholConsumption} onValueChange={(v) => setAlcoholConsumption(v ?? '')}>
-            <SelectTrigger id="alcoholConsumption">
-              <SelectValue placeholder="Selecione" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="nunca">Nunca</SelectItem>
-              <SelectItem value="social">Social</SelectItem>
-              <SelectItem value="regular">Regular</SelectItem>
-              <SelectItem value="frequente">Frequente</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* hidden smokingDetails — kept for form data compatibility */}
+        <input type="hidden" name="smokingDetails" value={initialData?.smokingDetails ?? ''} />
 
-        <div className="space-y-1">
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="currentDiet">Dieta atual</Label>
           <Input
             id="currentDiet"
             name="currentDiet"
             defaultValue={initialData?.currentDiet ?? ''}
-            placeholder="Ex: mediterrânea, low carb, vegetariana"
+            placeholder="low carb, mediterrânea"
           />
         </div>
 
-        <div className="space-y-1">
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="stressManagement">Gestão de estresse</Label>
           <Input
             id="stressManagement"
             name="stressManagement"
             defaultValue={initialData?.stressManagement ?? ''}
-            placeholder="Ex: meditação, exercício, terapia"
+            placeholder="meditação, exercício"
           />
         </div>
 
         <TagInput
           id="supplementation"
           label="Suplementação"
-          placeholder="Ex: vitamina D 2000UI, creatina"
+          placeholder="+ adicionar"
           initialValues={initialData?.supplementation}
           onChange={onSupplementationChange}
         />
       </Card>
 
       {/* Cronobiologia */}
-      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
-        <div>
-          <h2 className="font-semibold text-foreground">Cronobiologia</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Horários no formato HH:MM.</p>
+      <Card className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground">Cronobiologia</h2>
+          <p className="text-[12px] font-medium text-muted-foreground">Horários no formato HH:MM.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="firstSunlightExposureTime">1ª exposição solar</Label>
             <Input
               id="firstSunlightExposureTime"
@@ -209,7 +203,7 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
               defaultValue={initialData?.firstSunlightExposureTime ?? ''}
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="lastMealTime">Última refeição</Label>
             <Input
               id="lastMealTime"
@@ -221,7 +215,7 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="artificialLightExposureStart">Luz artificial início</Label>
             <Input
               id="artificialLightExposureStart"
@@ -230,7 +224,7 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
               defaultValue={initialData?.artificialLightExposureStart ?? ''}
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="artificialLightExposureEnd">Luz artificial fim</Label>
             <Input
               id="artificialLightExposureEnd"
@@ -241,13 +235,13 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
           </div>
         </div>
 
-        <div className="space-y-1">
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="artificialLightExposureTime">Obs. exposição à luz</Label>
           <Input
             id="artificialLightExposureTime"
             name="artificialLightExposureTime"
             defaultValue={initialData?.artificialLightExposureTime ?? ''}
-            placeholder="Ex: tela de celular até 23h"
+            placeholder="tela de celular até 23h"
           />
         </div>
       </Card>

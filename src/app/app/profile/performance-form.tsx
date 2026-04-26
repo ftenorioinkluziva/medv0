@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import type { MedicalProfile, ExerciseActivity } from '@/lib/db/schema'
 
@@ -52,17 +51,18 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
-        <div>
-          <h2 className="font-semibold text-foreground">Testes Funcionais</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+    <div className="flex flex-col gap-3">
+      {/* Testes Funcionais */}
+      <Card className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground">Testes Funcionais</h2>
+          <p className="text-[12px] font-medium text-muted-foreground">
             Opcional — testes de capacidade funcional.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="handgripStrength">Força de preensão (kgf)</Label>
             <Input
               id="handgripStrength"
@@ -71,10 +71,10 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
               step="0.1"
               min={0}
               defaultValue={initialData?.handgripStrength ?? ''}
-              placeholder="Ex: 42.5"
+              placeholder="42.5"
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="sitToStandTime">Sentar-levantar (s)</Label>
             <Input
               id="sitToStandTime"
@@ -83,14 +83,14 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
               step="0.1"
               min={0}
               defaultValue={initialData?.sitToStandTime ?? ''}
-              placeholder="Ex: 12.3"
+              placeholder="12.3"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="vo2Max">VO2 máx (ml/kg/min)</Label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="vo2Max">VO2 máx</Label>
             <Input
               id="vo2Max"
               name="vo2Max"
@@ -98,10 +98,10 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
               step="0.1"
               min={0}
               defaultValue={initialData?.vo2Max ?? ''}
-              placeholder="Ex: 45.0"
+              placeholder="45.0"
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="co2ToleranceTest">Tolerância CO2 (s)</Label>
             <Input
               id="co2ToleranceTest"
@@ -110,49 +110,54 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
               step="0.1"
               min={0}
               defaultValue={initialData?.co2ToleranceTest ?? ''}
-              placeholder="Ex: 40"
+              placeholder="40"
             />
           </div>
         </div>
       </Card>
 
-      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
+      {/* Atividade Física */}
+      <Card className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-foreground">Atividade Física</h2>
-          <Button type="button" variant="outline" size="sm" onClick={addActivity}>
+          <h2 className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground">Atividade Física</h2>
+          <button
+            type="button"
+            onClick={addActivity}
+            className="rounded-[8px] border border-border bg-background px-2.5 py-1 text-[12px] font-medium text-foreground hover:opacity-80"
+          >
             + Adicionar
-          </Button>
+          </button>
         </div>
 
         {activities.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nenhuma atividade adicionada.</p>
+          <p className="text-[13px] text-muted-foreground">Nenhuma atividade adicionada.</p>
         )}
 
         {activities.map((activity, index) => (
-          <div key={activity._id} className="rounded-xl border border-foreground/10 p-3 space-y-3">
+          <div key={activity._id} className="rounded-[12px] border border-border p-3 flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">Atividade {index + 1}</span>
+              <span className="font-heading text-[13px] font-medium text-foreground">Atividade {index + 1}</span>
               <button
                 type="button"
                 onClick={() => removeActivity(activity._id)}
-                className="text-xs text-destructive hover:underline"
+                className="text-[12px] font-medium text-[#D93C15] hover:underline"
               >
                 Remover
               </button>
             </div>
 
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1.5">
               <Label>Tipo</Label>
               <Input
                 value={activity.type}
                 onChange={(e) => updateActivity(activity._id, 'type', e.target.value)}
-                placeholder="Ex: corrida, musculação, yoga"
+                placeholder="musculação"
               />
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <div className="space-y-1">
-                <Label>Freq. (dias/sem)</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label>Freq. (d/sem)</Label>
                 <Input
                   type="number"
                   min={1}
@@ -161,7 +166,7 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
                   onChange={(e) => updateActivity(activity._id, 'frequency', Number(e.target.value))}
                 />
               </div>
-              <div className="space-y-1">
+              <div className="flex flex-col gap-1.5">
                 <Label>Duração (min)</Label>
                 <Input
                   type="number"
@@ -170,7 +175,7 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
                   onChange={(e) => updateActivity(activity._id, 'duration', Number(e.target.value))}
                 />
               </div>
-              <div className="space-y-1">
+              <div className="flex flex-col gap-1.5">
                 <Label>Intensidade</Label>
                 <Select
                   value={activity.intensity}
@@ -190,13 +195,13 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
           </div>
         ))}
 
-        <div className="space-y-1">
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="physicalLimitations">Limitações físicas</Label>
           <Input
             id="physicalLimitations"
             name="physicalLimitations"
             defaultValue={initialData?.physicalLimitations ?? ''}
-            placeholder="Ex: dor no joelho direito, hérnia de disco"
+            placeholder="dor no joelho direito"
           />
         </div>
       </Card>

@@ -23,16 +23,18 @@ export default async function UploadPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="p-4">
-        <div className="w-full max-w-sm mx-auto">
-          <h1 className="text-2xl font-bold text-foreground mb-1">Enviar exame</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            Foto ou arquivo PDF — processado em segurança e nunca armazenado.
+      <div className="flex flex-col gap-3 p-4">
+        <div className="flex flex-col gap-1 px-0 pt-2">
+          <h1 className="font-heading text-[22px] font-bold leading-[1.4286] text-foreground">
+            Enviar exame
+          </h1>
+          <p className="text-[13px] font-medium text-muted-foreground">
+            Foto ou PDF — processado em segurança.
           </p>
-          <Suspense fallback={<UploadSkeleton />}>
-            <UploadForm />
-          </Suspense>
         </div>
+        <Suspense fallback={<UploadSkeleton />}>
+          <UploadForm />
+        </Suspense>
       </div>
     </main>
   )

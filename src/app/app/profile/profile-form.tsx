@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { Activity, Dumbbell, HeartPulse, UserRound, Check } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { upsertMedicalProfile } from '@/lib/actions/medical-profile'
 import { BasicForm } from './basic-form'
 import { CompositionForm } from './composition-form'
@@ -111,71 +109,84 @@ export function ProfileForm({
     })
   }
 
+  const [activeTab, setActiveTab] = useState<'basicos' | 'composicao' | 'habitos' | 'desempenho'>('basicos')
+
   const tabs = [
-    { value: 'basicos', label: 'Básicos', icon: UserRound },
-    { value: 'composicao', label: 'Composição', icon: Activity },
-    { value: 'desempenho', label: 'Desempenho', icon: Dumbbell },
-    { value: 'habitos', label: 'Hábitos', icon: HeartPulse },
+    { value: 'basicos' as const, label: 'Básico' },
+    { value: 'composicao' as const, label: 'Composição' },
+    { value: 'habitos' as const, label: 'Hábitos' },
+    { value: 'desempenho' as const, label: 'Performance' },
   ]
 
   return (
-    <form ref={formRef} action={handleSubmit} className="space-y-6">
-      <Tabs defaultValue="basicos" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-auto py-1 bg-foreground/5 rounded-xl">
-          {tabs.map(({ value, label, icon: Icon }) => (
-            <TabsTrigger key={value} value={value} className="flex flex-col items-center gap-1 px-1 sm:flex-row sm:gap-2">
-              <Icon className="size-4 shrink-0" aria-hidden="true" />
-              <span className="text-[10px] sm:text-sm">{label}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+    <form ref={formRef} action={handleSubmit} className="space-y-4">
+      {/* tab bar */}
+      <div
+        role="tablist"
+        aria-label="Seções do perfil"
+        className="flex items-center rounded-full border border-border bg-[#E7E8E5] dark:bg-muted p-1 h-12 gap-1"
+      >
+        {tabs.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === value}
+            onClick={() => setActiveTab(value)}
+            className={`flex-1 rounded-full text-[11px] font-medium h-10 transition-colors ${
+              activeTab === value
+                ? 'bg-background text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-        {/* ── Tab Básicos ───────────────────────────────── */}
-        <TabsContent value="basicos" keepMounted className="mt-6">
-          <BasicForm
-            initialData={initialData}
-            onMedicalConditionsChange={setMedicalConditions}
-            onMedicationsChange={setMedications}
-            onAllergiesChange={setAllergies}
-            onSurgeriesChange={setSurgeries}
-          />
-        </TabsContent>
-
-        {/* ── Tab Composição ────────────────────────────── */}
-        <TabsContent value="composicao" keepMounted className="mt-6">
-          <CompositionForm
-            initialData={initialData}
-            latestBodyComposition={latestBodyComposition}
-            bodyCompositionDelta={bodyCompositionDelta}
-          />
-        </TabsContent>
-
-        {/* ── Tab Desempenho ────────────────────────────── */}
-        <TabsContent value="desempenho" keepMounted className="mt-6">
-          <PerformanceForm initialData={initialData} onActivitiesChange={setActivities} />
-        </TabsContent>
-
-        {/* ── Tab Hábitos ───────────────────────────────── */}
-        <TabsContent value="habitos" keepMounted className="mt-6">
-          <AdvancedForm initialData={initialData} onSupplementationChange={setSupplementation} />
-        </TabsContent>
-      </Tabs>
+      {/* tab panels — keepMounted via hidden */}
+      <div hidden={activeTab !== 'basicos'}>
+        <BasicForm
+          initialData={initialData}
+          onMedicalConditionsChange={setMedicalConditions}
+          onMedicationsChange={setMedications}
+          onAllergiesChange={setAllergies}
+          onSurgeriesChange={setSurgeries}
+        />
+      </div>
+      <div hidden={activeTab !== 'composicao'}>
+        <CompositionForm
+          initialData={initialData}
+          latestBodyComposition={latestBodyComposition}
+          bodyCompositionDelta={bodyCompositionDelta}
+        />
+      </div>
+      <div hidden={activeTab !== 'habitos'}>
+        <AdvancedForm initialData={initialData} onSupplementationChange={setSupplementation} />
+      </div>
+      <div hidden={activeTab !== 'desempenho'}>
+        <PerformanceForm initialData={initialData} onActivitiesChange={setActivities} />
+      </div>
 
       {/* Save button */}
-      <div className="flex justify-end pt-6 border-t border-border">
-        <Button type="submit" disabled={isPending} className="min-w-32">
+      <div className="pt-4 border-t border-border">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="w-full h-12 rounded-xl bg-primary font-heading text-[15px] font-semibold text-primary-foreground flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+        >
           {isPending ? (
             <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+              <div className="w-4 h-4 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
               Salvando...
             </>
           ) : (
             <>
-              <Check className="w-4 h-4 mr-2" />
+              <Check className="w-4 h-4" />
               Salvar Perfil
             </>
           )}
-        </Button>
+        </button>
       </div>
     </form>
   )

@@ -5,9 +5,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Camera, CheckCircle2, Droplets, FileText, Scale, Upload, X } from 'lucide-react'
+import { FileText, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import {
   DOCUMENT_UPLOAD_ACCEPTED_TYPES,
@@ -49,11 +48,11 @@ const STEP_PROGRESS: Record<UploadStep, number> = {
 const CATEGORY_OPTIONS: {
   value: DocumentCategory
   label: string
-  Icon: React.ElementType
+  emoji: string
 }[] = [
-  { value: 'bioimpedance', label: 'Bioimpedância', Icon: Scale },
-  { value: 'blood_test', label: 'Exames de Sangue', Icon: Droplets },
-  { value: 'other', label: 'Outros', Icon: FileText },
+  { value: 'bioimpedance', label: 'Bioimpedância', emoji: '⚖️' },
+  { value: 'blood_test', label: 'Exames de Sangue', emoji: '🩸' },
+  { value: 'other', label: 'Outros', emoji: '📄' },
 ]
 
 interface FilePreview {
@@ -255,17 +254,19 @@ export function UploadForm() {
 
   function renderCategoryPicker() {
     return (
-      <div className="flex flex-col gap-3">
-        <div>
-          <p className="text-sm font-medium text-foreground">Tipo de documento</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Escolha o tipo antes de enviar o arquivo.
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="flex h-12 items-center px-5">
+          <p className="font-heading text-sm font-semibold leading-[1.4286] text-foreground">
+            Tipo de documento
           </p>
         </div>
-        <div role="radiogroup" aria-label="Tipo de documento" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {CATEGORY_OPTIONS.map(({ value, label, Icon }, index) => {
+        <div
+          role="radiogroup"
+          aria-label="Tipo de documento"
+          className="flex gap-2 px-5 pb-4"
+        >
+          {CATEGORY_OPTIONS.map(({ value, label, emoji }, index) => {
             const isSelected = selectedCategory === value
-
             return (
               <button
                 key={value}
@@ -286,33 +287,23 @@ export function UploadForm() {
                     document.getElementById(`category-option-${next.value}`)?.focus()
                   } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
                     e.preventDefault()
-                    const prev =
-                      CATEGORY_OPTIONS[
-                        (index - 1 + CATEGORY_OPTIONS.length) % CATEGORY_OPTIONS.length
-                      ]
+                    const prev = CATEGORY_OPTIONS[(index - 1 + CATEGORY_OPTIONS.length) % CATEGORY_OPTIONS.length]
                     setSelectedCategory(prev.value)
                     document.getElementById(`category-option-${prev.value}`)?.focus()
                   }
                 }}
-                className={`relative flex items-center gap-3 rounded-lg border px-3 py-3 text-left transition-all ${
+                className={`flex flex-1 flex-col items-center gap-1.5 rounded-xl p-3 text-center transition-colors ${
                   isSelected
-                    ? 'border-primary bg-primary/15 text-primary shadow-sm ring-2 ring-primary/35'
-                    : 'border-border bg-background text-foreground hover:bg-muted/50'
+                    ? 'bg-primary'
+                    : 'border border-border bg-card hover:bg-muted/50'
                 }`}
               >
-                <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                    isSelected
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
+                <span className="font-heading text-lg font-medium leading-[1.4286]" aria-hidden="true">
+                  {emoji}
                 </span>
-                <span className="min-w-0 flex-1 text-sm font-semibold">{label}</span>
-                {isSelected && (
-                  <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-                )}
+                <span className={`text-[11px] font-semibold leading-tight ${isSelected ? 'text-foreground' : 'text-foreground'}`}>
+                  {label}
+                </span>
               </button>
             )
           })}
@@ -324,174 +315,175 @@ export function UploadForm() {
   const isProcessing = step !== 'idle' && step !== 'done'
 
   return (
-    <div className="flex flex-col gap-4 w-full max-w-sm mx-auto">
-      {/* Seleção de arquivo */}
-      {!preview && (
-        <div className="flex flex-col gap-6">
-          {renderCategoryPicker()}
+    <div className="flex flex-col gap-3 w-full">
+      {/* Category picker — sempre visível */}
+      {renderCategoryPicker()}
 
-          <div className="flex flex-col gap-3">
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={handleInputChange}
-              aria-label="Tirar foto com câmera"
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,application/pdf"
-              className="hidden"
-              onChange={handleInputChange}
-              aria-label="Selecionar arquivo"
-            />
-
-            <Button
-              variant="default"
-              size="lg"
-              type="button"
-              className="w-full gap-2"
-              onClick={() => cameraInputRef.current?.click()}
-            >
-              <Camera className="h-5 w-5" />
-              Tirar foto do exame
-            </Button>
-
-            <Button
-              variant="outline"
-              size="lg"
-              type="button"
-              className="w-full gap-2"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-5 w-5" />
-              Selecionar arquivo
-            </Button>
-
-            <p className="text-xs text-muted-foreground text-center">
-              PDF, JPG ou PNG — máximo 20MB
-            </p>
-          </div>
+      {/* Dropzone / arquivo card */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="flex h-12 items-center px-5">
+          <p className="font-heading text-sm font-semibold leading-[1.4286] text-foreground">
+            Arquivo
+          </p>
         </div>
-      )}
 
-      {/* Preview + envio */}
-      {preview && (
-        <Card>
-          <CardContent className="p-4 flex flex-col gap-4" aria-busy={isProcessing}>
-            {/* Preview */}
-            <div className="flex items-center gap-3">
-              {preview.previewUrl ? (
-                <Image
-                  src={preview.previewUrl}
-                  alt="Preview do exame"
-                  width={64}
-                  height={64}
-                  sizes="64px"
-                  className="h-16 w-16 rounded object-cover shrink-0"
-                  unoptimized
-                />
-              ) : (
-                <div className="h-16 w-16 rounded bg-muted flex items-center justify-center shrink-0">
-                  <FileText className="h-8 w-8 text-muted-foreground" />
+        <div className="px-5 pb-4">
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleInputChange}
+            aria-label="Tirar foto com câmera"
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,application/pdf"
+            className="hidden"
+            onChange={handleInputChange}
+            aria-label="Selecionar arquivo"
+          />
+
+          {!preview ? (
+            /* Dropzone idle */
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-35 w-full flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted transition-colors hover:bg-muted/70"
+              aria-label="Selecionar arquivo para upload"
+            >
+              <span className="font-heading text-[28px] font-medium leading-[1.4286]" aria-hidden="true">📎</span>
+              <span className="font-heading text-[13px] font-medium text-foreground">
+                Arraste ou toque para selecionar
+              </span>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                PDF ou imagem • máx 20 MB
+              </span>
+            </button>
+          ) : (
+            /* Preview do arquivo selecionado */
+            <div className="flex flex-col gap-3" aria-busy={isProcessing}>
+              <div className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2.5">
+                {preview.previewUrl ? (
+                  <Image
+                    src={preview.previewUrl}
+                    alt="Preview do exame"
+                    width={48}
+                    height={48}
+                    sizes="48px"
+                    className="h-12 w-12 rounded-lg object-cover shrink-0"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="h-12 w-12 rounded-lg bg-card flex items-center justify-center shrink-0 border border-border">
+                    <FileText className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-heading text-[13px] font-medium text-foreground truncate">
+                    {preview.file.name}
+                  </p>
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    {(preview.file.size / 1024 / 1024).toFixed(1)} MB
+                  </p>
+                </div>
+                {!isProcessing && (
+                  <button
+                    type="button"
+                    className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
+                    onClick={handleCancel}
+                    aria-label="Remover arquivo"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Progresso */}
+              {step !== 'idle' && step !== 'done' && (
+                <div className="flex flex-col gap-1.5" role="status" aria-live="polite">
+                  <Progress value={STEP_PROGRESS[step]} className="h-2" />
+                  <p className="text-[11px] font-medium text-muted-foreground text-center">
+                    {STEP_LABELS[step]}
+                  </p>
                 </div>
               )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{preview.file.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {(preview.file.size / 1024 / 1024).toFixed(1)} MB
-                </p>
-              </div>
-              {!isProcessing && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  type="button"
-                  className="shrink-0"
-                  onClick={handleCancel}
-                  aria-label="Remover arquivo"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+
+              {/* Sucesso */}
+              {step === 'done' && successInfo && (
+                <div className="rounded-xl border border-[#d1fae5] bg-[#d1fae5]/50 px-3 py-2.5" role="status" aria-live="polite">
+                  {successInfo.type === 'body_composition' ? (
+                    <>
+                      <p className="text-[13px] font-medium text-[#065f46]">
+                        Composição corporal atualizada no seu perfil.
+                      </p>
+                      {successInfo.metrics && <BodyCompositionSummary metrics={successInfo.metrics} />}
+                      <p className="mt-2">
+                        <Link href="/app/profile" className="text-[11px] font-medium text-primary underline-offset-2 hover:underline">
+                          Ver perfil completo
+                        </Link>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[13px] font-medium text-[#065f46]">Upload concluído com sucesso.</p>
+                      <p className="mt-1 text-[11px] font-medium text-[#065f46] break-all">
+                        {successInfo.fileName}
+                      </p>
+                    </>
+                  )}
+                </div>
               )}
-            </div>
 
-            {renderCategoryPicker()}
+              {errorMessage && (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-[13px] font-medium text-destructive" aria-live="polite">
+                  {errorMessage}
+                </div>
+              )}
 
-            {errorMessage && (
-              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" aria-live="polite">
-                {errorMessage}
-              </div>
-            )}
-
-            {/* Progresso */}
-            {step !== 'idle' && step !== 'done' && (
-              <div className="flex flex-col gap-1.5" role="status" aria-live="polite">
-                <Progress value={STEP_PROGRESS[step]} className="h-2" />
-                <p className="text-xs text-muted-foreground text-center">{STEP_LABELS[step]}</p>
-              </div>
-            )}
-
-            {/* Ações padrão */}
-            <div className="flex gap-2">
-              {isProcessing ? (
-                <Button variant="outline" className="flex-1" onClick={handleCancel}>
-                  Cancelar
-                </Button>
-              ) : step === 'done' ? (
-                <>
-                  <Button variant="outline" type="button" className="flex-1" onClick={handleCancel}>
+              {/* Ações quando há arquivo preview mas ainda não enviou */}
+              {step === 'done' && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    className="h-12 flex-1 rounded-xl"
+                    onClick={handleCancel}
+                  >
                     Enviar outro
-                  </Button>
-                  <Button type="button" className="flex-1" onClick={() => router.push('/app/dashboard')}>
-                    Ir para dashboard
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="outline" type="button" className="flex-1" onClick={handleCancel}>
-                    Cancelar
                   </Button>
                   <Button
                     type="button"
-                    className="flex-1"
-                    onClick={handleSubmit}
-                    disabled={!selectedCategory}
+                    className="h-12 flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => router.push('/app/dashboard')}
                   >
-                    Enviar exame
+                    Ir para dashboard
                   </Button>
-                </>
+                </div>
+              )}
+
+              {isProcessing && (
+                <Button variant="outline" className="h-12 w-full rounded-xl" onClick={handleCancel}>
+                  Cancelar
+                </Button>
               )}
             </div>
+          )}
+        </div>
+      </div>
 
-            {step === 'done' && successInfo && (
-              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300" role="status" aria-live="polite">
-                {successInfo.type === 'body_composition' ? (
-                  <>
-                    <p className="font-medium">Composição corporal atualizada no seu perfil.</p>
-                    {successInfo.metrics && (
-                      <BodyCompositionSummary metrics={successInfo.metrics} />
-                    )}
-                    <p className="mt-2">
-                      <Link href="/app/profile" className="underline underline-offset-2">
-                        Ver perfil completo
-                      </Link>
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-medium">Upload concluído com sucesso.</p>
-                    <p className="mt-1 break-all">Documento: {successInfo.fileName}</p>
-                    <p className="mt-1">A análise será iniciada automaticamente pelo servidor usando este exame.</p>
-                  </>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Botão submit — visível só quando há arquivo e ainda não enviou */}
+      {preview && !isProcessing && step !== 'done' && (
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!selectedCategory}
+          className="h-12 w-full rounded-xl bg-primary text-[15px] font-semibold text-foreground transition-opacity disabled:opacity-40 font-heading"
+        >
+          Enviar exame
+        </button>
       )}
     </div>
   )

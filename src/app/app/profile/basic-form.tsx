@@ -38,18 +38,18 @@ export function BasicForm({
   const bmi = height && weight ? ((weight / (height / 100) ** 2)).toFixed(1) : null
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3">
       {/* Identificação */}
-      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
-        <div>
-          <h2 className="font-semibold text-foreground">Identificação</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+      <Card className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground">Identificação</h2>
+          <p className="text-[12px] font-medium text-muted-foreground">
             Dados básicos pessoais e medidas corporais.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="age">Idade</Label>
             <Input
               id="age"
@@ -62,7 +62,7 @@ export function BasicForm({
               placeholder="35"
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="gender">Sexo biológico</Label>
             <Select name="gender" value={gender} onValueChange={(v) => setGender(v ?? '')}>
               <SelectTrigger id="gender">
@@ -78,7 +78,7 @@ export function BasicForm({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="height">Altura (cm)</Label>
             <Input
               id="height"
@@ -92,7 +92,7 @@ export function BasicForm({
               placeholder="175"
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="weight">Peso (kg)</Label>
             <Input
               id="weight"
@@ -110,24 +110,24 @@ export function BasicForm({
 
         {bmi && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">IMC</span>
-            <span className="text-sm font-semibold text-foreground tabular-nums">{bmi}</span>
-            <span className="text-xs text-muted-foreground/50">kg/m²</span>
+            <span className="text-[12px] text-muted-foreground">IMC</span>
+            <span className="font-heading text-[13px] font-medium text-foreground tabular-nums">{bmi}</span>
+            <span className="text-[12px] text-muted-foreground/50">kg/m²</span>
           </div>
         )}
       </Card>
 
       {/* Cardiovascular */}
-      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
-        <div>
-          <h2 className="font-semibold text-foreground">Cardiovascular</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+      <Card className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground">Cardiovascular</h2>
+          <p className="text-[12px] font-medium text-muted-foreground">
             Pressão arterial e frequência cardíaca.
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="systolicPressure">Sistólica</Label>
             <Input
               id="systolicPressure"
@@ -140,7 +140,7 @@ export function BasicForm({
               placeholder="120"
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="diastolicPressure">Diastólica</Label>
             <Input
               id="diastolicPressure"
@@ -153,7 +153,7 @@ export function BasicForm({
               placeholder="80"
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="restingHeartRate">FC Repouso</Label>
             <Input
               id="restingHeartRate"
@@ -169,16 +169,16 @@ export function BasicForm({
       </Card>
 
       {/* Objetivos */}
-      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
-        <div>
-          <h2 className="font-semibold text-foreground">Objetivos</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+      <Card className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground">Objetivos</h2>
+          <p className="text-[12px] font-medium text-muted-foreground">
             Metas de saúde e histórico familiar.
           </p>
         </div>
 
-        <div className="space-y-3">
-          <div className="space-y-1">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="healthObjectives">Objetivos de saúde</Label>
             <Textarea
               id="healthObjectives"
@@ -189,7 +189,7 @@ export function BasicForm({
               placeholder="Perder peso, controlar pressão, melhorar condicionamento..."
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="familyHistory">Histórico familiar</Label>
             <Textarea
               id="familyHistory"
@@ -199,7 +199,7 @@ export function BasicForm({
               placeholder="Diabetes no pai, hipertensão na mãe..."
             />
           </div>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="notes">Observações</Label>
             <Textarea
               id="notes"
@@ -213,15 +213,15 @@ export function BasicForm({
       </Card>
 
       {/* Histórico Médico */}
-      <Card className="rounded-2xl p-4 shadow-sm space-y-4">
-        <div>
-          <h2 className="font-semibold text-foreground">Histórico Médico</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+      <Card className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground">Histórico Médico</h2>
+          <p className="text-[12px] font-medium text-muted-foreground">
             Condições, medicamentos e alergias.
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="flex flex-col gap-3">
           <TagInput
             id="medicalConditions"
             label="Condições médicas"
