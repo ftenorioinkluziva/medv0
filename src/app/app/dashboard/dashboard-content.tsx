@@ -195,6 +195,16 @@ function ProfileCard({
               </div>
             )}
 
+            {muscleMass && (
+              <div className="flex flex-col gap-0.5 flex-1">
+                <p className="text-[11px] font-medium text-muted-foreground">Massa Magra</p>
+                <p className="font-heading text-[13px] font-semibold text-foreground">
+                  {parseFloat(muscleMass).toFixed(1)} kg
+                </p>
+                {muscleMassDelta && <p className="text-[10px] text-muted-foreground">{muscleMassDelta}</p>}
+              </div>
+            )}
+
             {bmi && (
               <div className="flex flex-col gap-0.5 flex-1">
                 <p className="text-[11px] font-medium text-muted-foreground">IMC</p>

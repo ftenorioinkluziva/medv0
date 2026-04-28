@@ -74,8 +74,6 @@ export function AnalysisStatusCard({
     locale: ptBR,
   })
   const lastUpdateLabel = formatRelative(updatedAt, new Date(now), { locale: ptBR })
-  const isLongRunning = now - createdAt.getTime() > 120000
-
   if (status === 'failed') {
     return (
       <div className="rounded-2xl border border-border bg-card overflow-hidden">

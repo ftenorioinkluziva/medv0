@@ -10,6 +10,8 @@ const mockPersistSnapshot = vi.fn()
 const mockPersistFailedDocument = vi.fn()
 const mockTriggerLivingAnalysis = vi.fn()
 const mockUpdateBodyComposition = vi.fn()
+const mockExtractBodyCompositionMetrics = vi.fn().mockReturnValue({})
+const mockPersistBodyComposition = vi.fn().mockResolvedValue(undefined)
 const mockValidateUpload = vi.fn()
 
 vi.mock('@/lib/auth/config', () => ({
@@ -51,6 +53,8 @@ vi.mock('@/lib/documents/persistence', () => ({
 
 vi.mock('@/lib/documents/body-composition', () => ({
   updateBodyComposition: mockUpdateBodyComposition,
+  extractBodyCompositionMetrics: mockExtractBodyCompositionMetrics,
+  persistBodyComposition: mockPersistBodyComposition,
 }))
 
 vi.mock('@/lib/ai/orchestrator/trigger-living-analysis', () => ({
@@ -287,7 +291,7 @@ describe('POST /api/documents/upload', () => {
     expect(mockPersistSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ classifiedDocumentType: 'bioimpedance' }),
     )
-    expect(mockUpdateBodyComposition).toHaveBeenCalledOnce()
+    expect(mockPersistBodyComposition).toHaveBeenCalledOnce()
     expect(mockTriggerLivingAnalysis).not.toHaveBeenCalled()
   })
 })

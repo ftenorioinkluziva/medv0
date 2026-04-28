@@ -208,7 +208,7 @@ const PRODUCT_MEALS_SCHEMA = {
 
 const PRODUCT_WORKOUT_SCHEMA = {
   type: 'object',
-  required: ['overview', 'workouts'],
+  required: ['overview', 'workouts', 'weeklyGoal'],
   properties: {
     overview: { type: 'string' },
     weeklyGoal: { type: 'string' },

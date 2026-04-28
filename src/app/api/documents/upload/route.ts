@@ -3,7 +3,7 @@ import { eq, and, ne, count, gte } from 'drizzle-orm'
 import { z } from 'zod'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { documents, snapshots } from '@/lib/db/schema'
+import { documents } from '@/lib/db/schema'
 import { extractMedicalDocument, hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
 import { persistFailedDocument, persistSnapshot } from '@/lib/documents/persistence'
 import { classifyDocument } from '@/lib/documents/classifier'
@@ -14,10 +14,7 @@ import {
 } from '@/lib/documents/body-composition'
 import { triggerLivingAnalysis } from '@/lib/ai/orchestrator/trigger-living-analysis'
 import { validateUpload } from '@/lib/documents/upload-validation'
-import {
-  DOCUMENT_UPLOAD_EXTRACTION_TIMEOUT_MS,
-  DOCUMENT_UPLOAD_SERVER_MAX_DURATION_SECONDS,
-} from '@/lib/documents/upload-config'
+import { DOCUMENT_UPLOAD_EXTRACTION_TIMEOUT_MS } from '@/lib/documents/upload-config'
 import { logger } from '@/lib/observability/logger'
 import { errorResponse } from '@/lib/api/error-response'
 
@@ -202,6 +199,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       fileName: uploadFileName,
       category,
       ...(category === 'bioimpedance' && bodyCompositionMetrics && {
+        message: 'Dados de composição corporal detectados',
         metrics: bodyCompositionMetrics,
       }),
     })

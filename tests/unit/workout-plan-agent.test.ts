@@ -103,8 +103,8 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
-  it('deve inserir 11 agentes no total incluindo Plano de Exercícios', async () => {
+describe('AC1 — Seed do agente "Gerador de Treino"', () => {
+  it('deve inserir 6 agentes no total incluindo Plano de Exercícios', async () => {
     // #given
     buildInsertChain()
 
@@ -112,10 +112,10 @@ describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
     await seedHealthAgents()
 
     // #then
-    expect(db.insert).toHaveBeenCalledTimes(11)
+    expect(db.insert).toHaveBeenCalledTimes(6)
   })
 
-  it('deve configurar "Plano de Exercícios" com outputType structured', async () => {
+  it('deve configurar "Gerador de Treino" com outputType structured', async () => {
     // #given
     const chain = buildInsertChain()
 
@@ -131,11 +131,11 @@ describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
       analysisRole: string
     }>
 
-    const workoutEntry = valuesCalls.find((v) => v.name === 'Plano de Exercícios')
+    const workoutEntry = valuesCalls.find((v) => v.name === 'Gerador de Treino')
     expect(workoutEntry).toBeDefined()
     expect(workoutEntry?.outputType).toBe('structured')
-    expect(workoutEntry?.analysisRole).toBe('specialized')
-    expect(insertCalls).toHaveLength(11)
+    expect(workoutEntry?.analysisRole).toBe('product_generator')
+    expect(insertCalls).toHaveLength(6)
   })
 
   it('deve definir outputSchema com propriedades obrigatórias', async () => {
@@ -150,7 +150,7 @@ describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
       name: string
       outputSchema?: { required?: string[] }
     }>
-    const workoutEntry = valuesCalls.find((v) => v.name === 'Plano de Exercícios')
+    const workoutEntry = valuesCalls.find((v) => v.name === 'Gerador de Treino')
 
     expect(workoutEntry?.outputSchema).toBeDefined()
     expect(workoutEntry?.outputSchema?.required).toEqual(

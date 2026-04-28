@@ -201,7 +201,7 @@ describe('getAllActiveAgents', () => {
 })
 
 describe('seedHealthAgents', () => {
-  it('deve inserir 11 agentes via db.insert', async () => {
+  it('deve inserir 6 agentes via db.insert', async () => {
     // #given
     buildInsertChain()
 
@@ -209,7 +209,7 @@ describe('seedHealthAgents', () => {
     await seedHealthAgents()
 
     // #then
-    expect(db.insert).toHaveBeenCalledTimes(11)
+    expect(db.insert).toHaveBeenCalledTimes(6)
   })
 
   it('deve usar onConflictDoUpdate para sincronizar alterações', async () => {
@@ -220,7 +220,7 @@ describe('seedHealthAgents', () => {
     await seedHealthAgents()
 
     // #then
-    expect(chain.onConflictDoUpdate).toHaveBeenCalledTimes(11)
+    expect(chain.onConflictDoUpdate).toHaveBeenCalledTimes(6)
   })
 
   it('deve incluir agentes foundation e specialized', async () => {
@@ -232,6 +232,6 @@ describe('seedHealthAgents', () => {
 
     // #then
     const insertCalls = vi.mocked(db.insert).mock.calls
-    expect(insertCalls).toHaveLength(11)
+    expect(insertCalls).toHaveLength(6)
   })
 })
