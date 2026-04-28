@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { href: '/app/upload', label: 'Upload', Icon: Upload },
   { href: '/app/history', label: 'Histórico', Icon: History },
   { href: '/app/chat', label: 'Chat', Icon: MessageCircle },
-  { href: '/app/products', label: 'Produtos', Icon: ShoppingBag },
+  { href: '/app/products', label: 'Planos', Icon: ShoppingBag },
   { href: '/app/profile', label: 'Perfil', Icon: User },
 ] as const
 

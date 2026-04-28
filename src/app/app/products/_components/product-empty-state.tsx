@@ -8,7 +8,7 @@ export function ProductEmptyState({ label }: { label: string }) {
         Nenhum {label} gerado ainda.
       </p>
       <p className="text-xs text-muted-foreground max-w-xs">
-        Envie um exame e execute uma análise completa para gerar seus produtos de saúde.
+        Envie um exame e execute uma análise completa para gerar seus planos de saúde.
       </p>
       <Link href="/app/upload" className={buttonVariants()}>
         Enviar exame

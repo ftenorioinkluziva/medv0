@@ -45,7 +45,7 @@ function ParameterRow({
 
   return (
     <div
-      className={`grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 px-4 py-[10px] ${last ? '' : 'border-b border-border'}`}
+      className={`grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 px-4 py-2.5 ${last ? '' : 'border-b border-border'}`}
     >
       <span className="text-[13px] font-medium text-foreground">{name}</span>
       <span className="font-heading text-[13px] font-medium text-foreground tabular-nums">
@@ -76,7 +76,7 @@ function ModuleSection({ module }: { module: SanitizedMedicalDocument['modules']
           </p>
           <p className="text-[11px] font-medium text-muted-foreground">{module.category}</p>
         </div>
-        <span className={`rounded-[12px] px-[10px] py-[3px] text-[11px] font-medium shrink-0 ${badge.bg} ${badge.text}`}>
+        <span className={`rounded-[12px] px-2.5 py-0.75 text-[11px] font-medium shrink-0 ${badge.bg} ${badge.text}`}>
           {badge.label}
         </span>
       </div>

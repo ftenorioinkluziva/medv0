@@ -39,7 +39,7 @@ export default async function ProductsPage() {
       <div className="flex flex-col gap-3 px-4 pt-4 pb-24">
         <div className="flex flex-col gap-0.5 pt-2">
           <h1 className="font-heading text-[20px] font-bold leading-[1.4286] text-foreground">
-            Meus Produtos
+            Meus Planos
           </h1>
           <p className="text-[12px] font-medium text-muted-foreground">
             Gerados automaticamente após cada análise

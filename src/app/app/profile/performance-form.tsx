@@ -123,7 +123,7 @@ export function PerformanceForm({ initialData, onActivitiesChange }: Performance
           <button
             type="button"
             onClick={addActivity}
-            className="rounded-[8px] border border-border bg-background px-2.5 py-1 text-[12px] font-medium text-foreground hover:opacity-80"
+            className="rounded-xl border border-border bg-background px-2.5 py-1 text-[12px] font-medium text-foreground hover:opacity-80"
           >
             + Adicionar
           </button>

@@ -44,7 +44,7 @@ export function TagInput({ id, label, placeholder, initialValues, onChange }: Ta
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       <div
-        className="flex min-h-9 w-full flex-wrap gap-1.5 rounded-[8px] border border-border bg-background px-3 py-2 text-[13px] cursor-text"
+        className="flex min-h-9 w-full flex-wrap gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-[13px] cursor-text"
         onClick={() => inputRef.current?.focus()}
       >
         {tags.map((tag, i) => (

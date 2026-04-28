@@ -491,16 +491,16 @@ export function DashboardContent({ data }: DashboardContentProps) {
       {/* E12 — Seção 1: Perfil Básico */}
       <ProfileCard profile={profile} bodyComposition={bodyComposition} userName={userName} />
 
+      {/* E12 — Seção 3: Resumo de Saúde */}
+      <HealthSummaryCard analysis={livingAnalysis} />
+
+      {/* E13-07 — Planos */}
+      <ProductsCard products={productsSummary} />
+
       {/* E12 — Seção 2: Últimos Documentos */}
       <RecentDocsCard
         docs={recentDocs}
       />
-
-      {/* E12 — Seção 3: Resumo de Saúde */}
-      <HealthSummaryCard analysis={livingAnalysis} />
-
-      {/* E13-07 — Produtos */}
-      <ProductsCard products={productsSummary} />
 
       {/* Auto-trigger de análise (comportamento existente preservado) */}
       {needsAnalysisUpdate && (

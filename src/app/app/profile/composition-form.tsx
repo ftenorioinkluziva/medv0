@@ -69,7 +69,7 @@ export function CompositionForm({
         </div>
         <Link
           href="/app/profile/body-composition"
-          className="inline-flex items-center justify-center rounded-[8px] border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground hover:opacity-80"
+          className="inline-flex items-center justify-center rounded-xl border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground hover:opacity-80"
         >
           Ver histórico
         </Link>
@@ -79,7 +79,7 @@ export function CompositionForm({
       <div className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
         {/* Card header */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center size-8 rounded-[8px] bg-[#E7E8E5]">
+          <div className="flex items-center justify-center size-8 rounded-xl bg-[#E7E8E5]">
             <span className="font-heading text-[14px] font-medium text-muted-foreground">◎</span>
           </div>
           <div className="flex flex-col gap-0.5">
