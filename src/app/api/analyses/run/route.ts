@@ -1,7 +1,7 @@
 import { after } from 'next/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, count, gte } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import {
@@ -13,32 +13,98 @@ import {
 import { hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
 import { runLivingAnalysis } from '@/lib/ai/orchestrator/living-analysis'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
+import { logger } from '@/lib/observability/logger'
+import { errorResponse } from '@/lib/api/error-response'
 
 export const maxDuration = 60
+
+const ANALYSIS_RATE_LIMIT = 5 // análises por hora
+const ANALYSIS_RATE_WINDOW_MS = 60 * 60 * 1000 // 1 hora
 
 const RunAnalysisSchema = z.object({
   documentId: z.string().uuid(),
 })
 
+async function checkAnalysisRateLimit(userId: string): Promise<{ allowed: boolean; retryAfterSeconds?: number }> {
+  const now = new Date()
+  const windowStart = new Date(now.getTime() - ANALYSIS_RATE_WINDOW_MS)
+
+  const userLivingAnalysis = await db
+    .select({ id: livingAnalyses.id })
+    .from(livingAnalyses)
+    .where(eq(livingAnalyses.userId, userId))
+    .limit(1)
+
+  if (!userLivingAnalysis[0]) {
+    return { allowed: true }
+  }
+
+  const livingAnalysisId = userLivingAnalysis[0].id
+
+  const versionCountResult = await db
+    .select({ analysisCount: count() })
+    .from(livingAnalysisVersions)
+    .where(
+      and(
+        eq(livingAnalysisVersions.livingAnalysisId, livingAnalysisId),
+        gte(livingAnalysisVersions.createdAt, windowStart),
+      ),
+    )
+
+  const analysisCount = versionCountResult[0]?.analysisCount ?? 0
+
+  if (analysisCount >= ANALYSIS_RATE_LIMIT) {
+    const oldestAnalysis = await db
+      .select({ createdAt: livingAnalysisVersions.createdAt })
+      .from(livingAnalysisVersions)
+      .where(eq(livingAnalysisVersions.livingAnalysisId, livingAnalysisId))
+      .orderBy(livingAnalysisVersions.createdAt)
+      .limit(1)
+
+    if (oldestAnalysis[0]) {
+      const oldestTime = new Date(oldestAnalysis[0].createdAt).getTime()
+      const nextAllowedTime = oldestTime + ANALYSIS_RATE_WINDOW_MS
+      const retryAfterMs = Math.max(0, nextAllowedTime - now.getTime())
+      const retryAfterSeconds = Math.ceil(retryAfterMs / 1000)
+
+      return { allowed: false, retryAfterSeconds }
+    }
+  }
+
+  return { allowed: true }
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return errorResponse('Não autorizado.', 401)
+  }
+
+  // Check rate limit
+  const rateLimitCheck = await checkAnalysisRateLimit(session.user.id)
+  if (!rateLimitCheck.allowed) {
+    const response = NextResponse.json(
+      {
+        error: `Limite de análises excedido. Aguarde ${rateLimitCheck.retryAfterSeconds} segundos antes de tentar novamente.`,
+      },
+      { status: 429 },
+    )
+    if (rateLimitCheck.retryAfterSeconds) {
+      response.headers.set('Retry-After', rateLimitCheck.retryAfterSeconds.toString())
+    }
+    return response
   }
 
   let body: unknown
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 })
+    return errorResponse('Payload inválido.', 400)
   }
 
   const parsed = RunAnalysisSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Validação falhou.', details: parsed.error.flatten() },
-      { status: 400 },
-    )
+    return errorResponse('Validação falhou.', 400, parsed.error.flatten())
   }
 
   const { documentId } = parsed.data
@@ -51,7 +117,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .limit(1)
 
   if (!doc) {
-    return NextResponse.json({ error: 'Documento não encontrado.' }, { status: 404 })
+    return errorResponse('Documento não encontrado.', 404)
   }
 
   const [triggerSnapshot] = await db
@@ -61,21 +127,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .limit(1)
 
   if (!hasUsableMedicalDocumentData(triggerSnapshot?.structuredData ?? null)) {
-    return NextResponse.json(
-      { error: 'Não há dados extraídos suficientes para gerar a análise deste documento.' },
-      { status: 409 },
-    )
+    return errorResponse('Não há dados extraídos suficientes para gerar a análise deste documento.', 409)
   }
 
   const foundationAgents = await getActiveAgentsByRole('foundation')
 
   if (foundationAgents.length === 0) {
-    return NextResponse.json(
-      {
-        error:
-          'Configuração incompleta de agentes. É necessário pelo menos 1 agente foundation ativo.',
-      },
-      { status: 409 },
+    return errorResponse(
+      'Configuração incompleta de agentes. É necessário pelo menos 1 agente foundation ativo.',
+      409,
     )
   }
 
@@ -129,7 +189,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
       await runLivingAnalysis(userId, documentId, livingAnalysisId, version.id)
     } catch (error) {
-      console.error('[analyses/run] Background analysis failed:', error)
+      logger.error('[analyses/run] Background analysis failed', error)
     }
   })
 

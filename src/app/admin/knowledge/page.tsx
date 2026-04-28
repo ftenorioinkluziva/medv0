@@ -1,6 +1,15 @@
+import dynamic from 'next/dynamic'
 import { getAllArticlesForAdmin, getAgentsByArticleIds } from '@/lib/db/queries/knowledge'
-import { KnowledgeTable } from './_components/knowledge-table'
 import { Pagination } from '@/components/ui/pagination'
+
+const KnowledgeTable = dynamic(
+  () => import('./_components/knowledge-table').then((module) => module.KnowledgeTable),
+  {
+    loading: () => (
+      <div className="rounded-md border p-4 text-sm text-muted-foreground">Carregando knowledge base...</div>
+    ),
+  },
+)
 
 const PAGE_SIZE = 20
 

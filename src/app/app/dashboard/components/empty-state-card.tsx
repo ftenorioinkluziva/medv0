@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { FileX, FlaskConical, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button-variants'
 import { cn } from '@/lib/utils'
 
 type EmptyStateVariant = 'no-exam' | 'no-analysis' | 'processing'

@@ -110,7 +110,7 @@ function buildSelectChain(rows: unknown[]) {
 function buildInsertChain() {
   const chain = {
     values: vi.fn().mockReturnThis(),
-    onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+    onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
   }
   vi.mocked(db.insert).mockReturnValue(chain as never)
   return chain
@@ -201,7 +201,7 @@ describe('getAllActiveAgents', () => {
 })
 
 describe('seedHealthAgents', () => {
-  it('deve inserir 8 agentes via db.insert', async () => {
+  it('deve inserir 6 agentes via db.insert', async () => {
     // #given
     buildInsertChain()
 
@@ -209,10 +209,10 @@ describe('seedHealthAgents', () => {
     await seedHealthAgents()
 
     // #then
-    expect(db.insert).toHaveBeenCalledTimes(8)
+    expect(db.insert).toHaveBeenCalledTimes(6)
   })
 
-  it('deve usar onConflictDoNothing para idempotência', async () => {
+  it('deve usar onConflictDoUpdate para sincronizar alterações', async () => {
     // #given
     const chain = buildInsertChain()
 
@@ -220,7 +220,7 @@ describe('seedHealthAgents', () => {
     await seedHealthAgents()
 
     // #then
-    expect(chain.onConflictDoNothing).toHaveBeenCalledTimes(8)
+    expect(chain.onConflictDoUpdate).toHaveBeenCalledTimes(6)
   })
 
   it('deve incluir agentes foundation e specialized', async () => {
@@ -232,6 +232,6 @@ describe('seedHealthAgents', () => {
 
     // #then
     const insertCalls = vi.mocked(db.insert).mock.calls
-    expect(insertCalls).toHaveLength(8)
+    expect(insertCalls).toHaveLength(6)
   })
 })

@@ -11,20 +11,22 @@ interface SessionListProps {
 
 export function SessionList({ sessions }: SessionListProps) {
   return (
-    <div className="space-y-1.5">
+    <div className="flex flex-col gap-2">
       {sessions.map((s) => (
         <Link
           key={s.id}
           href={`/app/chat/${s.id}`}
-          className="flex items-start justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3 transition-colors hover:bg-accent"
+          className="flex items-center justify-between gap-3 rounded-[12px] border border-border bg-card px-4 py-3 hover:bg-muted/40 transition-colors"
         >
-          <div className="min-w-0 space-y-0.5">
-            <p className="text-sm font-medium truncate">{s.title}</p>
-            <p className="text-xs text-muted-foreground">{s.agent.name} — {s.agent.specialty}</p>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <p className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground truncate">
+              {s.agent.name}
+            </p>
+            <p className="text-[12px] font-medium text-muted-foreground">
+              {formatDistanceToNow(s.updatedAt, { addSuffix: true, locale: ptBR })}
+            </p>
           </div>
-          <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">
-            {formatDistanceToNow(s.updatedAt, { addSuffix: true, locale: ptBR })}
-          </span>
+          <span className="text-[18px] font-medium text-muted-foreground shrink-0">›</span>
         </Link>
       ))}
     </div>

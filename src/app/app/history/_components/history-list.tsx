@@ -1,121 +1,181 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { ExamCard } from './exam-card'
-import type { DocumentWithHistory, DocumentCategory } from '@/lib/db/queries/history'
-import type { ParameterEvolution } from '@/lib/history/evolution'
+import type {
+  AnalysisHistoryItem,
+  DocumentCategory,
+  DocumentWithHistory,
+} from '@/lib/db/queries/history'
 
-type FilterValue = 'all' | DocumentCategory
+const CATEGORY_LABEL: Record<DocumentCategory, string> = {
+  bioimpedance: 'Bioimpedância',
+  blood_test: 'Sangue',
+  other: 'Outro',
+}
 
-const FILTERS: { value: FilterValue; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'bioimpedance', label: 'Bioimpedância' },
-  { value: 'blood_test', label: 'Exames de Sangue' },
-  { value: 'other', label: 'Outros' },
-]
+const CATEGORY_PILL: Record<DocumentCategory, string> = {
+  blood_test: 'bg-[#fde68a] text-[#92400e]',
+  bioimpedance: 'bg-[#ede9fe] text-[#5b21b6]',
+  other: 'bg-muted text-muted-foreground',
+}
 
 type Props = {
   documents: DocumentWithHistory[]
-  evolutionMap: Record<string, ParameterEvolution[]>
+  analyses: AnalysisHistoryItem[]
 }
 
-const FILTER_VALUES: FilterValue[] = ['all', 'bioimpedance', 'blood_test', 'other']
-const SESSION_KEY = 'history.activeFilter'
-
-export function HistoryList({ documents, evolutionMap }: Props) {
-  const [activeFilter, setActiveFilter] = useState<FilterValue>(() => {
-    try {
-      const stored = sessionStorage.getItem(SESSION_KEY)
-      return stored && FILTER_VALUES.includes(stored as FilterValue)
-        ? (stored as FilterValue)
-        : 'all'
-    } catch {
-      return 'all'
-    }
-  })
-
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(SESSION_KEY, activeFilter)
-    } catch {
-      // sessionStorage unavailable — silently ignore
-    }
-  }, [activeFilter])
-
-  if (documents.length === 0) {
+export function HistoryList({ documents, analyses }: Props) {
+  if (documents.length === 0 && analyses.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-        <p className="text-muted-foreground text-sm">Nenhum exame encontrado</p>
-        <Link href="/app/upload" className={cn(buttonVariants(), 'min-h-11')}>
+        <p className="text-[13px] font-medium text-muted-foreground">
+          Nenhum exame ou análise encontrado
+        </p>
+        <Link
+          href="/app/upload"
+          className="h-12 rounded-xl bg-primary px-6 font-heading text-[15px] font-semibold text-primary-foreground flex items-center justify-center"
+        >
           Enviar primeiro exame
         </Link>
       </div>
     )
   }
 
-  const counts: Record<FilterValue, number> = {
-    all: documents.length,
-    bioimpedance: documents.filter((d) => d.category === 'bioimpedance').length,
-    blood_test: documents.filter((d) => d.category === 'blood_test').length,
-    other: documents.filter((d) => d.category === 'other' || d.category === null).length,
-  }
-
-  const filtered =
-    activeFilter === 'all'
-      ? documents
-      : activeFilter === 'other'
-        ? documents.filter((d) => d.category === 'other' || d.category === null)
-        : documents.filter((d) => d.category === activeFilter)
-
   return (
-    <div className="flex flex-col gap-4">
-      <div
-        role="group"
-        aria-label="Filtrar por categoria"
-        className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar"
-      >
-        {FILTERS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={activeFilter === value}
-            onClick={() => setActiveFilter(value)}
-            className={cn(
-              'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap',
-              activeFilter === value
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80',
-            )}
-          >
-            {label}
-            <span
-              className={cn(
-                'ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-                activeFilter === value
-                  ? 'bg-primary-foreground/20 text-primary-foreground'
-                  : 'bg-background text-muted-foreground',
-              )}
-            >
-              {counts[value]}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">
-          Nenhum exame nesta categoria
-        </p>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {filtered.map((doc) => (
-            <ExamCard key={doc.id} doc={doc} evolution={evolutionMap[doc.id] ?? []} />
+    <div className="flex flex-col gap-3">
+      {documents.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="font-heading text-[13px] font-semibold leading-[1.4286] text-foreground">
+              Exames
+            </p>
+            <p className="text-[11px] font-medium text-muted-foreground">
+              {documents.length} total
+            </p>
+          </div>
+          {documents.map((doc) => (
+            <DocCard key={doc.id} doc={doc} />
           ))}
-        </div>
+        </section>
+      )}
+
+      {analyses.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="font-heading text-[13px] font-semibold leading-[1.4286] text-foreground">
+              Análises
+            </p>
+            <p className="text-[11px] font-medium text-muted-foreground">
+              {analyses.length} total
+            </p>
+          </div>
+          {analyses.map((a) => (
+            <AnalysisCard key={a.id} analysis={a} />
+          ))}
+        </section>
       )}
     </div>
+  )
+}
+
+function DocCard({ doc }: { doc: DocumentWithHistory }) {
+  const dateLabel = (() => {
+    if (doc.examDate) {
+      const [year, month, day] = doc.examDate.split('-').map(Number)
+      return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+    }
+    return doc.createdAt.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+  })()
+
+  const category = doc.category ?? 'other'
+  const categoryLabel = CATEGORY_LABEL[category]
+  const categoryPill = CATEGORY_PILL[category]
+
+  const statusPill = doc.processingStatus === 'completed'
+    ? 'bg-[#d1fae5] text-[#065f46]'
+    : doc.processingStatus === 'pending'
+      ? 'bg-[#fde68a] text-[#92400e]'
+      : 'bg-muted text-muted-foreground'
+  const statusLabel = doc.processingStatus === 'completed'
+    ? 'Processado'
+    : doc.processingStatus === 'pending'
+      ? 'Pendente'
+      : 'Erro'
+
+  return (
+    <Link
+      href={`/app/documents/${doc.id}`}
+      className="flex items-center gap-3 rounded-[14px] border border-border bg-card px-3.5 py-3 hover:bg-muted/30 transition-colors"
+    >
+      <div className="flex flex-col gap-1 flex-1 min-w-0">
+        <p className="font-heading text-[13px] font-medium leading-[1.4286] text-foreground truncate">
+          {doc.originalFileName ?? doc.documentType}
+        </p>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${categoryPill}`}>
+            {categoryLabel}
+          </span>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusPill}`}>
+            {statusLabel}
+          </span>
+          <span className="text-[10px] font-medium text-muted-foreground">{dateLabel}</span>
+        </div>
+      </div>
+      <span className="text-[14px] font-medium text-primary shrink-0">→</span>
+    </Link>
+  )
+}
+
+function AnalysisCard({ analysis }: { analysis: AnalysisHistoryItem }) {
+  const dateLabel = analysis.createdAt.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+
+  const statusPill = analysis.status === 'completed'
+    ? 'bg-[#d1fae5] text-[#065f46]'
+    : analysis.status === 'processing'
+      ? 'bg-[#fde68a] text-[#92400e]'
+      : 'bg-muted text-muted-foreground'
+  const statusLabel = analysis.status === 'completed'
+    ? 'Concluída'
+    : analysis.status === 'processing'
+      ? 'Em andamento'
+      : 'Falhou'
+
+  const href = analysis.status === 'completed'
+    ? `/app/analyses/${analysis.livingAnalysisId}`
+    : `/app/analyses/${analysis.livingAnalysisId}`
+
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 rounded-[14px] border border-border bg-card px-3.5 py-3 hover:bg-muted/30 transition-colors"
+    >
+      <div className="flex flex-col gap-1 flex-1 min-w-0">
+        <p className="font-heading text-[13px] font-medium leading-[1.4286] text-foreground truncate">
+          Análise Completa{analysis.version > 1 ? ` v${analysis.version}` : ''}
+          {analysis.triggerDocumentExamDate
+            ? ` — ${new Date(`${analysis.triggerDocumentExamDate}T00:00:00`).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}`
+            : ''}
+        </p>
+        <div className="flex items-center gap-1.5">
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusPill}`}>
+            {statusLabel}
+          </span>
+          <span className="text-[10px] font-medium text-muted-foreground">{dateLabel}</span>
+        </div>
+      </div>
+      <span className="text-[14px] font-medium text-primary shrink-0">→</span>
+    </Link>
   )
 }

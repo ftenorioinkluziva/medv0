@@ -41,16 +41,16 @@ export function TagInput({ id, label, placeholder, initialValues, onChange }: Ta
   }
 
   return (
-    <div className="space-y-1">
+    <div className="flex flex-col gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       <div
-        className="flex min-h-10 w-full flex-wrap gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm cursor-text"
+        className="flex min-h-9 w-full flex-wrap gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-[13px] cursor-text"
         onClick={() => inputRef.current?.focus()}
       >
         {tags.map((tag, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium"
+            className="inline-flex items-center gap-1 rounded-[6px] bg-[#E7E8E5] px-2 py-0.5 text-[11px] font-medium text-foreground"
           >
             {tag}
             <button
@@ -70,11 +70,10 @@ export function TagInput({ id, label, placeholder, initialValues, onChange }: Ta
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={() => addTag(inputValue)}
-          placeholder={tags.length === 0 ? placeholder : ''}
-          className="flex-1 min-w-30 bg-transparent outline-none placeholder:text-muted-foreground"
+          placeholder={tags.length === 0 ? placeholder : '+ adicionar'}
+          className="flex-1 min-w-24 bg-transparent outline-none text-[13px] font-medium placeholder:text-muted-foreground"
         />
       </div>
-      <p className="text-xs text-muted-foreground">Enter ou vírgula para adicionar</p>
     </div>
   )
 }

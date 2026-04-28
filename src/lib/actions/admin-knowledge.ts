@@ -74,7 +74,6 @@ export async function toggleArticleGlobalAction(
     .returning({ id: knowledgeBase.id })
 
   if (updated.length === 0) {
-    console.warn(`toggleArticleGlobalAction: article ${articleId} not found`)
     return { error: 'Article not found' }
   }
 

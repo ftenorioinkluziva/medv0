@@ -3,17 +3,12 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import {
-  Upload, ArrowRight, TrendingUp, TrendingDown, Minus, Loader2, LogOut,
-  User, FileText, Activity, ShoppingBag, Pill, UtensilsCrossed, Dumbbell,
-  ChevronRight,
-} from 'lucide-react'
+import { Upload, Loader2, LogOut } from 'lucide-react'
+
 import { signOut } from 'next-auth/react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { DashboardData, BodyCompositionSummary, ProductSummaryItem } from './page'
-import type { DocumentWithHistory } from '@/lib/db/queries/history'
-import type { ParameterEvolution } from '@/lib/history/evolution'
 import type { DashboardProfile, DashboardDocument, DashboardAnalysis } from '@/lib/db/queries/dashboard'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -55,6 +50,24 @@ function truncateWords(text: string, maxWords: number): { truncated: string; was
   return { truncated: words.slice(0, end).join(' '), wasTruncated: true }
 }
 
+function extractSummarySection(markdown: string): string {
+  const normalized = markdown.replace(/\r\n/g, '\n').trim()
+  if (!normalized) return ''
+
+  const summaryHeadingRegex = /^##\s*(?:📋\s*)?(?:Resumo(?: Executivo)?)(?:\s*:)?\s*$/im
+  const match = summaryHeadingRegex.exec(normalized)
+  if (!match || match.index == null) return ''
+
+  const sectionStart = match.index + match[0].length
+  const sectionBody = normalized.slice(sectionStart).trimStart()
+  const nextHeadingMatch = /^##\s+/m.exec(sectionBody)
+  const rawSummary = nextHeadingMatch
+    ? sectionBody.slice(0, nextHeadingMatch.index)
+    : sectionBody
+
+  return rawSummary.trim()
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   bioimpedance: 'Bioimpedância',
   blood_test: 'Exames de Sangue',
@@ -62,8 +75,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  bioimpedance: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
-  blood_test: 'bg-red-500/10 text-red-600 dark:text-red-400',
+  bioimpedance: 'bg-[#ede9fe] text-[#5b21b6]',
+  blood_test: 'bg-[#fde68a] text-[#92400e]',
   other: 'bg-muted text-muted-foreground',
 }
 
@@ -83,10 +96,10 @@ const DOC_STATUS_LABELS: Record<string, string> = {
 }
 
 const DOC_STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700 dark:text-amber-300',
-  processing: 'bg-sky-100 text-sky-700 dark:text-sky-300',
-  completed: 'bg-emerald-100 text-emerald-700 dark:text-emerald-300',
-  failed: 'bg-rose-100 text-rose-700 dark:text-rose-300',
+  pending: 'bg-[#fde68a] text-[#92400e]',
+  processing: 'bg-[#dbeafe] text-[#1e40af]',
+  completed: 'bg-[#d1fae5] text-[#065f46]',
+  failed: 'bg-[#fee2e2] text-[#991b1b]',
   default: 'bg-muted text-muted-foreground',
 }
 
@@ -122,66 +135,88 @@ function ProfileCard({
   const bmi = profile ? calcBmi(profile.weight, profile.height) : null
   const weight = bodyComposition?.weight ?? profile?.weight ?? null
   const bodyFat = bodyComposition?.bodyFat ?? profile?.bodyFatPercentage ?? null
+  const muscleMass = bodyComposition?.muscleMass ?? profile?.muscleMass ?? null
   const weightDelta = formatDelta(bodyComposition?.weightDelta ?? null)
   const bodyFatDelta = formatDelta(bodyComposition?.bodyFatDelta ?? null)
+  const muscleMassDelta = formatDelta(bodyComposition?.muscleMassDelta ?? null)
 
   return (
     <section aria-labelledby="profile-heading" data-testid="profile-card">
-      <div className="rounded-2xl border border-foreground/10 bg-card p-4 shadow-sm space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <User className="size-4 text-muted-foreground" aria-hidden="true" />
-              <h2 id="profile-heading" className="font-semibold text-foreground">
-                {displayName(userName)}
-              </h2>
-            </div>
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        {/* card header */}
+        <div className="flex h-14 items-center justify-between px-5">
+          <div className="flex flex-col gap-2">
+            <h2 id="profile-heading" className="font-heading text-sm font-semibold leading-[1.4286] text-foreground">
+              {displayName(userName)}
+            </h2>
             {profile && (
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 {profile.age} anos • {genderLabel(profile.gender)}
               </p>
             )}
           </div>
           <Link
             href="/app/profile"
-            className="text-[11px] font-medium text-primary hover:underline flex items-center gap-0.5"
+            className="text-[11px] font-medium text-primary hover:underline"
           >
-            Atualizar perfil <ChevronRight className="size-3" aria-hidden="true" />
+            Atualizar perfil →
           </Link>
         </div>
 
+        {/* stats row */}
         {!profile ? (
-          <p className="text-sm text-muted-foreground py-2">
-            Complete seu perfil para ver seus dados de saúde aqui.
-          </p>
+          <div className="px-5 pb-4">
+            <p className="text-sm text-muted-foreground">
+              Complete seu perfil para ver seus dados de saúde aqui.
+            </p>
+          </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Peso</p>
-              <p className="text-sm font-semibold">{weight ? `${parseFloat(weight).toFixed(1)} kg` : '—'}</p>
+          <div className="flex px-5 pb-4 gap-0">
+            <div className="flex flex-col gap-0.5 flex-1">
+              <p className="text-[11px] font-medium text-muted-foreground">Altura</p>
+              <p className="font-heading text-[13px] font-semibold text-foreground">{profile.height} cm</p>
+            </div>
+
+            <div className="flex flex-col gap-0.5 flex-1">
+              <p className="text-[11px] font-medium text-muted-foreground">Peso</p>
+              <p className="font-heading text-[13px] font-semibold text-foreground">
+                {weight ? `${parseFloat(weight).toFixed(1)} kg` : '—'}
+              </p>
               {weightDelta && <p className="text-[10px] text-muted-foreground">{weightDelta}</p>}
             </div>
 
             {bodyFat && (
-              <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">% Gordura</p>
-                <p className="text-sm font-semibold">{parseFloat(bodyFat).toFixed(1)}%</p>
+              <div className="flex flex-col gap-0.5 flex-1">
+                <p className="text-[11px] font-medium text-muted-foreground">% Gordura</p>
+                <p className="font-heading text-[13px] font-semibold text-foreground">
+                  {parseFloat(bodyFat).toFixed(1)}%
+                </p>
                 {bodyFatDelta && <p className="text-[10px] text-muted-foreground">{bodyFatDelta}</p>}
               </div>
             )}
 
+            {muscleMass && (
+              <div className="flex flex-col gap-0.5 flex-1">
+                <p className="text-[11px] font-medium text-muted-foreground">Massa Magra</p>
+                <p className="font-heading text-[13px] font-semibold text-foreground">
+                  {parseFloat(muscleMass).toFixed(1)} kg
+                </p>
+                {muscleMassDelta && <p className="text-[10px] text-muted-foreground">{muscleMassDelta}</p>}
+              </div>
+            )}
+
             {bmi && (
-              <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">IMC</p>
-                <p className={cn('text-sm font-semibold', bmiColor(bmi))}>{bmi.toFixed(1)}</p>
+              <div className="flex flex-col gap-0.5 flex-1">
+                <p className="text-[11px] font-medium text-muted-foreground">IMC</p>
+                <p className={cn('font-heading text-[13px] font-semibold', bmiColor(bmi))}>{bmi.toFixed(1)}</p>
                 <p className="text-[10px] text-muted-foreground">{bmiLabel(bmi)}</p>
               </div>
             )}
 
             {profile.inbodyScore != null && (
-              <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">InBody Score</p>
-                <p className="text-sm font-semibold text-primary">{profile.inbodyScore}</p>
+              <div className="flex flex-col gap-0.5 flex-1">
+                <p className="text-[11px] font-medium text-muted-foreground">InBody Score</p>
+                <p className="font-heading text-[13px] font-semibold text-primary">{profile.inbodyScore}</p>
               </div>
             )}
           </div>
@@ -195,29 +230,27 @@ function ProfileCard({
 
 function RecentDocsCard({
   docs,
-  livingAnalysisId,
 }: {
   docs: DashboardDocument[]
-  livingAnalysisId: string | null
 }) {
   return (
     <section aria-labelledby="docs-heading" data-testid="recent-docs-card">
-      <div className="rounded-2xl border border-foreground/10 bg-card p-4 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="size-4 text-muted-foreground" aria-hidden="true" />
-            <h2 id="docs-heading" className="font-semibold text-foreground">Últimos Documentos</h2>
-          </div>
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        {/* card header */}
+        <div className="flex h-13 items-center justify-between px-5">
+          <h2 id="docs-heading" className="font-heading text-sm font-semibold leading-[1.4286] text-foreground">
+            Últimos Documentos
+          </h2>
           <Link
             href="/app/history"
-            className="text-[11px] font-medium text-primary hover:underline flex items-center gap-0.5"
+            className="text-[11px] font-medium text-primary hover:underline"
           >
-            Ver histórico <ChevronRight className="size-3" aria-hidden="true" />
+            Ver histórico →
           </Link>
         </div>
 
         {docs.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <div className="flex flex-col items-center gap-3 px-5 pb-5 pt-2 text-center">
             <p className="text-sm text-muted-foreground">Nenhum documento enviado ainda.</p>
             <Link
               href="/app/upload"
@@ -228,7 +261,7 @@ function RecentDocsCard({
             </Link>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 px-5 pb-3">
             {docs.map((doc) => {
               const date = doc.examDate
                 ? new Date(doc.examDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -241,30 +274,28 @@ function RecentDocsCard({
               return (
                 <div
                   key={doc.id}
-                  className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2.5"
                 >
-                  <div className="flex-1 min-w-0 space-y-0.5">
-                    <p className="truncate text-sm font-medium" title={doc.originalFileName}>
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <p className="truncate font-heading text-[13px] font-medium text-foreground" title={doc.originalFileName}>
                       {doc.originalFileName}
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', catColor)}>
                         {catLabel}
                       </span>
                       <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusColor(doc.processingStatus))}>
                         {getStatusLabel(doc.processingStatus)}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">{date}</span>
+                      <span className="text-[10px] font-medium text-muted-foreground">{date}</span>
                     </div>
                   </div>
-                  {livingAnalysisId && (
-                    <Link
-                      href={`/app/analyses/${livingAnalysisId}`}
-                      className="shrink-0 text-[11px] font-medium text-primary hover:underline"
-                    >
-                      Ver análise
-                    </Link>
-                  )}
+                  <Link
+                    href={`/app/documents/${doc.id}`}
+                    className="shrink-0 text-[11px] font-medium text-primary hover:underline"
+                  >
+                    Ver exame
+                  </Link>
                 </div>
               )
             })}
@@ -281,12 +312,13 @@ function HealthSummaryCard({ analysis }: { analysis: DashboardAnalysis | null })
   if (!analysis || !analysis.reportMarkdown?.trim()) {
     return (
       <section aria-labelledby="summary-heading" data-testid="health-summary-card">
-        <div className="rounded-2xl border border-foreground/10 bg-card p-4 shadow-sm space-y-3">
-          <div className="flex items-center gap-2">
-            <Activity className="size-4 text-muted-foreground" aria-hidden="true" />
-            <h2 id="summary-heading" className="font-semibold text-foreground">Estado de Saúde</h2>
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="flex h-13 items-center justify-between px-5">
+            <h2 id="summary-heading" className="font-heading text-sm font-semibold leading-[1.4286] text-foreground">
+              Estado de Saúde
+            </h2>
           </div>
-          <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <div className="flex flex-col items-center gap-3 px-5 pb-5 pt-2 text-center">
             <p className="text-sm text-muted-foreground">Nenhuma análise disponível ainda.</p>
             <Link
               href="/app/upload"
@@ -301,7 +333,9 @@ function HealthSummaryCard({ analysis }: { analysis: DashboardAnalysis | null })
     )
   }
 
-  const { truncated, wasTruncated } = truncateWords(analysis.reportMarkdown, 300)
+  const summarySection = extractSummarySection(analysis.reportMarkdown)
+  const summaryText = summarySection || 'Resumo não identificado na análise completa mais recente.'
+  const { truncated } = truncateWords(summaryText, 220)
 
   const updatedDate = analysis.updatedAt.toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -309,27 +343,25 @@ function HealthSummaryCard({ analysis }: { analysis: DashboardAnalysis | null })
 
   return (
     <section aria-labelledby="summary-heading" data-testid="health-summary-card">
-      <div className="rounded-2xl border border-foreground/10 bg-card p-4 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="size-4 text-muted-foreground" aria-hidden="true" />
-            <h2 id="summary-heading" className="font-semibold text-foreground">Estado de Saúde</h2>
-          </div>
-          <span className="text-[10px] text-muted-foreground">{updatedDate}</span>
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="flex h-13 items-center justify-between px-5">
+          <h2 id="summary-heading" className="font-heading text-sm font-semibold leading-[1.4286] text-foreground">
+            Estado de Saúde
+          </h2>
+          <span className="text-[10px] font-medium text-muted-foreground">{updatedDate}</span>
         </div>
 
-        <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line line-clamp-[10]">
-          {truncated}
-        </p>
-
-        {wasTruncated && (
+        <div className="flex flex-col gap-3 px-5 pb-4">
+          <p className="text-[13px] font-medium text-foreground leading-[1.4286] whitespace-pre-line line-clamp-10">
+            {truncated}
+          </p>
           <Link
             href={`/app/analyses/${analysis.id}`}
-            className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
+            className="text-[11px] font-medium text-primary hover:underline"
           >
-            Ver análise completa <ArrowRight className="size-3" aria-hidden="true" />
+            Ver última análise →
           </Link>
-        )}
+        </div>
       </div>
     </section>
   )
@@ -338,9 +370,9 @@ function HealthSummaryCard({ analysis }: { analysis: DashboardAnalysis | null })
 // ─── Products Card ───────────────────────────────────────────────────────────
 
 const PRODUCT_ITEMS = [
-  { type: 'supplementation', label: 'Suplementação', Icon: Pill, href: '/app/products/supplementation', color: 'text-violet-500' },
-  { type: 'meals', label: 'Plano Alimentar', Icon: UtensilsCrossed, href: '/app/products/meals', color: 'text-emerald-500' },
-  { type: 'workout', label: 'Treino', Icon: Dumbbell, href: '/app/products/workout', color: 'text-blue-500' },
+  { type: 'supplementation', label: 'Suplementação', emoji: '💊', href: '/app/products/supplementation' },
+  { type: 'meals', label: 'Plano Alimentar', emoji: '🥗', href: '/app/products/meals' },
+  { type: 'workout', label: 'Treino', emoji: '🏋️', href: '/app/products/workout' },
 ] as const
 
 function ProductsCard({ products }: { products: ProductSummaryItem[] }) {
@@ -350,37 +382,34 @@ function ProductsCard({ products }: { products: ProductSummaryItem[] }) {
 
   return (
     <section aria-labelledby="products-heading">
-      <div className="rounded-2xl border border-foreground/10 bg-card p-4 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="size-4 text-muted-foreground" aria-hidden="true" />
-            <h2 id="products-heading" className="font-semibold text-foreground">Meus Produtos</h2>
-          </div>
-          <Link
-            href="/app/products"
-            className="text-[11px] font-medium text-primary hover:underline flex items-center gap-0.5"
-          >
-            Ver todos <ArrowRight className="size-3" aria-hidden="true" />
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        {/* card header */}
+        <div className="flex h-13 items-center justify-between px-5">
+          <h2 id="products-heading" className="font-heading text-sm font-semibold leading-[1.4286] text-foreground">
+            Meus Planos
+          </h2>
+          <Link href="/app/products" className="text-[11px] font-medium text-primary hover:underline">
+            Ver todos →
           </Link>
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          {PRODUCT_ITEMS.map(({ type, label, Icon, href, color }) => {
+        <div className="flex gap-2 px-5 pb-4">
+          {PRODUCT_ITEMS.map(({ type, label, emoji, href }) => {
             const product = map[type]
             return (
               <Link
                 key={type}
                 href={product ? href : '/app/products'}
                 className={cn(
-                  'flex flex-col items-center gap-1.5 rounded-xl border border-border p-3 text-center transition-colors',
+                  'flex flex-1 flex-col items-center gap-1.5 rounded-xl border border-border bg-card p-3 text-center transition-colors',
                   product ? 'hover:bg-muted/50' : 'opacity-50 pointer-events-none',
                 )}
                 aria-disabled={!product}
                 tabIndex={product ? 0 : -1}
               >
-                <Icon className={cn('size-5', product ? color : 'text-muted-foreground')} aria-hidden="true" />
-                <span className="text-[11px] font-medium leading-tight">{label}</span>
+                <span className="font-heading text-xl font-medium leading-[1.4286]" aria-hidden="true">{emoji}</span>
+                <span className="text-[11px] font-medium leading-tight text-foreground">{label}</span>
                 {product && (
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[10px] font-medium text-muted-foreground">
                     {new Date(product.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                   </span>
                 )}
@@ -390,26 +419,6 @@ function ProductsCard({ products }: { products: ProductSummaryItem[] }) {
         </div>
       </div>
     </section>
-  )
-}
-
-// ─── Legacy: EvolutionBadge (still used below) ───────────────────────────────
-
-function EvolutionBadge({ ev }: { ev: ParameterEvolution }) {
-  if (ev.direction === 'stable') {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-        <Minus className="size-2.5" />
-        {ev.name} estável
-      </span>
-    )
-  }
-  const isUp = ev.direction === 'up'
-  return (
-    <span className={cn('inline-flex items-center gap-1 text-[10px] font-medium', isUp ? 'text-red-500' : 'text-green-500')}>
-      {isUp ? <TrendingUp className="size-2.5" /> : <TrendingDown className="size-2.5" />}
-      {ev.name} {isUp ? '↑' : '↓'} {Math.abs(ev.changePercent).toFixed(1)}%
-    </span>
   )
 }
 
@@ -475,13 +484,15 @@ export function DashboardContent({ data }: DashboardContentProps) {
   return (
     <div className="space-y-4 p-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-foreground">Olá, {displayName(userName)}</h1>
+      <div className="flex h-14 items-center justify-between px-0">
+        <h1 className="font-heading text-[20px] font-bold leading-[1.4286] text-foreground">
+          Olá, {displayName(userName)}
+        </h1>
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: '/auth/login' })}
           aria-label="Sair"
-          className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-foreground/15 bg-background/60 px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
         >
           <LogOut className="size-4" aria-hidden="true" />
         </button>
@@ -490,17 +501,16 @@ export function DashboardContent({ data }: DashboardContentProps) {
       {/* E12 — Seção 1: Perfil Básico */}
       <ProfileCard profile={profile} bodyComposition={bodyComposition} userName={userName} />
 
-      {/* E12 — Seção 2: Últimos Documentos */}
-      <RecentDocsCard
-        docs={recentDocs}
-        livingAnalysisId={livingAnalysis?.id ?? legacyLivingAnalysis?.id ?? null}
-      />
-
       {/* E12 — Seção 3: Resumo de Saúde */}
       <HealthSummaryCard analysis={livingAnalysis} />
 
-      {/* E13-07 — Produtos */}
+      {/* E13-07 — Planos */}
       <ProductsCard products={productsSummary} />
+
+      {/* E12 — Seção 2: Últimos Documentos */}
+      <RecentDocsCard
+        docs={recentDocs}
+      />
 
       {/* Auto-trigger de análise (comportamento existente preservado) */}
       {needsAnalysisUpdate && (

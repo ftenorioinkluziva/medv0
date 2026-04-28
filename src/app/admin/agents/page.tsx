@@ -1,8 +1,15 @@
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { getAllAgentsForAdmin } from '@/lib/db/queries/health-agents'
-import { AgentsTable } from './_components/agents-table'
 import { Pagination } from '@/components/ui/pagination'
+
+const AgentsTable = dynamic(
+  () => import('./_components/agents-table').then((module) => module.AgentsTable),
+  {
+    loading: () => <div className="rounded-md border p-4 text-sm text-muted-foreground">Carregando agentes...</div>,
+  },
+)
 
 const PAGE_SIZE = 20
 

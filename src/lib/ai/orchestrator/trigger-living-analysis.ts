@@ -9,6 +9,7 @@ import {
 import { hasUsableMedicalDocumentData } from '@/lib/documents/extractor'
 import { runLivingAnalysis } from '@/lib/ai/orchestrator/living-analysis'
 import { getActiveAgentsByRole } from '@/lib/db/queries/health-agents'
+import { logger } from '@/lib/observability/logger'
 
 export async function triggerLivingAnalysis(
   userId: string,
@@ -17,7 +18,7 @@ export async function triggerLivingAnalysis(
   const foundationAgents = await getActiveAgentsByRole('foundation')
 
   if (foundationAgents.length === 0) {
-    console.warn('[trigger] Skipping: no active foundation agents')
+    logger.warn('[trigger] Skipping: no active foundation agents')
     return
   }
 
@@ -36,7 +37,7 @@ export async function triggerLivingAnalysis(
         updatedAt: new Date(),
       })
       .where(eq(documents.id, triggerDocumentId))
-    console.warn('[trigger] Skipping: trigger document has no usable extracted data')
+    logger.warn('[trigger] Skipping: trigger document has no usable extracted data')
     return
   }
 
@@ -47,7 +48,7 @@ export async function triggerLivingAnalysis(
     .limit(1)
 
   if (existing?.status === 'processing') {
-    console.info('[trigger] Skipping: analysis already processing')
+    logger.info('[trigger] Skipping: analysis already processing')
     return
   }
 

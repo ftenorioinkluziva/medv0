@@ -1,9 +1,26 @@
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { notFound } from 'next/navigation'
 import { getAgentById } from '@/lib/db/queries/health-agents'
 import { getArticlesByAgent, getAllArticlesForSelector } from '@/lib/db/queries/knowledge'
-import { AgentForm } from '../../_components/agent-form'
-import { AgentKnowledgeSection } from '../../_components/agent-knowledge-section'
+
+const AgentForm = dynamic(
+  () => import('../../_components/agent-form').then((module) => module.AgentForm),
+  {
+    loading: () => (
+      <div className="max-w-2xl rounded-md border p-4 text-sm text-muted-foreground">Carregando formulário...</div>
+    ),
+  },
+)
+
+const AgentKnowledgeSection = dynamic(
+  () => import('../../_components/agent-knowledge-section').then((module) => module.AgentKnowledgeSection),
+  {
+    loading: () => (
+      <div className="mt-6 rounded-md border p-4 text-sm text-muted-foreground">Carregando associação com artigos...</div>
+    ),
+  },
+)
 
 interface EditAgentPageProps {
   params: Promise<{ id: string }>

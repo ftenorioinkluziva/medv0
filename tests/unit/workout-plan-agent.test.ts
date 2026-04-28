@@ -52,10 +52,20 @@ import type { HealthAgent } from '@/lib/db/schema'
 function buildInsertChain() {
   const chain = {
     values: vi.fn().mockReturnThis(),
-    onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+    onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
   }
   vi.mocked(db.insert).mockReturnValue(chain as never)
   return chain
+}
+
+function buildSelectChain(result: unknown) {
+  return {
+    from: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue(result),
+  }
 }
 
 
@@ -93,8 +103,8 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
-  it('deve inserir 8 agentes no total incluindo Plano de Exercícios', async () => {
+describe('AC1 — Seed do agente "Gerador de Treino"', () => {
+  it('deve inserir 6 agentes no total incluindo Plano de Exercícios', async () => {
     // #given
     buildInsertChain()
 
@@ -102,10 +112,10 @@ describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
     await seedHealthAgents()
 
     // #then
-    expect(db.insert).toHaveBeenCalledTimes(8)
+    expect(db.insert).toHaveBeenCalledTimes(6)
   })
 
-  it('deve configurar "Plano de Exercícios" com outputType structured', async () => {
+  it('deve configurar "Gerador de Treino" com outputType structured', async () => {
     // #given
     const chain = buildInsertChain()
 
@@ -121,11 +131,11 @@ describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
       analysisRole: string
     }>
 
-    const workoutEntry = valuesCalls.find((v) => v.name === 'Plano de Exercícios')
+    const workoutEntry = valuesCalls.find((v) => v.name === 'Gerador de Treino')
     expect(workoutEntry).toBeDefined()
     expect(workoutEntry?.outputType).toBe('structured')
-    expect(workoutEntry?.analysisRole).toBe('specialized')
-    expect(insertCalls).toHaveLength(8)
+    expect(workoutEntry?.analysisRole).toBe('product_generator')
+    expect(insertCalls).toHaveLength(6)
   })
 
   it('deve definir outputSchema com propriedades obrigatórias', async () => {
@@ -140,7 +150,7 @@ describe('AC1 — Seed do agente "Plano de Exercícios"', () => {
       name: string
       outputSchema?: { required?: string[] }
     }>
-    const workoutEntry = valuesCalls.find((v) => v.name === 'Plano de Exercícios')
+    const workoutEntry = valuesCalls.find((v) => v.name === 'Gerador de Treino')
 
     expect(workoutEntry?.outputSchema).toBeDefined()
     expect(workoutEntry?.outputSchema?.required).toEqual(
@@ -243,12 +253,10 @@ describe('AC3 — buildMedicalProfileContext inclui campos de exercício', () =>
       exerciseIntensity: 'moderada',
       physicalLimitations: 'nenhuma',
     }
-    const chain = {
-      from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue([mockProfile]),
-    }
-    vi.mocked(db.select).mockReturnValue(chain as never)
+    vi.mocked(db.select)
+      .mockReturnValueOnce(buildSelectChain([mockProfile]) as never)
+      .mockReturnValueOnce(buildSelectChain([]) as never)
+      .mockReturnValueOnce(buildSelectChain([]) as never)
 
     // #when
     const result = await buildMedicalProfileContext('user-123')
@@ -262,20 +270,40 @@ describe('AC3 — buildMedicalProfileContext inclui campos de exercício', () =>
     expect(parsed).toHaveProperty('physicalLimitations', 'nenhuma')
   })
 
-  it('retorna {} quando perfil não existe', async () => {
+  it('usa fallback de documentos quando perfil não existe', async () => {
     // #given
-    const chain = {
-      from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue([]),
-    }
-    vi.mocked(db.select).mockReturnValue(chain as never)
+    vi.mocked(db.select)
+      .mockReturnValueOnce(buildSelectChain([]) as never)
+      .mockReturnValueOnce(buildSelectChain([
+        {
+          weight: '67.10',
+          bodyFat: '30.60',
+          muscleMass: '19.60',
+          bmr: 1158,
+        },
+      ]) as never)
+      .mockReturnValueOnce(buildSelectChain([
+        {
+          category: 'blood_test',
+          structuredData: {
+            patientInfo: { age: 42, gender: 'Feminino' },
+          },
+        },
+      ]) as never)
 
     // #when
     const result = await buildMedicalProfileContext('user-sem-perfil')
 
     // #then
-    expect(result).toBe('{}')
+    expect(JSON.parse(result)).toEqual(expect.objectContaining({
+      age: 42,
+      gender: 'feminino',
+      weight: '67.10',
+      bodyFatPercentage: '30.60',
+      muscleMass: '19.60',
+      basalMetabolicRate: 1158,
+      contextSource: 'document_fallback',
+    }))
   })
 })
 

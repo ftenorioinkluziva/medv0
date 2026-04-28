@@ -1,4 +1,5 @@
 import { config as loadEnv } from 'dotenv'
+import { logger } from '@/lib/observability/logger'
 
 interface CliOptions {
   dryRun: boolean
@@ -84,7 +85,7 @@ async function main() {
 
   const { importLegacyKnowledge } = await import('@/lib/db/legacy-knowledge-import')
 
-  console.log('[legacy-knowledge-import] starting', options)
+  logger.info('[legacy-knowledge-import] starting', options)
 
   const summary = await importLegacyKnowledge({
     legacyDatabaseUrl,
@@ -94,8 +95,8 @@ async function main() {
     author: options.author,
   })
 
-  console.log('[legacy-knowledge-import] summary')
-  console.log(JSON.stringify(summary, null, 2))
+  logger.info('[legacy-knowledge-import] summary')
+  logger.info(JSON.stringify(summary, null, 2))
 
   if (summary.failed > 0) {
     process.exit(1)
@@ -103,6 +104,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('[legacy-knowledge-import] failed', error)
+  logger.error('[legacy-knowledge-import] failed', error)
   process.exit(1)
 })

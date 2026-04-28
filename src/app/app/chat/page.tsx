@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq, isNotNull } from 'drizzle-orm'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import { healthAgents } from '@/lib/db/schema'
@@ -20,35 +20,37 @@ export default async function ChatPage() {
         description: healthAgents.description,
       })
       .from(healthAgents)
-      .where(eq(healthAgents.isActive, true))
+      .where(and(eq(healthAgents.isActive, true), isNotNull(healthAgents.chatPrompt)))
       .orderBy(asc(healthAgents.sortOrder), asc(healthAgents.name)),
     getChatSessionsWithAgent(session.user.id),
   ])
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="p-4 space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold">Conversar com agente</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Selecione um especialista</p>
+      <div className="flex flex-col gap-6 px-4 pt-12 pb-20">
+        <div className="flex flex-col gap-0.5">
+          <h1 className="font-heading text-[20px] font-medium leading-[1.4286] text-foreground">
+            Conversar com agente
+          </h1>
+          <p className="text-[12px] font-medium text-muted-foreground">Selecione um especialista</p>
         </div>
 
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {agents.map((agent) => (
             <AgentCard key={agent.id} agent={agent} />
           ))}
           {agents.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">
+            <p className="text-[13px] font-medium text-muted-foreground text-center py-8">
               Nenhum agente disponível no momento.
             </p>
           )}
         </div>
 
         {sessions.length > 0 && (
-          <div className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Conversas anteriores
-            </h2>
+          <div className="flex flex-col gap-2">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+              CONVERSAS ANTERIORES
+            </p>
             <SessionList sessions={sessions} />
           </div>
         )}

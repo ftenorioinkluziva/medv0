@@ -73,7 +73,9 @@ const specializedAgent = {
 function createSelectChain(result: unknown) {
   return {
     from: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue(result),
   }
 }
@@ -95,6 +97,8 @@ describe('runCompleteAnalysis', () => {
     vi.mocked(db.select)
       .mockReturnValueOnce(createSelectChain([{ structuredData: { glucose: { value: 99 } } }]) as never)
       .mockReturnValueOnce(createSelectChain([{ age: 42, healthObjectives: 'improve sleep' }]) as never)
+      .mockReturnValueOnce(createSelectChain([]) as never)
+      .mockReturnValueOnce(createSelectChain([]) as never)
 
     vi.mocked(getActiveAgentsByRole)
       .mockResolvedValueOnce([foundationAgent] as never)

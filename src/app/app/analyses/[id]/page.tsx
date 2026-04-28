@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
-import { analyses, healthAgents, livingAnalyses, livingAnalysisVersions } from '@/lib/db/schema'
+import { analyses, documents, healthAgents, livingAnalyses, livingAnalysisVersions } from '@/lib/db/schema'
 import { and, asc, eq } from 'drizzle-orm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnalysisStatusCard } from './analysis-status-card'
@@ -19,8 +19,8 @@ function isUuid(value: string): boolean {
 export default async function AnalysisPage({ params }: AnalysisPageProps) {
   const { id } = await params
   return (
-    <main className="min-h-screen bg-background p-4">
-      <div className="mx-auto max-w-2xl">
+    <main className="min-h-screen bg-background">
+      <div className="px-4 pb-24">
         <Suspense fallback={<ReportSkeleton />}>
           <AnalysisContent id={id} />
         </Suspense>
@@ -71,12 +71,54 @@ async function AnalysisContent({ id }: { id: string }) {
   }
 
   if (row.status === 'processing') {
+    // fetch current version to get agents progress and source doc
+    const [versionRow] = await db
+      .select({ id: livingAnalysisVersions.id, triggerDocumentId: livingAnalysisVersions.triggerDocumentId })
+      .from(livingAnalysisVersions)
+      .where(
+        and(
+          eq(livingAnalysisVersions.livingAnalysisId, id),
+          eq(livingAnalysisVersions.version, row.currentVersion),
+        ),
+      )
+      .limit(1)
+
+    let processingAgents: Array<{ name: string; role: string; status: string }> = []
+    let processingDocName: string | undefined
+
+    if (versionRow) {
+      const [trigDoc] = await db
+        .select({ originalFileName: documents.originalFileName })
+        .from(documents)
+        .where(eq(documents.id, versionRow.triggerDocumentId))
+        .limit(1)
+      processingDocName = trigDoc?.originalFileName
+
+      const agentRows = await db
+        .select({
+          agentName: analyses.agentName,
+          analysisRole: analyses.analysisRole,
+          status: analyses.status,
+        })
+        .from(analyses)
+        .where(eq(analyses.livingAnalysisVersionId, versionRow.id))
+        .orderBy(asc(analyses.createdAt))
+
+      processingAgents = agentRows.map((r) => ({
+        name: r.agentName,
+        role: r.analysisRole,
+        status: r.status,
+      }))
+    }
+
     return (
       <AnalysisStatusCard
         status="processing"
         createdAt={row.createdAt}
         updatedAt={row.updatedAt}
         livingAnalysisId={id}
+        agents={processingAgents}
+        sourceFileName={processingDocName}
       />
     )
   }
@@ -93,7 +135,10 @@ async function AnalysisContent({ id }: { id: string }) {
   }
 
   const [currentVersionRow] = await db
-    .select({ id: livingAnalysisVersions.id })
+    .select({
+      id: livingAnalysisVersions.id,
+      triggerDocumentId: livingAnalysisVersions.triggerDocumentId,
+    })
     .from(livingAnalysisVersions)
     .where(
       and(
@@ -105,6 +150,7 @@ async function AnalysisContent({ id }: { id: string }) {
 
   let foundationAgentName: string | undefined
   let foundationGeneratedAt: Date | undefined
+  let sourceFileName: string | undefined
   let specializedTotal = 0
   let specializedCompleted = 0
   let specializedTimeout = 0
@@ -113,6 +159,14 @@ async function AnalysisContent({ id }: { id: string }) {
   let specializedTextAnalyses: Array<{ agentName: string; specialty: string; content: string; createdAt: Date }> = []
 
   if (currentVersionRow) {
+    const [triggerDocument] = await db
+      .select({ originalFileName: documents.originalFileName })
+      .from(documents)
+      .where(eq(documents.id, currentVersionRow.triggerDocumentId))
+      .limit(1)
+
+    sourceFileName = triggerDocument?.originalFileName
+
     const [foundationRow] = await db
       .select({
         agentName: analyses.agentName,
@@ -200,9 +254,11 @@ async function AnalysisContent({ id }: { id: string }) {
 
   return (
     <ReportView
+      analysisId={id}
       reportMarkdown={row.reportMarkdown}
       version={row.currentVersion}
       createdAt={row.createdAt}
+      sourceFileName={sourceFileName}
       foundationAgentName={foundationAgentName}
       foundationGeneratedAt={foundationGeneratedAt}
       specializedTotal={specializedTotal}

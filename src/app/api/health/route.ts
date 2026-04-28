@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db/client'
 import { sql } from 'drizzle-orm'
+import { logger } from '@/lib/observability/logger'
 
 export async function GET() {
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -21,7 +22,7 @@ export async function GET() {
   } catch (err) {
     clearTimeout(timer)
     const errorType = err instanceof Error ? err.constructor.name : 'UnknownError'
-    console.error('[health] db check failed', { errorType })
+    logger.error('[health] db check failed', { errorType })
     return NextResponse.json(
       {
         status: 'degraded',

@@ -2,14 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Upload, History, ShoppingBag, User } from 'lucide-react'
+import { LayoutDashboard, Upload, History, ShoppingBag, User, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { href: '/app/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { href: '/app/upload', label: 'Upload', Icon: Upload },
   { href: '/app/history', label: 'Histórico', Icon: History },
-  { href: '/app/products', label: 'Produtos', Icon: ShoppingBag },
+  { href: '/app/chat', label: 'Chat', Icon: MessageCircle },
+  { href: '/app/products', label: 'Planos', Icon: ShoppingBag },
   { href: '/app/profile', label: 'Perfil', Icon: User },
 ] as const
 

@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react'
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -15,38 +15,45 @@ export default function ForgotPasswordPage() {
 
   if (state.success) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <Card className="w-full max-w-sm">
-          <CardHeader className="text-center">
-            <CardTitle>Email enviado</CardTitle>
-            <CardDescription>
-              Se esse email estiver cadastrado, você receberá um link para redefinir sua senha em instantes.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/auth/login">
-              <Button variant="outline" className="w-full">
+      <div className="flex min-h-screen items-center justify-center bg-background px-6 py-8">
+        <Card className="w-full max-w-sm rounded-2xl border border-border px-6 py-8">
+          <div className="flex flex-col items-center gap-5">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-success">
+              <span className="font-heading text-2xl font-medium text-success-foreground">✉</span>
+            </div>
+            <div className="flex flex-col gap-1.5 text-center">
+              <h1 className="font-heading text-[22px] font-medium leading-[1.4286] text-foreground">
+                Email enviado
+              </h1>
+              <p className="text-[13px] font-medium leading-[1.4286] text-muted-foreground">
+                Se esse email estiver cadastrado, você receberá um link para redefinir sua senha em instantes.
+              </p>
+            </div>
+            <Link href="/auth/login" className="w-full">
+              <Button variant="outline" className="h-12 w-full rounded-xl">
                 Voltar para login
               </Button>
             </Link>
-          </CardContent>
+          </div>
         </Card>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Esqueci minha senha</CardTitle>
-          <CardDescription>
-            Informe seu email e enviaremos um link para redefinir sua senha.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={action} className="space-y-4">
-            <div className="space-y-1.5">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6 py-8">
+      <Card className="w-full max-w-sm rounded-2xl border border-border px-6 py-8">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-center font-heading text-[22px] font-medium leading-[1.4286] text-foreground">
+              Esqueci minha senha
+            </h1>
+            <p className="text-center text-[13px] font-medium leading-[1.4286] text-muted-foreground">
+              Informe seu email e enviaremos um link para redefinir sua senha.
+            </p>
+          </div>
+          <form action={action} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -60,16 +67,20 @@ export default function ForgotPasswordPage() {
             {state.error && (
               <p className="text-sm text-destructive">{state.error}</p>
             )}
-            <Button type="submit" className="w-full" disabled={pending}>
+            <Button
+              type="submit"
+              className="h-12 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={pending}
+            >
               {pending ? 'Enviando…' : 'Enviar link'}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            <Link href="/auth/login" className="underline underline-offset-4">
+          <p className="text-center text-[13px] font-medium">
+            <Link href="/auth/login" className="text-foreground underline-offset-4 hover:underline">
               Voltar para login
             </Link>
           </p>
-        </CardContent>
+        </div>
       </Card>
     </div>
   )

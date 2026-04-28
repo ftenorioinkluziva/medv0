@@ -60,32 +60,34 @@ export default async function BodyCompositionDetailPage({
   ]
 
   return (
-    <main className="min-h-screen bg-background p-4">
-      <div className="mx-auto max-w-lg space-y-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/app/profile"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Voltar ao perfil"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Perfil
-          </Link>
-        </div>
-
-        <div className="rounded-xl border border-foreground/10 bg-card p-4 shadow-sm space-y-1">
-          <div className="flex items-center gap-2 pb-3 border-b border-foreground/8">
-            <Activity className="size-4 text-muted-foreground" aria-hidden="true" />
-            <div>
-              <h1 className="font-semibold text-foreground">Composição Corporal</h1>
-              <p className="text-xs text-muted-foreground">{measuredDate}</p>
-            </div>
+    <main className="min-h-screen bg-background">
+      <div className="p-4 pb-20">
+        <div className="mx-auto max-w-lg space-y-4">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/app/profile"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Voltar ao perfil"
+            >
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              Perfil
+            </Link>
           </div>
 
-          <div data-testid="bc-detail-metrics">
-            {metrics.map((m) => (
-              <MetricRow key={m.label} label={m.label} value={m.value} unit={m.unit} />
-            ))}
+          <div className="rounded-2xl border border-foreground/10 bg-card p-4 shadow-sm space-y-1">
+            <div className="flex items-center gap-2 pb-3 border-b border-foreground/8">
+              <Activity className="size-4 text-muted-foreground" aria-hidden="true" />
+              <div>
+                <h1 className="font-semibold text-foreground">Composição Corporal</h1>
+                <p className="text-xs text-muted-foreground">{measuredDate}</p>
+              </div>
+            </div>
+
+            <div data-testid="bc-detail-metrics">
+              {metrics.map((m) => (
+                <MetricRow key={m.label} label={m.label} value={m.value} unit={m.unit} />
+              ))}
+            </div>
           </div>
         </div>
       </div>

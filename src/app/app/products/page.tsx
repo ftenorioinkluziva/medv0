@@ -1,34 +1,29 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
 import Link from 'next/link'
-import { Pill, UtensilsCrossed, Dumbbell, ChevronRight, Clock } from 'lucide-react'
 import { getLatestProductsSummary } from '@/lib/db/queries/generated-products'
-import { cn } from '@/lib/utils'
 
 const PRODUCT_META = {
   supplementation: {
     label: 'Suplementação',
-    description: 'Plano personalizado de suplementos baseado no seu perfil',
-    Icon: Pill,
+    description: 'Plano personalizado de suplementos',
+    emoji: '💊',
+    iconBg: 'bg-[#ede9fe]',
     href: '/app/products/supplementation',
-    color: 'text-violet-500',
-    bg: 'bg-violet-500/10',
   },
   meals: {
     label: 'Plano Alimentar',
-    description: 'Cardápio semanal com macros e modo de preparo',
-    Icon: UtensilsCrossed,
+    description: 'Cardápio semanal com macros',
+    emoji: '🥗',
+    iconBg: 'bg-[#d1fae5]',
     href: '/app/products/meals',
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-500/10',
   },
   workout: {
     label: 'Treino',
-    description: 'Programa de treino semanal baseado na sua composição corporal',
-    Icon: Dumbbell,
+    description: 'Programa semanal baseado na composição',
+    emoji: '🏋️',
+    iconBg: 'bg-[#dbeafe]',
     href: '/app/products/workout',
-    color: 'text-blue-500',
-    bg: 'bg-blue-500/10',
   },
 } as const
 
@@ -41,56 +36,62 @@ export default async function ProductsPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="p-4 space-y-4">
-        <div>
-          <h1 className="text-xl font-semibold">Meus Produtos</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
+      <div className="flex flex-col gap-3 px-4 pt-4 pb-24">
+        <div className="flex flex-col gap-0.5 pt-2">
+          <h1 className="font-heading text-[20px] font-bold leading-[1.4286] text-foreground">
+            Meus Planos
+          </h1>
+          <p className="text-[12px] font-medium text-muted-foreground">
             Gerados automaticamente após cada análise
           </p>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {(Object.keys(PRODUCT_META) as Array<keyof typeof PRODUCT_META>).map((type) => {
-            const { label, description, Icon, href, color, bg } = PRODUCT_META[type]
+            const { label, description, emoji, iconBg, href } = PRODUCT_META[type]
             const summary = summaryMap[type]
             const hasProduct = Boolean(summary)
+
+            const dateLabel = summary
+              ? new Date(summary.createdAt).toLocaleDateString('pt-BR', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : null
 
             return (
               <Link
                 key={type}
                 href={href}
-                className={cn(
-                  'flex items-center gap-4 rounded-2xl border border-border bg-card p-4 transition-colors',
-                  hasProduct ? 'hover:bg-muted/50' : 'opacity-60 pointer-events-none',
-                )}
+                className={`flex items-center gap-4 rounded-[16px] border border-border bg-card p-4 transition-colors hover:bg-muted/40 ${!hasProduct ? 'opacity-50 pointer-events-none' : ''}`}
                 aria-disabled={!hasProduct}
                 tabIndex={hasProduct ? 0 : -1}
               >
-                <div className={cn('flex size-12 shrink-0 items-center justify-center rounded-xl', bg)}>
-                  <Icon className={cn('size-6', color)} aria-hidden="true" />
+                <div className={`flex size-12 shrink-0 items-center justify-center rounded-[12px] ${iconBg}`}>
+                  <span className="text-[22px] font-heading">{emoji}</span>
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm leading-tight">{label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{description}</p>
-                  {summary && (
-                    <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                      <Clock className="size-3" aria-hidden="true" />
-                      {new Date(summary.createdAt).toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </p>
+                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                  <p className="font-heading text-[14px] font-semibold leading-[1.4286] text-foreground">
+                    {label}
+                  </p>
+                  <p className="text-[12px] font-medium text-muted-foreground line-clamp-1">
+                    {description}
+                  </p>
+                  {dateLabel && (
+                    <p className="text-[11px] font-medium text-[#B8B9B6]">🕒 {dateLabel}</p>
                   )}
                   {!hasProduct && (
-                    <p className="text-[11px] text-muted-foreground mt-1">
+                    <p className="text-[11px] font-medium text-muted-foreground">
                       Disponível após a primeira análise
                     </p>
                   )}
                 </div>
 
-                {hasProduct && <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
+                {hasProduct && (
+                  <span className="text-[16px] font-medium text-primary shrink-0">→</span>
+                )}
               </Link>
             )
           })}

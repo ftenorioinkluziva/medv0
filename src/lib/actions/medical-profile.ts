@@ -33,12 +33,18 @@ const MedicalProfileSchema = z.object({
   familyHistory: z.string().nullish(),
   notes: z.string().nullish(),
 
-  // Biomarkers opcionais
+  // Composição corporal manual
+  bodyFatPercentage: z.string().optional(),
+  muscleMass: z.string().optional(),
+  visceralFatLevel: z.string().optional(),
+  boneMass: z.string().optional(),
+  basalMetabolicRate: z.number().int().min(0).optional(),
+  bodyWaterPercentage: z.string().optional(),
+
+  // Testes funcionais / desempenho
   handgripStrength: z.string().optional(),
   sitToStandTime: z.string().optional(),
   vo2Max: z.string().optional(),
-  bodyFatPercentage: z.string().optional(),
-  muscleMass: z.string().optional(),
   co2ToleranceTest: z.string().optional(),
 
   // Avançados: Sono
@@ -113,11 +119,15 @@ export async function upsertMedicalProfile(
     surgeries: v.surgeries,
     familyHistory: v.familyHistory,
     notes: v.notes,
+    bodyFatPercentage: v.bodyFatPercentage,
+    muscleMass: v.muscleMass,
+    visceralFatLevel: v.visceralFatLevel,
+    boneMass: v.boneMass,
+    basalMetabolicRate: v.basalMetabolicRate,
+    bodyWaterPercentage: v.bodyWaterPercentage,
     handgripStrength: v.handgripStrength,
     sitToStandTime: v.sitToStandTime,
     vo2Max: v.vo2Max,
-    bodyFatPercentage: v.bodyFatPercentage,
-    muscleMass: v.muscleMass,
     co2ToleranceTest: v.co2ToleranceTest,
     sleepHours: v.sleepHours,
     sleepQuality: v.sleepQuality,

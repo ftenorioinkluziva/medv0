@@ -333,6 +333,11 @@ describe('POST /api/analyses/run — AC7', () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as never)
     const docId = crypto.randomUUID()
 
+    const rateLimitSelectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]),
+    }
     const docSelectChain = {
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
@@ -353,6 +358,7 @@ describe('POST /api/analyses/run — AC7', () => {
       ]),
     }
     vi.mocked(db.select)
+      .mockReturnValueOnce(rateLimitSelectChain as never)
       .mockReturnValueOnce(docSelectChain as never)
       .mockReturnValueOnce(snapshotSelectChain as never)
 
@@ -376,6 +382,11 @@ describe('POST /api/analyses/run — AC7', () => {
       .mockResolvedValueOnce(mockAgents as never)
       .mockResolvedValueOnce(mockAgents as never)
 
+    const rateLimitSelectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]),
+    }
     const docSelectChain = {
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
@@ -413,6 +424,7 @@ describe('POST /api/analyses/run — AC7', () => {
       where: vi.fn().mockResolvedValue([{ id: 'snap-1' }]),
     }
     vi.mocked(db.select)
+      .mockReturnValueOnce(rateLimitSelectChain as never)
       .mockReturnValueOnce(docSelectChain as never)
       .mockReturnValueOnce(triggerSnapshotSelectChain as never)
       .mockReturnValueOnce(livingSelectChain as never)

@@ -1,8 +1,7 @@
-import { Suspense } from 'react'
+import { Suspense, lazy } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/config'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DashboardContent } from './dashboard-content'
 import { getDashboardData } from '@/lib/db/queries/dashboard'
 import { getDocumentsWithHistory } from '@/lib/db/queries/history'
 import { getLatestBodyComposition } from '@/lib/db/queries/body-composition'
@@ -12,6 +11,8 @@ import type { DocumentWithHistory } from '@/lib/db/queries/history'
 import type { ParameterEvolution } from '@/lib/history/evolution'
 import type { DashboardProfile, DashboardDocument, DashboardAnalysis } from '@/lib/db/queries/dashboard'
 
+const DashboardContent = lazy(() => import('./dashboard-content').then(mod => ({ default: mod.DashboardContent })))
+
 export type HistoryEntry = {
   doc: DocumentWithHistory
   evolution: ParameterEvolution[]
@@ -20,9 +21,11 @@ export type HistoryEntry = {
 export type BodyCompositionSummary = {
   weight: string | null
   bodyFat: string | null
+  muscleMass: string | null
   measuredAt: string
   weightDelta: string | null
   bodyFatDelta: string | null
+  muscleMassDelta: string | null
 }
 
 export type ProductSummaryItem = {
@@ -82,35 +85,61 @@ async function DashboardDataLoader({ userId, userName }: { userId: string; userN
     ? {
         weight: bodyCompResult.latest.weight,
         bodyFat: bodyCompResult.latest.bodyFat,
+        muscleMass: bodyCompResult.latest.muscleMass,
         measuredAt: bodyCompResult.latest.measuredAt,
         weightDelta: bodyCompResult.delta?.weight ?? null,
         bodyFatDelta: bodyCompResult.delta?.bodyFat ?? null,
+        muscleMassDelta: bodyCompResult.delta?.muscleMass ?? null,
       }
     : null
 
   return (
-    <DashboardContent
-      data={{
-        userName,
-        profile: e12Data.profile,
-        recentDocs: e12Data.recentDocs,
-        livingAnalysis: e12Data.livingAnalysis,
-        historyEntries,
-        latestDocumentId,
-        bodyComposition,
-        productsSummary,
-      }}
-    />
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent
+        data={{
+          userName,
+          profile: e12Data.profile,
+          recentDocs: e12Data.recentDocs,
+          livingAnalysis: e12Data.livingAnalysis,
+          historyEntries,
+          latestDocumentId,
+          bodyComposition,
+          productsSummary,
+        }}
+      />
+    </Suspense>
   )
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-4 p-4" aria-label="Carregando dashboard..." role="status">
-      <Skeleton className="h-28 rounded-2xl" />
-      <Skeleton className="h-40 rounded-2xl" />
-      <Skeleton className="h-48 rounded-2xl" />
-      <Skeleton className="h-32 rounded-2xl" />
+    <div className="flex flex-col gap-6">
+      {/* Header skeleton */}
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-10 w-32" />
+      </div>
+
+      {/* Profile card skeleton */}
+      <div className="rounded-lg border p-6">
+        <Skeleton className="h-6 w-48 mb-4" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      </div>
+
+      {/* Recent docs skeleton */}
+      <div className="rounded-lg border p-6">
+        <Skeleton className="h-6 w-40 mb-4" />
+        <div className="space-y-3">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      </div>
     </div>
   )
 }

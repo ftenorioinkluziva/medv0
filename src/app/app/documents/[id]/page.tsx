@@ -5,36 +5,25 @@ import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import { documents, snapshots } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
-import { ArrowLeft, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 import type { SanitizedMedicalDocument } from '@/lib/documents/extractor'
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  normal:     { label: 'Normal',     className: 'text-green-500' },
-  high:       { label: 'Alto',       className: 'text-red-500' },
-  low:        { label: 'Baixo',      className: 'text-blue-500' },
-  abnormal:   { label: 'Alterado',   className: 'text-red-500' },
-  borderline: { label: 'Limítrofe', className: 'text-yellow-500' },
-  'n/a':      { label: 'N/D',       className: 'text-muted-foreground' },
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  normal:     { label: '✓ Normal',    color: 'text-[#22c55e]' },
+  high:       { label: '↑ Alto',      color: 'text-destructive' },
+  low:        { label: '↓ Baixo',     color: 'text-blue-500' },
+  abnormal:   { label: '✕ Alterado',  color: 'text-destructive' },
+  borderline: { label: '~ Limítrofe', color: 'text-amber-500' },
+  'n/a':      { label: 'N/D',         color: 'text-muted-foreground' },
 }
 
-const MODULE_STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'warning'> = {
-  normal:     'default',
-  high:       'destructive',
-  low:        'warning',
-  abnormal:   'destructive',
-  borderline: 'warning',
-  'n/a':      'secondary',
-}
-
-function StatusIcon({ status }: { status: string }) {
-  if (status === 'normal') return <CheckCircle2 className="size-3.5 text-green-500" />
-  if (status === 'n/a') return <Minus className="size-3.5 text-muted-foreground" />
-  if (status === 'low') return <TrendingDown className="size-3.5 text-blue-500" />
-  if (status === 'high' || status === 'abnormal') return <TrendingUp className="size-3.5 text-red-500" />
-  return <AlertCircle className="size-3.5 text-yellow-500" />
+const MODULE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
+  normal:     { bg: 'bg-[#d1fae5] dark:bg-[#d1fae5]/20', text: 'text-[#065f46] dark:text-[#34d399]', label: 'Normal' },
+  high:       { bg: 'bg-destructive/10', text: 'text-destructive', label: 'Alterado' },
+  low:        { bg: 'bg-blue-500/10',    text: 'text-blue-500',    label: 'Baixo' },
+  abnormal:   { bg: 'bg-destructive/10', text: 'text-destructive', label: 'Alterado' },
+  borderline: { bg: 'bg-amber-500/10',   text: 'text-amber-500',   label: 'Limítrofe' },
+  'n/a':      { bg: 'bg-muted',          text: 'text-muted-foreground', label: 'N/D' },
 }
 
 function ParameterRow({
@@ -43,65 +32,63 @@ function ParameterRow({
   unit,
   referenceRange,
   status,
+  last,
 }: {
   name: string
   value: string | number
   unit?: string
   referenceRange?: string
   status?: string
+  last?: boolean
 }) {
   const cfg = status ? STATUS_CONFIG[status] : null
 
   return (
-    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 gap-y-0 border-b border-foreground/6 py-2.5 last:border-0">
-      <span className="text-sm text-foreground">{name}</span>
-      <span className="text-sm font-medium text-foreground tabular-nums">
+    <div
+      className={`grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 px-4 py-2.5 ${last ? '' : 'border-b border-border'}`}
+    >
+      <span className="text-[13px] font-medium text-foreground">{name}</span>
+      <span className="font-heading text-[13px] font-medium text-foreground tabular-nums">
         {value}{unit ? ` ${unit}` : ''}
       </span>
-      <span className="text-xs text-muted-foreground">
+      <span className="text-[12px] font-medium text-muted-foreground">
         {referenceRange ?? '—'}
       </span>
       {cfg ? (
-        <span className={cn('flex items-center gap-1 text-xs font-medium', cfg.className)}>
-          {status && <StatusIcon status={status} />}
-          {cfg.label}
-        </span>
+        <span className={`text-[12px] font-medium ${cfg.color}`}>{cfg.label}</span>
       ) : (
-        <span className="text-xs text-muted-foreground">—</span>
+        <span className="text-[12px] text-muted-foreground">—</span>
       )}
     </div>
   )
 }
 
 function ModuleSection({ module }: { module: SanitizedMedicalDocument['modules'][number] }) {
-  const variant = MODULE_STATUS_VARIANT[module.status] ?? 'secondary'
+  const badge = MODULE_BADGE[module.status] ?? MODULE_BADGE['n/a']
 
   return (
-    <section className="rounded-xl border border-foreground/10 bg-card overflow-hidden">
-      <div className="flex items-center justify-between gap-3 border-b border-foreground/8 bg-foreground/[0.02] px-4 py-3">
+    <section className="rounded-[12px] border border-border bg-card overflow-hidden">
+      {/* module header */}
+      <div className="flex items-center justify-between gap-3 bg-muted/40 border-b border-border px-4 py-3">
         <div className="min-w-0">
-          <p className="font-semibold text-foreground">{module.moduleName}</p>
-          <p className="text-xs text-muted-foreground">{module.category}</p>
+          <p className="font-heading text-[14px] font-medium leading-[1.4286] text-foreground">
+            {module.moduleName}
+          </p>
+          <p className="text-[11px] font-medium text-muted-foreground">{module.category}</p>
         </div>
-        <Badge variant={variant} className="shrink-0 text-xs">
-          {STATUS_CONFIG[module.status]?.label ?? module.status}
-        </Badge>
+        <span className={`rounded-[12px] px-2.5 py-0.75 text-[11px] font-medium shrink-0 ${badge.bg} ${badge.text}`}>
+          {badge.label}
+        </span>
       </div>
 
-      {module.summary && (
-        <p className="px-4 py-3 text-sm text-muted-foreground border-b border-foreground/6">
-          {module.summary}
-        </p>
-      )}
-
       {module.parameters.length > 0 && (
-        <div className="px-4">
-          {/* Cabeçalho da tabela */}
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 border-b border-foreground/8 py-2">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Parâmetro</span>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Valor</span>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Referência</span>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Status</span>
+        <>
+          {/* col headers */}
+          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 border-b border-border px-4 py-2">
+            <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">PARÂMETRO</span>
+            <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">VALOR</span>
+            <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">REFERÊNCIA</span>
+            <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">STATUS</span>
           </div>
           {module.parameters.map((p, i) => (
             <ParameterRow
@@ -111,9 +98,10 @@ function ModuleSection({ module }: { module: SanitizedMedicalDocument['modules']
               unit={p.unit}
               referenceRange={p.referenceRange}
               status={p.status}
+              last={i === module.parameters.length - 1}
             />
           ))}
-        </div>
+        </>
       )}
     </section>
   )
@@ -154,93 +142,97 @@ async function DocumentContent({ id, userId }: { id: string; userId: string }) {
 
   const data = row.structuredData
   const examDate = row.examDate
-    ? new Date(row.examDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+    ? new Date(`${row.examDate}T00:00:00`).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      })
     : row.createdAt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
 
   const totalParams = data?.modules.reduce((sum, m) => sum + m.parameters.length, 0) ?? 0
-  const alteredParams = data?.modules.reduce(
-    (sum, m) => sum + m.parameters.filter((p) => p.status && p.status !== 'normal' && p.status !== 'n/a').length,
-    0,
-  ) ?? 0
+  const alteredParams =
+    data?.modules.reduce(
+      (sum, m) =>
+        sum + m.parameters.filter((p) => p.status && p.status !== 'normal' && p.status !== 'n/a').length,
+      0,
+    ) ?? 0
 
   return (
-    <div className="space-y-5 p-4 md:p-6">
-        {/* Header */}
-        <div className="space-y-3">
-          <Link
-            href="/app/history"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Histórico
-          </Link>
+    <div className="flex flex-col gap-4 px-4 pt-12 pb-20">
+      {/* back */}
+      <Link
+        href="/app/history"
+        className="text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        ← Histórico
+      </Link>
 
-          <div className="rounded-2xl border border-foreground/10 bg-card p-5 shadow-sm space-y-3">
-            <div>
-              <h1 className="text-xl font-bold text-foreground truncate" title={row.originalFileName}>
-                {row.originalFileName}
-              </h1>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                {row.documentType} • {examDate}
-              </p>
-            </div>
+      {/* header card */}
+      <div className="rounded-[16px] border border-border bg-card flex flex-col gap-3 p-4">
+        <p className="font-heading text-[18px] font-medium leading-[1.4286] text-foreground truncate">
+          {row.originalFileName}
+        </p>
+        <p className="text-[13px] font-medium text-muted-foreground">
+          {row.documentType} • {examDate}
+        </p>
 
-            {(totalParams > 0 || alteredParams > 0) && (
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full border border-foreground/10 bg-background/60 px-3 py-1 text-xs font-medium text-foreground">
-                  {totalParams} parâmetros
-                </span>
-                {alteredParams > 0 && (
-                  <span className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-500">
-                    {alteredParams} alterados
-                  </span>
-                )}
-              </div>
+        {(totalParams > 0 || alteredParams > 0) && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {totalParams > 0 && (
+              <span className="rounded-full border border-border bg-muted px-3 py-1 text-[11px] font-medium text-foreground">
+                {totalParams} parâmetros
+              </span>
             )}
-
-            {row.overallSummary && (
-              <p className="text-sm text-muted-foreground border-t border-foreground/8 pt-3">
-                {row.overallSummary}
-              </p>
+            {alteredParams > 0 && (
+              <span className="rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-[11px] font-medium text-destructive">
+                {alteredParams} alterados
+              </span>
             )}
-          </div>
-        </div>
-
-        {/* Módulos */}
-        {!data ? (
-          <div className="rounded-xl border border-foreground/10 bg-card p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              Os dados estruturados deste exame ainda não estão disponíveis.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {data.modules.map((module, i) => (
-              <ModuleSection key={`${module.moduleName}-${i}`} module={module} />
-            ))}
           </div>
         )}
+
+        {row.overallSummary && (
+          <>
+            <div className="h-px bg-border" />
+            <p className="text-[13px] font-medium text-muted-foreground">{row.overallSummary}</p>
+          </>
+        )}
+      </div>
+
+      {/* modules */}
+      {!data ? (
+        <div className="rounded-[12px] border border-border bg-card p-8 text-center">
+          <p className="text-[13px] font-medium text-muted-foreground">
+            Os dados estruturados deste exame ainda não estão disponíveis.
+          </p>
+        </div>
+      ) : (
+
+        <div className="flex flex-col gap-4">
+          {data.modules.map((module, i) => (
+            <ModuleSection key={`${module.moduleName}-${i}`} module={module} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
 function DocumentSkeleton() {
   return (
-    <div className="space-y-5 p-4 md:p-6" aria-label="Carregando exame..." role="status">
-      <div className="space-y-3">
-        <Skeleton className="h-4 w-24" />
-        <div className="rounded-2xl border border-foreground/10 bg-card p-5 space-y-3">
-          <Skeleton className="h-6 w-3/4" />
-          <Skeleton className="h-4 w-48" />
-          <div className="flex gap-2">
-            <Skeleton className="h-6 w-28 rounded-full" />
-            <Skeleton className="h-6 w-24 rounded-full" />
-          </div>
+    <div className="flex flex-col gap-4 px-4 pt-12 pb-20">
+      <Skeleton className="h-4 w-24" />
+      <div className="rounded-[16px] border border-border bg-card p-4 flex flex-col gap-3">
+        <Skeleton className="h-6 w-3/4" />
+        <Skeleton className="h-4 w-48" />
+        <div className="flex gap-2">
+          <Skeleton className="h-6 w-28 rounded-full" />
+          <Skeleton className="h-6 w-24 rounded-full" />
         </div>
       </div>
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-40 w-full rounded-xl" />
+          <Skeleton key={i} className="h-40 w-full rounded-[12px]" />
         ))}
       </div>
     </div>

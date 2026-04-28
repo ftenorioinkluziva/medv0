@@ -2,6 +2,7 @@ import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { aiGatewayProvider } from './ai-gateway'
+import { logger } from '@/lib/observability/logger'
 
 const PROVIDERS = { google, openai, anthropic } as const
 
@@ -15,7 +16,7 @@ export function resolveModel(modelString: string) {
   const slashIndex = normalizedModel.indexOf('/')
 
   if (slashIndex <= 0 || slashIndex === normalizedModel.length - 1) {
-    console.warn(`[resolveModel] Invalid model format "${modelString}", falling back to ${DEFAULT_MODEL}`)
+    logger.warn(`[resolveModel] Invalid model format "${modelString}", falling back to ${DEFAULT_MODEL}`)
     if (aiGatewayProvider) {
       return aiGatewayProvider(DEFAULT_MODEL)
     }
@@ -26,7 +27,7 @@ export function resolveModel(modelString: string) {
 
   if (aiGatewayProvider) {
     if (!PROVIDERS[providerName]) {
-      console.warn(`[resolveModel] Unknown provider "${providerName}", routing through AI Gateway`)
+      logger.warn(`[resolveModel] Unknown provider "${providerName}", routing through AI Gateway`)
     }
     return aiGatewayProvider(normalizedModel)
   }
@@ -40,7 +41,7 @@ export function resolveModel(modelString: string) {
   const providerFn = PROVIDERS[providerName]
 
   if (!providerFn) {
-    console.warn(`[resolveModel] Unknown provider "${providerName}", falling back to ${DEFAULT_MODEL}`)
+    logger.warn(`[resolveModel] Unknown provider "${providerName}", falling back to ${DEFAULT_MODEL}`)
     return google(DEFAULT_MODEL_SLUG)
   }
 

@@ -216,12 +216,11 @@ export function extractBodyCompositionMetrics(
   return metrics
 }
 
-export async function updateBodyComposition(
+export async function persistBodyComposition(
   userId: string,
   documentId: string,
-  structuredData: SanitizedMedicalDocument,
+  metrics: BodyCompositionMetrics,
 ): Promise<void> {
-  const metrics = extractBodyCompositionMetrics(structuredData)
   const measuredAt = metrics.measuredAt ?? new Date().toISOString().split('T')[0]
 
   const profileUpdates: Record<string, number | string | null> = {}
@@ -234,7 +233,6 @@ export async function updateBodyComposition(
   if (metrics.bmr !== undefined) profileUpdates.basalMetabolicRate = metrics.bmr
   if (metrics.bodyWater !== undefined)
     profileUpdates.bodyWaterPercentage = String(metrics.bodyWater)
-  // AC1 — new InBody fields → medical_profiles
   if (metrics.bodyWaterLiters !== undefined)
     profileUpdates.bodyWaterLiters = String(metrics.bodyWaterLiters)
   if (metrics.proteinMass !== undefined) profileUpdates.proteinMass = String(metrics.proteinMass)
@@ -263,7 +261,6 @@ export async function updateBodyComposition(
     bmr: metrics.bmr ?? null,
     bodyWater: metrics.bodyWater !== undefined ? String(metrics.bodyWater) : null,
     measuredAt,
-    // AC1 — new InBody fields → bodyCompositionHistory
     bodyWaterLiters:
       metrics.bodyWaterLiters !== undefined ? String(metrics.bodyWaterLiters) : null,
     proteinMass: metrics.proteinMass !== undefined ? String(metrics.proteinMass) : null,
@@ -271,7 +268,6 @@ export async function updateBodyComposition(
     obesityDegree: metrics.obesityDegree !== undefined ? String(metrics.obesityDegree) : null,
     inbodyScore: metrics.inbodyScore ?? null,
     idealWeight: metrics.idealWeight !== undefined ? String(metrics.idealWeight) : null,
-    // AC2 — segmental fields → bodyCompositionHistory
     leanMassArmRight:
       metrics.leanMassArmRight !== undefined ? String(metrics.leanMassArmRight) : null,
     leanMassArmLeft:
@@ -289,4 +285,14 @@ export async function updateBodyComposition(
       metrics.fatMassLegRight !== undefined ? String(metrics.fatMassLegRight) : null,
     fatMassLegLeft: metrics.fatMassLegLeft !== undefined ? String(metrics.fatMassLegLeft) : null,
   })
+}
+
+export async function updateBodyComposition(
+  userId: string,
+  documentId: string,
+  structuredData: SanitizedMedicalDocument,
+): Promise<BodyCompositionMetrics> {
+  const metrics = extractBodyCompositionMetrics(structuredData)
+  await persistBodyComposition(userId, documentId, metrics)
+  return metrics
 }

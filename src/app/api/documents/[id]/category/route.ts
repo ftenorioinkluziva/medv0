@@ -1,13 +1,18 @@
 import { after, NextRequest, NextResponse } from 'next/server'
 import { eq, and } from 'drizzle-orm'
+import { z } from 'zod'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import { documents, snapshots } from '@/lib/db/schema'
 import { updateBodyComposition } from '@/lib/documents/body-composition'
 import { triggerLivingAnalysis } from '@/lib/ai/orchestrator/trigger-living-analysis'
+import { logger } from '@/lib/observability/logger'
+import { errorResponse } from '@/lib/api/error-response'
 
 const VALID_CATEGORIES = ['bioimpedance', 'blood_test', 'other'] as const
 type DocumentCategory = (typeof VALID_CATEGORIES)[number]
+const ParamsSchema = z.object({ id: z.string().uuid() })
+const BodySchema = z.object({ category: z.enum(VALID_CATEGORIES) })
 
 export async function PATCH(
   request: NextRequest,
@@ -15,24 +20,29 @@ export async function PATCH(
 ): Promise<NextResponse> {
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return errorResponse('Não autorizado.', 401)
   }
 
-  const { id } = await params
+  const parsedParams = ParamsSchema.safeParse(await params)
+  if (!parsedParams.success) {
+    return errorResponse('ID de documento inválido.', 400)
+  }
+
+  const { id } = parsedParams.data
 
   let body: unknown
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Corpo da requisição inválido.' }, { status: 400 })
+    return errorResponse('Corpo da requisição inválido.', 400)
   }
 
-  const category = (body as Record<string, unknown>)?.category
-  if (!VALID_CATEGORIES.includes(category as DocumentCategory)) {
-    return NextResponse.json({ error: 'Categoria inválida.' }, { status: 400 })
+  const parsedBody = BodySchema.safeParse(body)
+  if (!parsedBody.success) {
+    return errorResponse('Categoria inválida.', 400)
   }
 
-  const confirmedCategory = category as DocumentCategory
+  const confirmedCategory: DocumentCategory = parsedBody.data.category
 
   const [updated] = await db
     .update(documents)
@@ -41,7 +51,7 @@ export async function PATCH(
     .returning({ id: documents.id })
 
   if (!updated) {
-    return NextResponse.json({ error: 'Documento não encontrado.' }, { status: 404 })
+    return errorResponse('Documento não encontrado.', 404)
   }
 
   const userId = session.user.id
@@ -60,7 +70,7 @@ export async function PATCH(
           await updateBodyComposition(userId, documentId, snapshot.structuredData)
         }
       } catch (error) {
-        console.error('[documents/category] update body composition failed:', error)
+        logger.error('[documents/category] update body composition failed', error)
       }
     })
   } else {
@@ -68,7 +78,7 @@ export async function PATCH(
       try {
         await triggerLivingAnalysis(userId, documentId)
       } catch (error) {
-        console.error('[documents/category] trigger living analysis failed:', error)
+        logger.error('[documents/category] trigger living analysis failed', error)
       }
     })
   }

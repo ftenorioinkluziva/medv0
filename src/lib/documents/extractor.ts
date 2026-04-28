@@ -1,6 +1,7 @@
 import { generateText, Output } from 'ai'
 import { z } from 'zod'
 import { resolveModel } from '@/lib/ai/core/resolve-model'
+import { logger } from '@/lib/observability/logger'
 
 const MAX_CONTENT_CHARS = 200_000
 const DEFAULT_EXTRACTION_MODEL = 'google/gemini-2.5-flash'
@@ -92,7 +93,7 @@ function resolveExtractionModel(rawModel?: string): string {
   const slashIndex = normalized.indexOf('/')
 
   if (slashIndex <= 0 || slashIndex === normalized.length - 1) {
-    console.warn(
+    logger.warn(
       `[extractor] Invalid DOCUMENT_EXTRACTION_MODEL "${rawModel}", falling back to ${DEFAULT_EXTRACTION_MODEL}`,
     )
     return DEFAULT_EXTRACTION_MODEL
@@ -198,7 +199,7 @@ export async function extractMedicalDocument(
       try {
         return await tryExtractWithJsonFallback(userContent)
       } catch (secondError) {
-        console.error('[extractor] structured extraction failed on both attempts:', {
+        logger.error('[extractor] structured extraction failed on both attempts', {
           firstError,
           secondError,
         })
@@ -206,7 +207,7 @@ export async function extractMedicalDocument(
       }
     }
   } catch (err) {
-    console.error('[extractor] extractMedicalDocument failed:', err)
+    logger.error('[extractor] extractMedicalDocument failed', err)
     return FALLBACK
   }
 }

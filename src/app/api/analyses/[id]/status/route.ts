@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
+import { z } from 'zod'
 import { auth } from '@/lib/auth/config'
 import { db } from '@/lib/db/client'
 import { livingAnalyses } from '@/lib/db/schema'
+import { errorResponse } from '@/lib/api/error-response'
+
+const ParamsSchema = z.object({ id: z.string().uuid() })
 
 export async function GET(
   request: NextRequest,
@@ -10,10 +14,15 @@ export async function GET(
 ): Promise<NextResponse> {
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return errorResponse('Não autorizado.', 401)
   }
 
-  const { id } = await params
+  const parsedParams = ParamsSchema.safeParse(await params)
+  if (!parsedParams.success) {
+    return errorResponse('ID de análise inválido.', 400)
+  }
+
+  const { id } = parsedParams.data
 
   const [row] = await db
     .select({
@@ -26,11 +35,11 @@ export async function GET(
     .limit(1)
 
   if (!row) {
-    return NextResponse.json({ error: 'Análise não encontrada.' }, { status: 404 })
+    return errorResponse('Análise não encontrada.', 404)
   }
 
   if (row.userId !== session.user.id) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 })
+    return errorResponse('Não autorizado.', 403)
   }
 
   if (row.status === 'completed') {

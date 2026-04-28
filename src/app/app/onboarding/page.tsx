@@ -8,9 +8,11 @@ export default async function OnboardingPage() {
   if (session.user.onboardingCompleted) redirect('/app/dashboard')
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <OnboardingFlow />
+    <main className="min-h-screen bg-background">
+      <div className="p-4">
+        <div className="w-full max-w-md mx-auto">
+          <OnboardingFlow />
+        </div>
       </div>
     </main>
   )
