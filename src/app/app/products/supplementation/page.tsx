@@ -102,25 +102,25 @@ export default async function SupplementationPage() {
               </div>
 
               {/* Card body */}
-              <div className="flex flex-col gap-2 px-5 py-4">
+              <div className="flex flex-col px-5 py-4">
                 <p className="text-[13px] font-medium text-foreground leading-snug">{s.purpose}</p>
 
-                <div className="flex gap-2">
-                  <div className="flex flex-col gap-0.5 rounded-[10px] bg-[#F2F3F0] dark:bg-muted px-3 py-2 min-w-18">
-                    <span className="text-[10px] font-medium text-muted-foreground">Dose</span>
-                    <span className="font-heading text-[13px] font-semibold text-foreground">{s.dosage}</span>
+                <div className="mt-3 divide-y divide-border border-t border-border">
+                  <div className="grid grid-cols-[72px_1fr] gap-3 py-2.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Dose</span>
+                    <span className="font-heading text-[13px] font-semibold leading-snug text-foreground">{s.dosage}</span>
                   </div>
-                  <div className="flex-1 flex flex-col gap-0.5 rounded-[10px] bg-[#F2F3F0] dark:bg-muted px-3 py-2">
-                    <span className="text-[10px] font-medium text-muted-foreground">Frequência</span>
-                    <span className="text-[12px] font-medium text-foreground leading-snug">{s.timing}</span>
+                  <div className="grid grid-cols-[72px_1fr] gap-3 py-2.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Frequência</span>
+                    <span className="text-[12px] font-medium leading-snug text-foreground">{s.timing}</span>
                   </div>
+                  {s.duration && (
+                    <div className="grid grid-cols-[72px_1fr] gap-3 py-2.5">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Duração</span>
+                      <span className="text-[12px] font-medium leading-snug text-foreground">{s.duration}</span>
+                    </div>
+                  )}
                 </div>
-                {s.duration && (
-                  <div className="rounded-[10px] bg-[#F2F3F0] dark:bg-muted px-3 py-2">
-                    <span className="text-[10px] font-medium text-muted-foreground">Duração</span>
-                    <p className="text-[12px] font-medium text-foreground leading-snug mt-0.5">{s.duration}</p>
-                  </div>
-                )}
               </div>
             </div>
           )
