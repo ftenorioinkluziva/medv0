@@ -154,8 +154,15 @@ export function AdvancedForm({ initialData, onSupplementationChange }: AdvancedF
           </div>
         </div>
 
-        {/* hidden smokingDetails — kept for form data compatibility */}
-        <input type="hidden" name="smokingDetails" value={initialData?.smokingDetails ?? ''} />
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="smokingDetails">Detalhes do tabagismo</Label>
+          <Input
+            id="smokingDetails"
+            name="smokingDetails"
+            defaultValue={initialData?.smokingDetails ?? ''}
+            placeholder="parou em 2020, 5 cigarros/dia..."
+          />
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="currentDiet">Dieta atual</Label>

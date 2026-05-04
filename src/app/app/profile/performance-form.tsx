@@ -24,10 +24,30 @@ const emptyActivity = (): ActivityWithId => ({
   intensity: 'moderada',
 })
 
+function isExerciseIntensity(value: string | null | undefined): value is ExerciseActivity['intensity'] {
+  return value === 'leve' || value === 'moderada' || value === 'intensa'
+}
+
+function getInitialActivities(initialData: MedicalProfile | null): ExerciseActivity[] {
+  const existing = (initialData?.exerciseActivities as ExerciseActivity[] | null) ?? []
+  if (existing.length > 0) return existing
+
+  const legacyTypes = initialData?.exerciseTypes ?? []
+  return legacyTypes
+    .filter((type) => type.trim().length > 0)
+    .map((type) => ({
+      type,
+      frequency: initialData?.exerciseFrequency ?? 3,
+      duration: initialData?.exerciseDuration ?? 30,
+      intensity: isExerciseIntensity(initialData?.exerciseIntensity)
+        ? initialData.exerciseIntensity
+        : 'moderada',
+    }))
+}
+
 export function PerformanceForm({ initialData, onActivitiesChange }: PerformanceFormProps) {
   const [activities, setActivities] = useState<ActivityWithId[]>(() => {
-    const existing = (initialData?.exerciseActivities as ExerciseActivity[] | null) ?? []
-    return existing.map((a) => ({ ...a, _id: crypto.randomUUID() }))
+    return getInitialActivities(initialData).map((a) => ({ ...a, _id: crypto.randomUUID() }))
   })
 
   function addActivity() {

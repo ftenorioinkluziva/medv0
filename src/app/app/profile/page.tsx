@@ -1,7 +1,6 @@
 import { auth } from '@/lib/auth/config'
 import { redirect } from 'next/navigation'
 import { getMedicalProfile } from '@/lib/actions/medical-profile'
-import { getLatestBodyComposition } from '@/lib/db/queries/body-composition'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProfileForm } from './profile-form'
 import { Suspense } from 'react'
@@ -49,24 +48,19 @@ export default async function ProfilePage() {
         </div>
 
         <Suspense fallback={<ProfileSkeleton />}>
-          <ProfileDataLoader userId={session.user.id} />
+          <ProfileDataLoader />
         </Suspense>
       </div>
     </main>
   )
 }
 
-async function ProfileDataLoader({ userId }: { userId: string }) {
-  const [profile, { latest: latestBodyComposition, delta }] = await Promise.all([
-    getMedicalProfile(),
-    getLatestBodyComposition(userId),
-  ])
+async function ProfileDataLoader() {
+  const profile = await getMedicalProfile()
 
   return (
     <ProfileForm
       initialData={profile}
-      latestBodyComposition={latestBodyComposition}
-      bodyCompositionDelta={delta}
     />
   )
 }

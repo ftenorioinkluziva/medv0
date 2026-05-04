@@ -4,29 +4,44 @@ import { useState, useTransition, useRef } from 'react'
 import { Check } from 'lucide-react'
 import { upsertMedicalProfile } from '@/lib/actions/medical-profile'
 import { BasicForm } from './basic-form'
-import { CompositionForm } from './composition-form'
 import { PerformanceForm } from './performance-form'
 import { AdvancedForm } from './advanced-form'
-import type { MedicalProfile, ExerciseActivity, BodyCompositionHistoryRecord } from '@/lib/db/schema'
-import type { BodyCompositionDelta } from '@/lib/db/queries/body-composition'
+import type { MedicalProfile, ExerciseActivity } from '@/lib/db/schema'
 
 interface ProfileFormProps {
   initialData: MedicalProfile | null
-  latestBodyComposition: BodyCompositionHistoryRecord | null
-  bodyCompositionDelta: BodyCompositionDelta | null
+}
+
+function isExerciseIntensity(value: string | null | undefined): value is ExerciseActivity['intensity'] {
+  return value === 'leve' || value === 'moderada' || value === 'intensa'
+}
+
+function getInitialExerciseActivities(initialData: MedicalProfile | null): ExerciseActivity[] {
+  const existing = (initialData?.exerciseActivities as ExerciseActivity[] | null) ?? []
+  if (existing.length > 0) return existing
+
+  const legacyTypes = initialData?.exerciseTypes ?? []
+  return legacyTypes
+    .filter((type) => type.trim().length > 0)
+    .map((type) => ({
+      type,
+      frequency: initialData?.exerciseFrequency ?? 3,
+      duration: initialData?.exerciseDuration ?? 30,
+      intensity: isExerciseIntensity(initialData?.exerciseIntensity)
+        ? initialData.exerciseIntensity
+        : 'moderada',
+    }))
 }
 
 export function ProfileForm({
   initialData,
-  latestBodyComposition,
-  bodyCompositionDelta
 }: ProfileFormProps) {
   const [isPending, startTransition] = useTransition()
   const [medicalConditions, setMedicalConditions] = useState<string[]>(initialData?.medicalConditions ?? [])
   const [medications, setMedications] = useState<string[]>(initialData?.medications ?? [])
   const [allergies, setAllergies] = useState<string[]>(initialData?.allergies ?? [])
   const [surgeries, setSurgeries] = useState<string[]>(initialData?.surgeries ?? [])
-  const [activities, setActivities] = useState<ExerciseActivity[]>(initialData?.exerciseActivities as ExerciseActivity[] ?? [])
+  const [activities, setActivities] = useState<ExerciseActivity[]>(() => getInitialExerciseActivities(initialData))
   const [supplementation, setSupplementation] = useState<string[]>(initialData?.supplementation ?? [])
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -50,14 +65,6 @@ export function ProfileForm({
       surgeries,
       familyHistory: formData.get('familyHistory') as string || null,
       notes: formData.get('notes') as string || null,
-
-      // Body composition
-      bodyFatPercentage: formData.get('bodyFatPercentage') as string || undefined,
-      muscleMass: formData.get('muscleMass') as string || undefined,
-      visceralFatLevel: formData.get('visceralFatLevel') as string || undefined,
-      boneMass: formData.get('boneMass') as string || undefined,
-      basalMetabolicRate: formData.get('basalMetabolicRate') ? parseInt(formData.get('basalMetabolicRate') as string) : undefined,
-      bodyWaterPercentage: formData.get('bodyWaterPercentage') as string || undefined,
 
       // Performance tests
       handgripStrength: formData.get('handgripStrength') as string || undefined,
@@ -109,11 +116,10 @@ export function ProfileForm({
     })
   }
 
-  const [activeTab, setActiveTab] = useState<'basicos' | 'composicao' | 'habitos' | 'desempenho'>('basicos')
+  const [activeTab, setActiveTab] = useState<'basicos' | 'habitos' | 'desempenho'>('basicos')
 
   const tabs = [
     { value: 'basicos' as const, label: 'Básico' },
-    { value: 'composicao' as const, label: 'Composição' },
     { value: 'habitos' as const, label: 'Hábitos' },
     { value: 'desempenho' as const, label: 'Performance' },
   ]
@@ -152,13 +158,6 @@ export function ProfileForm({
           onMedicationsChange={setMedications}
           onAllergiesChange={setAllergies}
           onSurgeriesChange={setSurgeries}
-        />
-      </div>
-      <div hidden={activeTab !== 'composicao'}>
-        <CompositionForm
-          initialData={initialData}
-          latestBodyComposition={latestBodyComposition}
-          bodyCompositionDelta={bodyCompositionDelta}
         />
       </div>
       <div hidden={activeTab !== 'habitos'}>

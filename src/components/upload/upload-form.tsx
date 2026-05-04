@@ -105,13 +105,13 @@ function BodyCompositionSummary({ metrics }: { metrics: BodyMetrics }) {
   if (rows.length === 0) return null
 
   return (
-    <div className="mt-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 overflow-hidden">
+    <div className="mt-2 overflow-hidden rounded-md border border-border bg-background/60">
       <table className="w-full text-xs">
         <tbody>
           {rows.map(({ key, label, unit }) => (
-            <tr key={key} className="border-b border-emerald-500/10 last:border-0">
-              <td className="px-2 py-1 text-emerald-700/70 dark:text-emerald-400/70">{label}</td>
-              <td className="px-2 py-1 text-right font-medium tabular-nums">
+            <tr key={key} className="border-b border-border last:border-0">
+              <td className="px-2 py-1 text-muted-foreground">{label}</td>
+              <td className="px-2 py-1 text-right font-medium tabular-nums text-foreground">
                 {metrics[key]}{unit ? ` ${unit}` : ''}
               </td>
             </tr>
@@ -413,23 +413,23 @@ export function UploadForm() {
 
               {/* Sucesso */}
               {step === 'done' && successInfo && (
-                <div className="rounded-xl border border-[#d1fae5] bg-[#d1fae5]/50 px-3 py-2.5" role="status" aria-live="polite">
+                <div className="rounded-xl border border-border bg-card px-3 py-2.5" role="status" aria-live="polite">
                   {successInfo.type === 'body_composition' ? (
                     <>
-                      <p className="text-[13px] font-medium text-[#065f46]">
-                        Composição corporal atualizada no seu perfil.
+                      <p className="text-[13px] font-medium text-foreground">
+                        Composição corporal registrada no seu histórico.
                       </p>
                       {successInfo.metrics && <BodyCompositionSummary metrics={successInfo.metrics} />}
                       <p className="mt-2">
-                        <Link href="/app/profile" className="text-[11px] font-medium text-primary underline-offset-2 hover:underline">
-                          Ver perfil completo
+                        <Link href="/app/profile/body-composition" className="text-[11px] font-medium text-primary underline-offset-2 hover:underline">
+                          Ver histórico de composição
                         </Link>
                       </p>
                     </>
                   ) : (
                     <>
-                      <p className="text-[13px] font-medium text-[#065f46]">Upload concluído com sucesso.</p>
-                      <p className="mt-1 text-[11px] font-medium text-[#065f46] break-all">
+                      <p className="text-[13px] font-medium text-foreground">Upload concluído com sucesso.</p>
+                      <p className="mt-1 break-all text-[11px] font-medium text-muted-foreground">
                         {successInfo.fileName}
                       </p>
                     </>

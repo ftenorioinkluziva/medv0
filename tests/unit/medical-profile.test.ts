@@ -57,25 +57,23 @@ describe('upsertMedicalProfile', () => {
       expect(mockInsert.onConflictDoUpdate).toHaveBeenCalledOnce()
     })
 
-    it('deve incluir biomarkers opcionais quando fornecidos', async () => {
+    it('deve incluir testes funcionais opcionais quando fornecidos', async () => {
       // #given
       vi.mocked(auth).mockResolvedValue({ user: { id: 'user-123' } } as never)
-      const inputWithBiomarkers = {
+      const inputWithFunctionalTests = {
         ...validInput,
         vo2Max: '45.5',
-        bodyFatPercentage: '18.2',
         handgripStrength: '42.0',
       }
 
       // #when
-      const result = await upsertMedicalProfile(inputWithBiomarkers)
+      const result = await upsertMedicalProfile(inputWithFunctionalTests)
 
       // #then
       expect(result).toEqual({ success: true })
       expect(mockInsert.values).toHaveBeenCalledWith(
         expect.objectContaining({
           vo2Max: '45.5',
-          bodyFatPercentage: '18.2',
           handgripStrength: '42.0',
         }),
       )
