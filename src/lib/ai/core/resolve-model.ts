@@ -1,7 +1,7 @@
 import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { aiGatewayProvider } from './ai-gateway'
+import { aiGatewayProvider, assertAiGatewayConfigured } from './ai-gateway'
 import { logger } from '@/lib/observability/logger'
 
 const PROVIDERS = { google, openai, anthropic } as const
@@ -12,6 +12,8 @@ const DEFAULT_MODEL_SLUG = 'gemini-2.5-flash'
 export type SupportedProvider = keyof typeof PROVIDERS
 
 export function resolveModel(modelString: string) {
+  assertAiGatewayConfigured('Model resolution')
+
   const normalizedModel = modelString.trim()
   const slashIndex = normalizedModel.indexOf('/')
 

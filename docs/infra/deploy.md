@@ -67,14 +67,25 @@ Configure em **Settings → Secrets and variables → Actions** do repositório:
 | `SSH_USER` | Usuário SSH (`root`) | ✅ configurado |
 | `SSH_PRIVATE_KEY` | Chave privada SSH — `~/.ssh/hetzner` | ✅ configurado |
 | `DATABASE_URL` | Connection string Neon | ✅ configurado |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | API key Google AI | ✅ configurado |
+| `AI_GATEWAY_API_KEY` | API key do Vercel AI Gateway | ✅ configurado |
+| `AI_GATEWAY_BASE_URL` | Base URL do AI Gateway | ✅ configurado |
 | `AUTH_SECRET` | Secret do NextAuth | ✅ configurado |
 | `NEXTAUTH_URL` | `https://sami.blackboxinovacao.com.br` | ⏳ atualizar após DNS propagado |
+| `AUTH_TRUSTED_HOSTS` | Hosts confiáveis do auth/proxy | ✅ configurado |
 | `RESEND_API_KEY` | API key Resend (e-mail) | ⏳ pendente |
 | `RESEND_FROM_EMAIL` | Remetente de e-mails | ⏳ pendente |
 
-> Os valores de `DATABASE_URL`, `GOOGLE_GENERATIVE_AI_API_KEY` e `AUTH_SECRET`
+> Os valores de `DATABASE_URL`, `AI_GATEWAY_API_KEY` e `AUTH_SECRET`
 > estão no arquivo `.env` local do projeto.
+
+### Secrets não exigidos no runtime de produção
+
+- `GOOGLE_GENERATIVE_AI_API_KEY`
+  - manter apenas para fallback local e scripts de manutenção
+- `APIFY_API_KEY`
+  - usada apenas pelo script `scripts/youtube-to-knowledge.py`
+- `LEGACY_DATABASE_URL`
+  - usada apenas pelo import legado de knowledge base
 
 ---
 

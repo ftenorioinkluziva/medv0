@@ -1,13 +1,22 @@
 import { google } from '@ai-sdk/google'
-import { aiGatewayProvider } from '@/lib/ai/core/ai-gateway'
+import { aiGatewayProvider, assertAiGatewayConfigured } from '@/lib/ai/core/ai-gateway'
 import { logger } from '@/lib/observability/logger'
 
+const LEGACY_EMBEDDING_MODEL = process.env.GOOGLE_EMBEDDING_MODEL
+const CONFIGURED_EMBEDDING_MODEL = process.env.EMBEDDING_MODEL ?? LEGACY_EMBEDDING_MODEL
+
+if (!process.env.EMBEDDING_MODEL && LEGACY_EMBEDDING_MODEL) {
+  logger.warn('[embedding] GOOGLE_EMBEDDING_MODEL is deprecated; prefer EMBEDDING_MODEL')
+}
+
 export const KNOWLEDGE_EMBEDDING_MODEL_NAME = resolveEmbeddingModel(
-  process.env.GOOGLE_EMBEDDING_MODEL,
+  CONFIGURED_EMBEDDING_MODEL,
 )
 export const KNOWLEDGE_EMBEDDING_DIMENSIONS = 768
 
 export function getKnowledgeEmbeddingModel() {
+  assertAiGatewayConfigured('Knowledge embeddings')
+
   const normalizedName = KNOWLEDGE_EMBEDDING_MODEL_NAME.trim()
 
   if (aiGatewayProvider) {
@@ -43,7 +52,7 @@ function resolveEmbeddingModel(rawModel?: string): string {
 
   if (slashIndex === 0 || slashIndex === normalized.length - 1) {
     logger.warn(
-      `[embedding] Invalid GOOGLE_EMBEDDING_MODEL "${rawModel}", falling back to ${fallback}`,
+      `[embedding] Invalid EMBEDDING_MODEL "${rawModel}", falling back to ${fallback}`,
     )
     return fallback
   }

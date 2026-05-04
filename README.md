@@ -34,7 +34,7 @@ O SAMI permite que pacientes submetam exames médicos (PDFs e imagens) para extr
 | **Auth & RBAC** | Roles: `patient`, `doctor`, `admin` via NextAuth v5 |
 | **Multi-Provider AI** | Suporte a Google Gemini, OpenAI e Anthropic via factory `resolveModel` |
 | **Vercel AI Gateway** | Proxy opcional para todos os providers via `AI_GATEWAY_API_KEY`; ativa com zero mudança de código |
-| **Modelos Configuráveis** | `DOCUMENT_EXTRACTION_MODEL`, `SYNTHESIS_MODEL`, `GOOGLE_EMBEDDING_MODEL` configuráveis via env |
+| **Modelos Configuráveis** | `DOCUMENT_EXTRACTION_MODEL`, `SYNTHESIS_MODEL`, `EMBEDDING_MODEL` configuráveis via env |
 | **Model Config por Agente** | topP, topK, seed, frequencyPenalty, presencePenalty configuráveis por agente via admin |
 | **Output Estruturado** | Agentes podem gerar JSON tipado via `generateObject` + JSON Schema dinâmico |
 | **Prompts Especializados** | Cada agente recebe prompt customizado por especialidade (exercício, nutrição, cardiologia, endocrinologia, neurociência) |
@@ -123,18 +123,22 @@ Editar `.env.local`:
 
 ```env
 DATABASE_URL="postgresql://..."
-GOOGLE_GENERATIVE_AI_API_KEY="..."
-NEXTAUTH_SECRET="..."        # openssl rand -base64 32
+AUTH_SECRET="..."            # openssl rand -base64 32
 NEXTAUTH_URL="http://localhost:3000"
+AUTH_TRUSTED_HOSTS="localhost:3000"
 
 # Modelos configuráveis (formato "provider/model")
 DOCUMENT_EXTRACTION_MODEL="google/gemini-2.5-flash"
 SYNTHESIS_MODEL="google/gemini-2.5-flash"
-GOOGLE_EMBEDDING_MODEL="gemini-embedding-001"
+EMBEDDING_MODEL="google/gemini-embedding-001"
 
-# Vercel AI Gateway (opcional — roteia todos os providers pelo gateway)
+# Vercel AI Gateway (obrigatório em produção)
 AI_GATEWAY_API_KEY="..."
 AI_GATEWAY_BASE_URL="https://ai-gateway.vercel.sh/v1"
+
+# Fallback local / scripts de manutenção (opcional)
+GOOGLE_GENERATIVE_AI_API_KEY="..."
+APIFY_API_KEY="..."
 
 # Timeouts do pipeline multi-agente (opcional)
 COMPLETE_ANALYSIS_TIMEOUT_MS="600000"   # 10 min (hard limit)
@@ -142,6 +146,29 @@ FOUNDATION_AGENT_TIMEOUT_MS="180000"    # 3 min por agente
 SPECIALIZED_AGENT_TIMEOUT_MS="180000"   # 3 min por agente
 SYNTHESIS_TIMEOUT_MS="120000"           # 2 min
 ```
+
+### Segredos por uso
+
+- Runtime de produção da aplicação:
+  - `DATABASE_URL`
+  - `AUTH_SECRET`
+  - `NEXTAUTH_URL`
+  - `AUTH_TRUSTED_HOSTS`
+  - `AI_GATEWAY_API_KEY`
+  - `AI_GATEWAY_BASE_URL`
+  - `DOCUMENT_EXTRACTION_MODEL`
+  - `SYNTHESIS_MODEL` (ou fallback padrão)
+  - `EMBEDDING_MODEL` (ou fallback padrão)
+- Produção opcional:
+  - `RESEND_API_KEY`
+  - `RESEND_FROM_EMAIL`
+  - `KNOWLEDGE_UPLOAD_API_KEY`
+- Desenvolvimento / fallback local / scripts:
+  - `GOOGLE_GENERATIVE_AI_API_KEY`
+  - `APIFY_API_KEY`
+  - `LEGACY_DATABASE_URL`
+  - `ADMIN_EMAIL`
+  - `ADMIN_PASSWORD`
 
 ---
 
@@ -274,7 +301,7 @@ docs/
 - Auto-classificação de documentos: `document_category` (body_composition / lab_test / other) populado automaticamente no upload
 - Vercel AI Gateway: proxy opcional para todos os providers via `AI_GATEWAY_API_KEY`
 - Shared `ai-gateway.ts` module — elimina setup duplicado entre resolve-model e embedding-model
-- Modelos configuráveis via env: `DOCUMENT_EXTRACTION_MODEL`, `SYNTHESIS_MODEL`, `GOOGLE_EMBEDDING_MODEL`
+- Modelos configuráveis via env: `DOCUMENT_EXTRACTION_MODEL`, `SYNTHESIS_MODEL`, `EMBEDDING_MODEL`
 - Prompts especializados por agente (`prompts.ts`): exercício, nutrição, cardiologia, endocrinologia, neurociência
 - Timeouts por fase corrigidos: foundation/specialized 180s, synthesis 120s (vs hard limit 600s)
 - Acessibilidade: `aria-controls` + painéis sempre montados com `hidden={!open}` no report UI

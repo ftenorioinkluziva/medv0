@@ -128,7 +128,7 @@ export const aiGatewayProvider = process.env.AI_GATEWAY_API_KEY
 |---------|---------|---------|
 | `DOCUMENT_EXTRACTION_MODEL` | `google/gemini-2.5-flash` | `src/lib/documents/extractor.ts` |
 | `SYNTHESIS_MODEL` | `google/gemini-2.5-flash` | `src/lib/ai/orchestrator/pipeline.ts` |
-| `GOOGLE_EMBEDDING_MODEL` | `gemini-embedding-001` | `src/lib/ai/rag/embedding-model.ts` |
+| `EMBEDDING_MODEL` | `google/gemini-embedding-001` | `src/lib/ai/rag/embedding-model.ts` |
 
 Each has a `resolveXxxModel()` validator that warns and falls back on invalid format.
 
