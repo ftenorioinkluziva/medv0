@@ -6,3 +6,4 @@ export function errorResponse(message: string, status: number, details?: unknown
     { status },
   )
 }
+
