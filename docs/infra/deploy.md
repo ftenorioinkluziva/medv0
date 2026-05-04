@@ -20,7 +20,6 @@ scripts/
   server-setup.sh           # Provisionamento inicial da VPS (executar uma vez)
 .github/workflows/
   ci.yml                    # CI: lint → typecheck → test → build → docker build
-  deploy.yml                # CD: build → push GHCR → scp compose → deploy SSH
 docs/infra/
   deploy.md                 # Este arquivo
 ```
@@ -98,18 +97,19 @@ push main
   ├─ CI (ci.yml)
   │    lint → typecheck → test → build Next.js → docker build (smoke test)
   │
-  └─ Deploy (deploy.yml)  ← só executa após CI passar
-       build Docker image
-       push → ghcr.io/ftenorioinkluziva/medv0:sha-<hash> + :latest
-       scp docker-compose.yml → /opt/sami/
-       SSH na VPS:
-         mkdir -p /opt/sami
-         docker login ghcr.io
-         escreve .env.production com os secrets
-         docker-compose pull app
-         docker-compose up -d --no-deps app
-         docker image prune -f
-       verifica: docker-compose ps + curl localhost:3000
+  └─ Deploy (job dentro de ci.yml)  ← só executa após CI passar
+        build Docker image
+        push → ghcr.io/ftenorioinkluziva/medv0:sha-<hash> + :latest
+        scp docker-compose.yml → /opt/sami/
+        SSH na VPS:
+          mkdir -p /opt/sami
+          docker login ghcr.io
+          escreve /opt/sami/.env com os secrets e IMAGE_TAG
+          docker-compose pull app
+          remove containers antigos problemáticos
+          docker-compose up -d app
+          docker image prune -f
+        verifica: docker-compose ps + curl localhost:3000
 ```
 
 O deploy substitui **apenas o container `app`** — o NPM e demais serviços da VPS
@@ -142,7 +142,7 @@ ssh root@89.167.106.38 "cd /opt/sami && docker-compose logs -f app"
 
 ### Forçar redeploy manual (sem commit)
 ```bash
-gh workflow run deploy.yml
+gh workflow run ci.yml
 ```
 
 ### Reiniciar o container manualmente

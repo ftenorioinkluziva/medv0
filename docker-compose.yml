@@ -1,22 +1,29 @@
 services:
   app:
-    image: ghcr.io/${GITHUB_REPOSITORY:-medv0/sami}:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY:-ftenorioinkluziva/medv0}:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: "0.0.0.0"
       DATABASE_URL: ${DATABASE_URL}
-      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY}
       AUTH_SECRET: ${AUTH_SECRET}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
+      AUTH_TRUSTED_HOSTS: ${AUTH_TRUSTED_HOSTS}
+      AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY}
+      AI_GATEWAY_BASE_URL: ${AI_GATEWAY_BASE_URL}
+      DOCUMENT_EXTRACTION_MODEL: ${DOCUMENT_EXTRACTION_MODEL}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
     ports:
       - "3000:3000"
     networks:
-      - sami
-      - shared-network
+      sami: {}
+      shared-network:
+        aliases:
+          - sami-app
+          - app
 
 networks:
   sami:

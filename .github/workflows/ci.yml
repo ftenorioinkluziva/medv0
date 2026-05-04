@@ -129,6 +129,17 @@ jobs:
     environment: production
 
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: docker-compose.yml
+          target: /opt/sami
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -142,34 +153,37 @@ jobs:
 
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+            mkdir -p /opt/sami
+
+            cat > /opt/sami/.env <<EOF
+            GITHUB_REPOSITORY=${{ github.repository }}
+            IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+            NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}
+            AUTH_TRUSTED_HOSTS=${{ secrets.AUTH_TRUSTED_HOSTS }}
+            AI_GATEWAY_API_KEY=${{ secrets.AI_GATEWAY_API_KEY }}
+            AI_GATEWAY_BASE_URL=${{ secrets.AI_GATEWAY_BASE_URL }}
+            DOCUMENT_EXTRACTION_MODEL=${{ secrets.DOCUMENT_EXTRACTION_MODEL || 'google/gemini-2.5-flash' }}
+            EMBEDDING_MODEL=${{ secrets.EMBEDDING_MODEL || 'google/gemini-embedding-001' }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}
+            EOF
+
             docker pull "$IMAGE"
 
+            cd /opt/sami
+
             docker network create sami 2>/dev/null || true
+            docker network create shared-network 2>/dev/null || true
 
-            # Para qualquer container usando a porta 3000, não só pelo nome
-            docker ps -q --filter publish=3000 | xargs -r docker stop -t 0
-            docker stop -t 0 sami-app 2>/dev/null || true
-            docker rm sami-app 2>/dev/null || true
+            docker rm -f sami_app_1 2>/dev/null || true
+            docker rm -f sami-app 2>/dev/null || true
 
-            docker run -d \
-              --name sami-app \
-              --restart unless-stopped \
-              -p 3000:3000 \
-              --network sami \
-              --network-alias app \
-              -e NODE_ENV=production \
-              -e PORT=3000 \
-              -e HOSTNAME=0.0.0.0 \
-              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-              -e GOOGLE_GENERATIVE_AI_API_KEY="${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}" \
-              -e AUTH_SECRET="${{ secrets.AUTH_SECRET }}" \
-              -e NEXTAUTH_URL="${{ secrets.NEXTAUTH_URL }}" \
-              -e RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" \
-              -e RESEND_FROM_EMAIL="${{ secrets.RESEND_FROM_EMAIL }}" \
-              "$IMAGE"
-
-            docker network connect shared-network sami-app 2>/dev/null || true
+            docker-compose pull app
+            docker-compose up -d app
 
             sleep 10
-            docker ps --filter name=sami-app
+            docker-compose ps
+            curl -I -s http://localhost:3000
             docker image prune -f
