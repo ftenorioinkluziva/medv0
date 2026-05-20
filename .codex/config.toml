@@ -1,0 +1,6 @@
+[mcp_servers.pencil]
+args = [
+    "--app",
+    "desktop",
+]
+command = 'C:\Users\fteno\AppData\Local\Programs\Pencil\resources\app.asar.unpacked\out\mcp-server-windows-x64.exe'
